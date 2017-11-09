@@ -628,7 +628,7 @@ function PQbinaryTuples(res)
     ccall((:PQbinaryTuples, LIBPQ_HANDLE), Cint, (Ptr{PGresult},), res)
 end
 
-function PQfname(res, field_num::Cint)
+function PQfname(res, field_num)
     ccall((:PQfname, LIBPQ_HANDLE), Cstring, (Ptr{PGresult}, Cint), res, field_num)
 end
 
@@ -636,27 +636,27 @@ function PQfnumber(res, field_name)
     ccall((:PQfnumber, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cstring), res, field_name)
 end
 
-function PQftable(res, field_num::Cint)
+function PQftable(res, field_num)
     ccall((:PQftable, LIBPQ_HANDLE), Oid, (Ptr{PGresult}, Cint), res, field_num)
 end
 
-function PQftablecol(res, field_num::Cint)
+function PQftablecol(res, field_num)
     ccall((:PQftablecol, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint), res, field_num)
 end
 
-function PQfformat(res, field_num::Cint)
+function PQfformat(res, field_num)
     ccall((:PQfformat, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint), res, field_num)
 end
 
-function PQftype(res, field_num::Cint)
+function PQftype(res, field_num)
     ccall((:PQftype, LIBPQ_HANDLE), Oid, (Ptr{PGresult}, Cint), res, field_num)
 end
 
-function PQfsize(res, field_num::Cint)
+function PQfsize(res, field_num)
     ccall((:PQfsize, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint), res, field_num)
 end
 
-function PQfmod(res, field_num::Cint)
+function PQfmod(res, field_num)
     ccall((:PQfmod, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint), res, field_num)
 end
 
@@ -676,15 +676,15 @@ function PQcmdTuples(res)
     ccall((:PQcmdTuples, LIBPQ_HANDLE), Cstring, (Ptr{PGresult},), res)
 end
 
-function PQgetvalue(res, tup_num::Cint, field_num::Cint)
+function PQgetvalue(res, tup_num, field_num)
     ccall((:PQgetvalue, LIBPQ_HANDLE), Cstring, (Ptr{PGresult}, Cint, Cint), res, tup_num, field_num)
 end
 
-function PQgetlength(res, tup_num::Cint, field_num::Cint)
+function PQgetlength(res, tup_num, field_num)
     ccall((:PQgetlength, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint, Cint), res, tup_num, field_num)
 end
 
-function PQgetisnull(res, tup_num::Cint, field_num::Cint)
+function PQgetisnull(res, tup_num, field_num)
     ccall((:PQgetisnull, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint, Cint), res, tup_num, field_num)
 end
 
@@ -692,7 +692,7 @@ function PQnparams(res)
     ccall((:PQnparams, LIBPQ_HANDLE), Cint, (Ptr{PGresult},), res)
 end
 
-function PQparamtype(res, param_num::Cint)
+function PQparamtype(res, param_num)
     ccall((:PQparamtype, LIBPQ_HANDLE), Oid, (Ptr{PGresult}, Cint), res, param_num)
 end
 
