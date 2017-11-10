@@ -5,6 +5,7 @@ makedocs(;
     format=:html,
     pages=[
         "Home" => "index.md",
+        "API" => "pages/api.md",
     ],
     repo="https://github.com/iamed2/LibPQ.jl/blob/{commit}{path}#L{line}",
     sitename="LibPQ.jl",
