@@ -1,2 +1,5 @@
 julia 0.6
+DataStreams
 DocStringExtensions
+NullableArrays
+Nulls
