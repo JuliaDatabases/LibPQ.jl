@@ -1,7 +1,7 @@
 module LibPQ
 
-export Connection
-export status, execute, clear
+export Connection, Result
+export status, reset!, execute, clear
 
 using DocStringExtensions, DataStreams, Nulls, NullableArrays
 
