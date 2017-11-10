@@ -1,5 +1,13 @@
 using LibPQ
 using Base.Test
 
-# Write your own tests here.
-@test 1 == 2
+@testset "LibPQ" begin
+
+@testset "ConninfoDisplay" begin
+    @test parse(LibPQ.ConninfoDisplay, "") == LibPQ.Normal
+    @test parse(LibPQ.ConninfoDisplay, "*") == LibPQ.Password
+    @test parse(LibPQ.ConninfoDisplay, "D") == LibPQ.Debug
+    @test_throws ErrorException parse(LibPQ.ConninfoDisplay, "N")
+end
+
+end
