@@ -396,7 +396,7 @@ end
 Return the names of all the columns in the query result.
 """
 function column_names(jl_result::Result)
-    [column_name(jl_result, i - 1) for i in 1:num_columns(jl_result)]
+    [column_name(jl_result, i) for i in 1:num_columns(jl_result)]
 end
 
 """
