@@ -45,4 +45,6 @@ end
     end
 end
 
+include("test_tabletraits.jl")
+
 end
