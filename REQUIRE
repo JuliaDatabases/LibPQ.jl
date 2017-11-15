@@ -3,3 +3,5 @@ DataStreams
 DocStringExtensions
 NullableArrays
 Nulls
+DataValues
+NamedTuples
