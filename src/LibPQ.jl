@@ -3,7 +3,8 @@ module LibPQ
 export Connection, Result
 export status, reset!, execute, clear
 
-using DocStringExtensions, DataStreams, Nulls, NullableArrays
+using DocStringExtensions, DataStreams, Nulls, NullableArrays,
+    IteratorInterfaceExtensions, TableTraits, DataValues, NamedTuples
 
 # Docstring template for types using DocStringExtensions
 @template TYPES =
@@ -412,5 +413,7 @@ end
 ### RESULTS END
 
 include("datastreams.jl")
+
+include("tabletraits.jl")
 
 end

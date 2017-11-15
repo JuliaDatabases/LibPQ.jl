@@ -3,3 +3,7 @@ DataStreams
 DocStringExtensions
 NullableArrays
 Nulls
+IteratorInterfaceExtensions
+TableTraits
+DataValues
+NamedTuples
