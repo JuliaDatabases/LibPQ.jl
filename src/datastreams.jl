@@ -32,7 +32,7 @@ function Data.isdone(jl_result::Result, row, col, rows, cols)
     row > rows || col > cols
 end
 
-Data.streamtype(::Type{Result}, ::Type{Data.Field}) = true
+Data.streamtype(::Type{Result{T}}, ::Type{Data.Field}) where T = true
 
 if isdefined(Data, :accesspattern)
     Data.accesspattern(jl_result::Result) = RandomAccess()

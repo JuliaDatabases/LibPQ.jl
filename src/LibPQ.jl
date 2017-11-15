@@ -4,7 +4,7 @@ export Connection, Result
 export status, reset!, execute, clear
 
 using DocStringExtensions, DataStreams, Nulls, NullableArrays,
-    IteratorInterfaceExtensions, TableTraits, DataValues, NamedTuples
+    DataValues, NamedTuples
 
 # Docstring template for types using DocStringExtensions
 @template TYPES =
@@ -263,12 +263,14 @@ end
 ### RESULTS BEGIN
 
 "A result from a PostgreSQL database query"
-mutable struct Result <: Data.Source
+mutable struct Result{T} <: Data.Source
     "A pointer to a libpq PGresult object (C_NULL if cleared)"
     result::Ptr{libpq_c.PGresult}
 
     "True if the PGresult object has been cleaned up"
     cleared::Bool
+
+    _num_rows::Int
 end
 
 """
@@ -289,7 +291,17 @@ end
 
 Construct a `Result` from a `libpg_c.PGresult`
 """
-Result(result::Ptr{libpq_c.PGresult}) = Result(result, false)
+function Result(result::Ptr{libpq_c.PGresult})
+    num_cols = libpq_c.PQnfields(result)
+    num_rows = libpq_c.PQntuples(result)
+
+    col_names = [Symbol(unsafe_string(libpq_c.PQfname(result, i - 1))) for i=1:num_cols]
+    col_types = fill(DataValue{String}, num_cols)
+
+    T = eval(:(@NT($(col_names...)))){col_types...}
+
+    return Result{T}(result, false, num_rows)
+end
 
 """
     status(jl_result::Result) -> libpq_c.ExecStatusType
@@ -329,6 +341,22 @@ function clear(jl_result::Result)
     return nothing
 end
 
+# Implement the iterator interface for Result
+Base.length(result::Result) = result._num_rows
+
+Base.eltype(result::Result{T}) where T = T
+
+Base.start(result::Result) = 1
+
+@generated function Base.next(result::Result{T}, row) where T
+    return :(return T($([:(libpq_c.PQgetisnull(result.result, row - 1, $(col - 1)) == 1 ?
+        $(T.types[col])() :
+        $(T.types[col])(unsafe_string(libpq_c.PQgetvalue(result.result, row - 1, $(col - 1))))) for col=1:length(T.types)]...)), row+1)
+end
+
+Base.done(result::Result, state) = state>result._num_rows
+
+
 """
     execute(jl_conn::Connection, query::AbstractString; throw_error=false) -> Result
 
@@ -337,7 +365,7 @@ If `throw_error` is `true`, throw an error and clear the result if the query res
 fatal error or unreadable response.
 """
 function execute(jl_conn::Connection, query::AbstractString; throw_error=false)
-    jl_result = Result(libpq_c.PQexec(jl_conn.conn, query), false)
+    jl_result = Result(libpq_c.PQexec(jl_conn.conn, query))
     err_msg = error_message(jl_result)
     result_status = status(jl_result)
 
@@ -413,7 +441,5 @@ end
 ### RESULTS END
 
 include("datastreams.jl")
-
-include("tabletraits.jl")
 
 end
