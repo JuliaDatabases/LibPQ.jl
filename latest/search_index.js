@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.Connection",
     "category": "Type",
-    "text": "type Connection\n\nA connection to a PostgreSQL database.\n\nFields:\n\nconn\nA pointer to a libpq PGconn object (C_NULL if closed)\nclosed\nTrue if the connection is closed and the PGconn object has been cleaned up\n\n\n\n"
+    "text": "type Connection\n\nA connection to a PostgreSQL database.\n\nFields:\n\nconn\nA pointer to a libpq PGconn object (C_NULL if closed)\nclosed\nTrue if the connection is closed and the PGconn object has been cleaned up\nencoding\nlibpq client encoding (string encoding of returned data)\nuid_counter\nInteger counter for generating connection-level unique identifiers\n\n\n\n"
 },
 
 {
@@ -37,15 +37,63 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.Connection",
     "category": "Method",
-    "text": "Connection(str::AbstractString; throw_error=true) -> Connection\n\nCreate a Connection from a connection string as specified in the PostgreSQL documentation (33.1.1. Connection Strings). If throw_error is true, an error will be thrown if the resulting connection's status is CONNECTION_BAD and the PGconn object will be cleaned up. Otherwise, a warning will be shown and the user should call close or reset! on the returned Connection.\n\n\n\n"
+    "text": "Connection(str::AbstractString; throw_error=true) -> Connection\n\nCreate a Connection from a connection string as specified in the PostgreSQL documentation (33.1.1. Connection Strings).\n\nSee handle_new_connection for information on the throw_error argument.\n\n\n\n"
 },
 
 {
-    "location": "pages/api.html#LibPQ.clear-Tuple{LibPQ.Result}",
+    "location": "pages/api.html#LibPQ.Result",
     "page": "API",
-    "title": "LibPQ.clear",
+    "title": "LibPQ.Result",
+    "category": "Type",
+    "text": "type Result <: DataStreams.Data.Source\n\nA result from a PostgreSQL database query\n\nFields:\n\nresult\nA pointer to a libpq PGresult object (C_NULL if cleared)\ncleared\nTrue if the PGresult object has been cleaned up\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.Result-Tuple{Ptr{Void}}",
+    "page": "API",
+    "title": "LibPQ.Result",
     "category": "Method",
-    "text": "clear(jl_result::Result)\n\nClean up the memory used by the PGresult object. The Result will no longer be usable.\n\n\n\n"
+    "text": "Result(result::Ptr{libpq_c.PGresult}) -> Result\n\nConstruct a Result from a libpg_c.PGresult\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.column_name-Tuple{LibPQ.Result,Integer}",
+    "page": "API",
+    "title": "LibPQ.column_name",
+    "category": "Method",
+    "text": "column_name(jl_result::Result, column_number::Integer) -> String\n\nReturn the name of the column at index column_number (1-based).\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.column_names-Tuple{LibPQ.Result}",
+    "page": "API",
+    "title": "LibPQ.column_names",
+    "category": "Method",
+    "text": "column_names(jl_result::Result, column_number::Integer) -> Vector{String}\n\nReturn the names of all the columns in the query result.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.column_number-Tuple{LibPQ.Result,AbstractString}",
+    "page": "API",
+    "title": "LibPQ.column_number",
+    "category": "Method",
+    "text": "column_number(jl_result::Result, column_name::AbstractString) -> Int\n\nReturn the index (1-based) of the column named column_name.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.encoding-Tuple{LibPQ.Connection}",
+    "page": "API",
+    "title": "LibPQ.encoding",
+    "category": "Method",
+    "text": "encoding(jl_conn::Connection) -> String\n\nReturn the client encoding name for the current connection (see Table 23.1. PostgreSQL Character Sets for possible values).\n\nCurrently all Julia connections are set to use UTF8 as this makes conversion to and from String straighforward.\n\nSee also: set_encoding!, reset_encoding!\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.execute-Tuple{LibPQ.Connection,AbstractString,AbstractArray{#s208,1} where #s208<:Union{Nullable{String}, Nulls.Null, String}}",
+    "page": "API",
+    "title": "LibPQ.execute",
+    "category": "Method",
+    "text": "execute(jl_conn::Connection, query::AbstractString, parameters::Vector{<:AbstractString}; throw_error=true) -> Result\n\nRun a query on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\n\n\n"
 },
 
 {
@@ -53,7 +101,55 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.execute",
     "category": "Method",
-    "text": "execute(jl_conn::Connection, query::AbstractString; throw_error=false) -> Result\n\nRun a query on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\n\n\n"
+    "text": "execute(jl_conn::Connection, query::AbstractString; throw_error=true) -> Result\n\nRun a query on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.num_columns-Tuple{LibPQ.Result}",
+    "page": "API",
+    "title": "LibPQ.num_columns",
+    "category": "Method",
+    "text": "num_columns(jl_result::Result) -> Int\n\nReturn the number of columns in the query result. This will be 0 if the query would never return data.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.num_params-Tuple{LibPQ.Result}",
+    "page": "API",
+    "title": "LibPQ.num_params",
+    "category": "Method",
+    "text": "num_params(jl_result::Result) -> Int\n\nReturn the number of parameters in a prepared statement. If this result did not come from the description of a prepared statement, return 0.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.num_rows-Tuple{LibPQ.Result}",
+    "page": "API",
+    "title": "LibPQ.num_rows",
+    "category": "Method",
+    "text": "num_rows(jl_result::Result) -> Int\n\nReturn the number of rows in the query result. This will be 0 if the query would never return data.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.reset!-Tuple{LibPQ.Connection}",
+    "page": "API",
+    "title": "LibPQ.reset!",
+    "category": "Method",
+    "text": "reset!(jl_conn::Connection; throw_error=true)\n\nReset the communication to the PostgreSQL server. The PGconn object will be recreated using identical connection parameters.\n\nSee handle_new_connection for information on the throw_error argument.\n\nnote: Note\nThis function can be called on a connection with status CONNECTION_BAD, for example, but cannot be called on a connection that has been closed.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.reset_encoding!-Tuple{LibPQ.Connection}",
+    "page": "API",
+    "title": "LibPQ.reset_encoding!",
+    "category": "Method",
+    "text": "reset_encoding!(jl_conn::Connection, encoding::String)\n\nReset the client encoding for the current connection to jl_conn.encoding.\n\nSee also: encoding, set_encoding!\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.set_encoding!-Tuple{LibPQ.Connection,String}",
+    "page": "API",
+    "title": "LibPQ.set_encoding!",
+    "category": "Method",
+    "text": "set_encoding!(jl_conn::Connection, encoding::String)\n\nSet the client encoding for the current connection (see Table 23.1. PostgreSQL Character Sets for possible values).\n\nCurrently all Julia connections are set to use UTF8 as this makes conversion to and from String straighforward. Other encodings are not explicitly handled by this package and will probably be very buggy.\n\nSee also: encoding, reset_encoding!\n\n\n\n"
 },
 
 {
@@ -97,19 +193,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.Result",
+    "location": "pages/api.html#Base.Distributed.clear!-Tuple{LibPQ.Result}",
     "page": "API",
-    "title": "LibPQ.Result",
-    "category": "Type",
-    "text": "type Result <: DataStreams.Data.Source\n\nA result from a PostgreSQL database query\n\nFields:\n\nresult\nA pointer to a libpq PGresult object (C_NULL if cleared)\ncleared\nTrue if the PGresult object has been cleaned up\n\n\n\n"
-},
-
-{
-    "location": "pages/api.html#LibPQ.Result-Tuple{Ptr{Void}}",
-    "page": "API",
-    "title": "LibPQ.Result",
+    "title": "Base.Distributed.clear!",
     "category": "Method",
-    "text": "Result(result::Ptr{libpq_c.PGresult}) -> Result\n\nConstruct a Result from a libpg_c.PGresult\n\n\n\n"
+    "text": "clear!(jl_result::Result)\n\nClean up the memory used by the PGresult object. The Result will no longer be usable.\n\n\n\n"
 },
 
 {
@@ -118,6 +206,14 @@ var documenterSearchIndex = {"docs": [
     "title": "Base.close",
     "category": "Method",
     "text": "close(jl_conn::Connection)\n\nClose the PostgreSQL database connection and free the memory used by the PGconn object. This function calls PQfinish, but only if jl_conn.closed is false, to avoid a double-free.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#Base.isopen-Tuple{LibPQ.Connection}",
+    "page": "API",
+    "title": "Base.isopen",
+    "category": "Method",
+    "text": "isopen(jl_conn::Connection) -> Bool\n\nCheck whether a connection is open\n\n\n\n"
 },
 
 {
@@ -145,30 +241,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.column_name-Tuple{LibPQ.Result,Integer}",
-    "page": "API",
-    "title": "LibPQ.column_name",
-    "category": "Method",
-    "text": "column_name(jl_result::Result, column_number::Integer) -> String\n\nReturn the name of the column at index column_number (1-based).\n\n\n\n"
-},
-
-{
-    "location": "pages/api.html#LibPQ.column_names-Tuple{LibPQ.Result}",
-    "page": "API",
-    "title": "LibPQ.column_names",
-    "category": "Method",
-    "text": "column_names(jl_result::Result, column_number::Integer) -> Vector{String}\n\nReturn the names of all the columns in the query result.\n\n\n\n"
-},
-
-{
-    "location": "pages/api.html#LibPQ.column_number-Tuple{LibPQ.Result,AbstractString}",
-    "page": "API",
-    "title": "LibPQ.column_number",
-    "category": "Method",
-    "text": "column_number(jl_result::Result, column_name::AbstractString) -> Int\n\nReturn the index (1-based) of the column named column_name.\n\n\n\n"
-},
-
-{
     "location": "pages/api.html#LibPQ.conninfo-Tuple{LibPQ.Connection}",
     "page": "API",
     "title": "LibPQ.conninfo",
@@ -193,35 +265,27 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.num_columns-Tuple{LibPQ.Result}",
+    "location": "pages/api.html#LibPQ.handle_new_connection-Tuple{LibPQ.Connection}",
     "page": "API",
-    "title": "LibPQ.num_columns",
+    "title": "LibPQ.handle_new_connection",
     "category": "Method",
-    "text": "num_columns(jl_result::Result) -> Int\n\nReturn the number of columns in the query result. This will be 0 if the query would never return data.\n\n\n\n"
+    "text": "handle_new_connection(jl_conn::Connection; throw_error=true) -> Connection\n\nCheck status and handle errors for newly-created connections. Also set the client encoding (23.3. Character Set Support) to jl_conn.encoding.\n\nIf throw_error is true, an error will be thrown if the connection's status is CONNECTION_BAD and the PGconn object will be cleaned up. Otherwise, a warning will be shown and the user should call close or reset! on the returned Connection.\n\n\n\n"
 },
 
 {
-    "location": "pages/api.html#LibPQ.num_rows-Tuple{LibPQ.Result}",
+    "location": "pages/api.html#LibPQ.handle_result-Tuple{LibPQ.Result}",
     "page": "API",
-    "title": "LibPQ.num_rows",
+    "title": "LibPQ.handle_result",
     "category": "Method",
-    "text": "num_rows(jl_result::Result) -> Int\n\nReturn the number of rows in the query result. This will be 0 if the query would never return data.\n\n\n\n"
+    "text": "handle_result(jl_result::Result; throw_error::Bool=true) -> Result\n\nCheck status and handle errors for newly-created result objects.\n\nIf throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response. Otherwise a warning is shown.\n\nAlso print an info message about the result.\n\n\n\n"
 },
 
 {
-    "location": "pages/api.html#LibPQ.reset!-Tuple{LibPQ.Connection}",
+    "location": "pages/api.html#LibPQ.unsafe_string_or_null-Tuple{Cstring}",
     "page": "API",
-    "title": "LibPQ.reset!",
+    "title": "LibPQ.unsafe_string_or_null",
     "category": "Method",
-    "text": "reset!(jl_conn::Connection; throw_error=true)\n\nReset the communication to the PostgreSQL server. The PGconn object will be recreated using identical connection parameters. The throw_error parameter functions as in Connection.\n\nnote: Note\nThis function can be called on a connection with status CONNECTION_BAD, for example, but cannot be called on a connection that has been closed.\n\n\n\n"
-},
-
-{
-    "location": "pages/api.html#LibPQ.unsafe_nullable_string-Tuple{Cstring}",
-    "page": "API",
-    "title": "LibPQ.unsafe_nullable_string",
-    "category": "Method",
-    "text": "unsafe_nullable_string(ptr::Cstring) -> Nullable{String}\n\nConvert a Cstring to a Nullable{String}, returning Nullable{String}() if the pointer is C_NULL.\n\n\n\n"
+    "text": "unsafe_string_or_null(ptr::Cstring) -> Union{String, Null}\n\nConvert a Cstring to a Union{String, Null}, returning null if the pointer is C_NULL.\n\n\n\n"
 },
 
 {
