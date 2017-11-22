@@ -1,9 +1,8 @@
 """
-    unsafe_nullable_string(ptr::Cstring) -> Nullable{String}
+    unsafe_string_or_null(ptr::Cstring) -> Union{String, Null}
 
-Convert a `Cstring` to a `Nullable{String}`, returning `Nullable{String}()` if the pointer
-is `C_NULL`.
+Convert a `Cstring` to a `Union{String, Null}`, returning `null` if the pointer is `C_NULL`.
 """
-function unsafe_nullable_string(ptr::Cstring)::Nullable{String}
-    ptr == C_NULL ? Nullable() : unsafe_string(ptr)
+function unsafe_string_or_null(ptr::Cstring)::Union{String, Null}
+    ptr == C_NULL ? null : unsafe_string(ptr)
 end

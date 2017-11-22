@@ -285,7 +285,7 @@ function PQconnectStart(conninfo)
 end
 
 function PQconnectStartParams(keywords, values, expand_dbname::Cint)
-    ccall((:PQconnectStartParams, LIBPQ_HANDLE), Ptr{PGconn}, (Ptr{Cstring}, Ptr{Cstring}, Cint), keywords, values, expand_dbname)
+    ccall((:PQconnectStartParams, LIBPQ_HANDLE), Ptr{PGconn}, (Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Cint), keywords, values, expand_dbname)
 end
 
 function PQconnectPoll(conn)
@@ -297,7 +297,7 @@ function PQconnectdb(conninfo)
 end
 
 function PQconnectdbParams(keywords, values, expand_dbname::Cint)
-    ccall((:PQconnectdbParams, LIBPQ_HANDLE), Ptr{PGconn}, (Ptr{Cstring}, Ptr{Cstring}, Cint), keywords, values, expand_dbname)
+    ccall((:PQconnectdbParams, LIBPQ_HANDLE), Ptr{PGconn}, (Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Cint), keywords, values, expand_dbname)
 end
 
 function PQsetdbLogin(pghost, pgport, pgoptions, pgtty, dbName, login, pwd)
@@ -488,8 +488,8 @@ function PQexec(conn, query)
     ccall((:PQexec, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring), conn, query)
 end
 
-function PQexecParams(conn, command, nParams::Cint, paramTypes, paramValues, paramLengths, paramFormats, resultFormat::Cint)
-    ccall((:PQexecParams, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring, Cint, Ptr{Oid}, Ptr{Cstring}, Ptr{Cint}, Ptr{Cint}, Cint), conn, command, nParams, paramTypes, paramValues, paramLengths, paramFormats, resultFormat)
+function PQexecParams(conn, command, nParams, paramTypes, paramValues, paramLengths, paramFormats, resultFormat)
+    ccall((:PQexecParams, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring, Cint, Ptr{Oid}, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint), conn, command, nParams, paramTypes, paramValues, paramLengths, paramFormats, resultFormat)
 end
 
 function PQprepare(conn, stmtName, query, nParams::Cint, paramTypes)
@@ -497,7 +497,7 @@ function PQprepare(conn, stmtName, query, nParams::Cint, paramTypes)
 end
 
 function PQexecPrepared(conn, stmtName, nParams::Cint, paramValues, paramLengths, paramFormats, resultFormat::Cint)
-    ccall((:PQexecPrepared, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring, Cint, Ptr{Cstring}, Ptr{Cint}, Ptr{Cint}, Cint), conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat)
+    ccall((:PQexecPrepared, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring, Cint, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint), conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat)
 end
 
 function PQsendQuery(conn, query)
@@ -505,7 +505,7 @@ function PQsendQuery(conn, query)
 end
 
 function PQsendQueryParams(conn, command, nParams::Cint, paramTypes, paramValues, paramLengths, paramFormats, resultFormat::Cint)
-    ccall((:PQsendQueryParams, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cint, Ptr{Oid}, Ptr{Cstring}, Ptr{Cint}, Ptr{Cint}, Cint), conn, command, nParams, paramTypes, paramValues, paramLengths, paramFormats, resultFormat)
+    ccall((:PQsendQueryParams, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cint, Ptr{Oid}, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint), conn, command, nParams, paramTypes, paramValues, paramLengths, paramFormats, resultFormat)
 end
 
 function PQsendPrepare(conn, stmtName, query, nParams::Cint, paramTypes)
@@ -513,7 +513,7 @@ function PQsendPrepare(conn, stmtName, query, nParams::Cint, paramTypes)
 end
 
 function PQsendQueryPrepared(conn, stmtName, nParams::Cint, paramValues, paramLengths, paramFormats, resultFormat::Cint)
-    ccall((:PQsendQueryPrepared, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cint, Ptr{Cstring}, Ptr{Cint}, Ptr{Cint}, Cint), conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat)
+    ccall((:PQsendQueryPrepared, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cint, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint), conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat)
 end
 
 function PQsetSingleRowMode(conn)
@@ -585,7 +585,7 @@ function PQping(conninfo)
 end
 
 function PQpingParams(keywords, values, expand_dbname::Cint)
-    ccall((:PQpingParams, LIBPQ_HANDLE), PGPing, (Ptr{Cstring}, Ptr{Cstring}, Cint), keywords, values, expand_dbname)
+    ccall((:PQpingParams, LIBPQ_HANDLE), PGPing, (Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Cint), keywords, values, expand_dbname)
 end
 
 function PQflush(conn)
