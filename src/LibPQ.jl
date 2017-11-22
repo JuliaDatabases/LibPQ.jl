@@ -1,9 +1,12 @@
 module LibPQ
 
 export Connection, Result
-export status, reset!, execute, clear
+export status, reset!, execute, clear,
+    encoding, set_encoding!, reset_encoding!,
+    num_columns, num_rows, num_params,
+    column_name, column_names, column_number
 
-using DocStringExtensions, DataStreams, Nulls, NullableArrays
+using DocStringExtensions, DataStreams, Nulls
 
 # Docstring template for types using DocStringExtensions
 @template TYPES =
@@ -36,21 +39,29 @@ mutable struct Connection
 
     "True if the connection is closed and the PGconn object has been cleaned up"
     closed::Bool
+
+    "libpq client encoding (string encoding of returned data)"
+    encoding::String
+
+    "Integer counter for generating connection-level unique identifiers"
+    uid_counter::UInt
+
+    Connection(conn::Ptr, closed=false) = new(conn, closed, "UTF8", 0)
 end
 
 """
-    Connection(str::AbstractString; throw_error=true) -> Connection
+    handle_new_connection(jl_conn::Connection; throw_error=true) -> Connection
 
-Create a `Connection` from a connection string as specified in the PostgreSQL
-documentation ([33.1.1. Connection Strings](https://www.postgresql.org/docs/10/static/libpq-connect.html#LIBPQ-CONNSTRING)).
-If `throw_error` is `true`, an error will be thrown if the resulting connection's status is
+Check status and handle errors for newly-created connections.
+Also set the client encoding ([23.3. Character Set Support](https://www.postgresql.org/docs/10/static/multibyte.html))
+to `jl_conn.encoding`.
+
+If `throw_error` is `true`, an error will be thrown if the connection's status is
 `CONNECTION_BAD` and the PGconn object will be cleaned up.
 Otherwise, a warning will be shown and the user should call `close` or `reset!` on the
 returned `Connection`.
 """
-function Connection(str::AbstractString; throw_error=true)
-    jl_conn = Connection(libpq_c.PQconnectdb(str), false)
-
+function handle_new_connection(jl_conn::Connection; throw_error=true)
     if status(jl_conn) == libpq_c.CONNECTION_BAD
         err = error_message(jl_conn)
 
@@ -60,9 +71,85 @@ function Connection(str::AbstractString; throw_error=true)
         else
             warn(err)
         end
+    else
+        # if connection is successful, set client_encoding
+        reset_encoding!(jl_conn)
     end
 
     return jl_conn
+end
+
+"""
+    Connection(str::AbstractString; throw_error=true) -> Connection
+
+Create a `Connection` from a connection string as specified in the PostgreSQL
+documentation ([33.1.1. Connection Strings](https://www.postgresql.org/docs/10/static/libpq-connect.html#LIBPQ-CONNSTRING)).
+
+See [`handle_new_connection`](@ref) for information on the `throw_error` argument.
+"""
+function Connection(str::AbstractString; throw_error=true)
+    return handle_new_connection(
+        Connection(libpq_c.PQconnectdb(str));
+        throw_error=throw_error,
+    )
+end
+
+"""
+    encoding(jl_conn::Connection) -> String
+
+Return the client encoding name for the current connection (see
+[Table 23.1. PostgreSQL Character Sets](https://www.postgresql.org/docs/10/static/multibyte.html#CHARSET-TABLE)
+for possible values).
+
+Currently all Julia connections are set to use `UTF8` as this makes conversion to and from
+`String` straighforward.
+
+See also: [`set_encoding!`](@ref), [`reset_encoding!`](@ref)
+"""
+function encoding(jl_conn::Connection)
+    encoding_id::Cint = libpq_c.PQclientEncoding(jl_conn.conn)
+
+    if encoding_id == -1
+        error("libpq could not retrieve the connection's client encoding")
+    end
+
+    return unsafe_string(libpq_c.pg_encoding_to_char(encoding_id))
+end
+
+"""
+    set_encoding!(jl_conn::Connection, encoding::String)
+
+Set the client encoding for the current connection (see
+[Table 23.1. PostgreSQL Character Sets](https://www.postgresql.org/docs/10/static/multibyte.html#CHARSET-TABLE)
+for possible values).
+
+Currently all Julia connections are set to use `UTF8` as this makes conversion to and from
+`String` straighforward.
+Other encodings are not explicitly handled by this package and will probably be very buggy.
+
+See also: [`encoding`](@ref), [`reset_encoding!`](@ref)
+"""
+function set_encoding!(jl_conn::Connection, encoding::String)
+    status = libpq_c.PQsetClientEncoding(jl_conn.conn, encoding)
+
+    if status == -1
+        error("libpq could not set the connection's client encoding to $encoding")
+    else
+        jl_conn.encoding = encoding
+    end
+
+    return nothing
+end
+
+"""
+    reset_encoding!(jl_conn::Connection, encoding::String)
+
+Reset the client encoding for the current connection to `jl_conn.encoding`.
+
+See also: [`encoding`](@ref), [`set_encoding!`](@ref)
+"""
+function reset_encoding!(jl_conn::Connection)
+    set_encoding!(jl_conn, jl_conn.encoding)
 end
 
 """
@@ -94,11 +181,19 @@ function Base.close(jl_conn::Connection)
 end
 
 """
+    isopen(jl_conn::Connection) -> Bool
+
+Check whether a connection is open
+"""
+Base.isopen(jl_conn::Connection) = !jl_conn.closed
+
+"""
     reset!(jl_conn::Connection; throw_error=true)
 
 Reset the communication to the PostgreSQL server.
 The `PGconn` object will be recreated using identical connection parameters.
-The `throw_error` parameter functions as in [`Connection`](@ref).
+
+See [`handle_new_connection`](@ref) for information on the `throw_error` argument.
 
 !!! note
 
@@ -111,17 +206,7 @@ function reset!(jl_conn::Connection; throw_error=true)
     end
 
     libpq_c.PQreset(jl_conn.conn)
-
-    if status(jl_conn) == libpq_c.CONNECTION_BAD
-        err = error_message(jl_conn)
-
-        if throw_error
-            close(jl_conn)
-            error(err)
-        else
-            warn(err)
-        end
-    end
+    handle_new_connection(jl_conn; throw_error=throw_error)
 
     return nothing
 end
@@ -168,13 +253,13 @@ struct ConnectionOption
     keyword::String
 
     "The name of the fallback environment variable for this option"
-    envvar::Nullable{String}
+    envvar::Union{String, Null}
 
     "The PostgreSQL compiled-in default for this option"
-    compiled::Nullable{String}
+    compiled::Union{String, Null}
 
     "The value of the option if set"
-    val::Nullable{String}
+    val::Union{String, Null}
 
     "The label of the option for display"
     label::String
@@ -194,9 +279,9 @@ Construct a `ConnectionOption` from a `libpg_c.PQconninfoOption`.
 function ConnectionOption(pq_opt::libpq_c.PQconninfoOption)
     ConnectionOption(
         unsafe_string(pq_opt.keyword),
-        unsafe_nullable_string(pq_opt.envvar),
-        unsafe_nullable_string(pq_opt.compiled),
-        unsafe_nullable_string(pq_opt.val),
+        unsafe_string_or_null(pq_opt.envvar),
+        unsafe_string_or_null(pq_opt.compiled),
+        unsafe_string_or_null(pq_opt.val),
         unsafe_string(pq_opt.label),
         parse(ConninfoDisplay, unsafe_string(pq_opt.dispchar)),
         pq_opt.dispsize,
@@ -251,7 +336,7 @@ function Base.show(io::IO, jl_conn::Connection)
             if ci_opt.disptype == Password
                 print(io, "*" ^ ci_opt.dispsize)
             else
-                print(io, get(ci_opt.val))
+                print(io, ci_opt.val)
             end
         end
     end
@@ -268,6 +353,8 @@ mutable struct Result <: Data.Source
 
     "True if the PGresult object has been cleaned up"
     cleared::Bool
+
+    # TODO: attach encoding per https://wiki.postgresql.org/wiki/Driver_development#Result_object_and_client_encoding
 end
 
 """
@@ -313,12 +400,12 @@ function error_message(jl_result::Result)
 end
 
 """
-    clear(jl_result::Result)
+    clear!(jl_result::Result)
 
 Clean up the memory used by the `PGresult` object.
 The `Result` will no longer be usable.
 """
-function clear(jl_result::Result)
+function Base.clear!(jl_result::Result)
     if !jl_result.cleared
         libpq_c.PQclear(jl_result.result)
     end
@@ -329,14 +416,17 @@ function clear(jl_result::Result)
 end
 
 """
-    execute(jl_conn::Connection, query::AbstractString; throw_error=false) -> Result
+    handle_result(jl_result::Result; throw_error::Bool=true) -> Result
 
-Run a query on the PostgreSQL database and return a Result.
+Check status and handle errors for newly-created result objects.
+
 If `throw_error` is `true`, throw an error and clear the result if the query results in a
 fatal error or unreadable response.
+Otherwise a warning is shown.
+
+Also print an info message about the result.
 """
-function execute(jl_conn::Connection, query::AbstractString; throw_error=false)
-    jl_result = Result(libpq_c.PQexec(jl_conn.conn, query), false)
+function handle_result(jl_result::Result; throw_error::Bool=true)
     err_msg = error_message(jl_result)
     result_status = status(jl_result)
 
@@ -356,6 +446,73 @@ function execute(jl_conn::Connection, query::AbstractString; throw_error=false)
     end
 
     return jl_result
+end
+
+"""
+    execute(jl_conn::Connection, query::AbstractString; throw_error=true) -> Result
+
+Run a query on the PostgreSQL database and return a Result.
+If `throw_error` is `true`, throw an error and clear the result if the query results in a
+fatal error or unreadable response.
+"""
+function execute(jl_conn::Connection, query::AbstractString; throw_error=true)
+    return handle_result(
+        Result(libpq_c.PQexec(jl_conn.conn, query));
+        throw_error=throw_error,
+    )
+end
+
+"""
+    execute(jl_conn::Connection, query::AbstractString, parameters::Vector{<:AbstractString}; throw_error=true) -> Result
+
+Run a query on the PostgreSQL database and return a Result.
+If `throw_error` is `true`, throw an error and clear the result if the query results in a
+fatal error or unreadable response.
+"""
+function execute(
+    jl_conn::Connection,
+    query::AbstractString,
+    parameters::AbstractVector{<:Union{String, Nullable{String}, Null}};
+    throw_error=true,
+)
+    num_params = length(parameters)
+
+    return handle_result(
+        Result(libpq_c.PQexecParams(
+            jl_conn.conn,
+            query,
+            num_params,
+            C_NULL,  # set paramTypes to C_NULL to have the server infer a type
+            parameter_pointers(parameters),
+            C_NULL,  # paramLengths is ignored for text format parameters
+            zeros(Cint, num_params),  # all parameters in text format
+            zero(Cint),  # return result in text format
+        ));
+        throw_error=throw_error,
+    )
+end
+
+function parameter_pointers(
+    parameters::AbstractVector{<:Union{String, Nullable{String}, Null}},
+)
+    pointers = Vector{Ptr{UInt8}}(length(parameters))
+
+    map!(pointers, parameters) do parameter
+        isnull(parameter) ? C_NULL : pointer(unsafe_get(parameter))
+    end
+
+    return pointers
+end
+
+"""
+    num_params(jl_result::Result) -> Int
+
+Return the number of parameters in a prepared statement.
+If this result did not come from the description of a prepared statement, return 0.
+"""
+function num_params(jl_result::Result)::Int
+    # todo: check cleared?
+    libpq_c.PQnparams(jl_result.result)
 end
 
 """
