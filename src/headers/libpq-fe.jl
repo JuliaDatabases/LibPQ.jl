@@ -492,11 +492,11 @@ function PQexecParams(conn, command, nParams, paramTypes, paramValues, paramLeng
     ccall((:PQexecParams, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring, Cint, Ptr{Oid}, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint), conn, command, nParams, paramTypes, paramValues, paramLengths, paramFormats, resultFormat)
 end
 
-function PQprepare(conn, stmtName, query, nParams::Cint, paramTypes)
+function PQprepare(conn, stmtName, query, nParams, paramTypes)
     ccall((:PQprepare, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring, Cstring, Cint, Ptr{Oid}), conn, stmtName, query, nParams, paramTypes)
 end
 
-function PQexecPrepared(conn, stmtName, nParams::Cint, paramValues, paramLengths, paramFormats, resultFormat::Cint)
+function PQexecPrepared(conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat)
     ccall((:PQexecPrepared, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring, Cint, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint), conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat)
 end
 
@@ -504,15 +504,15 @@ function PQsendQuery(conn, query)
     ccall((:PQsendQuery, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring), conn, query)
 end
 
-function PQsendQueryParams(conn, command, nParams::Cint, paramTypes, paramValues, paramLengths, paramFormats, resultFormat::Cint)
+function PQsendQueryParams(conn, command, nParams, paramTypes, paramValues, paramLengths, paramFormats, resultFormat)
     ccall((:PQsendQueryParams, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cint, Ptr{Oid}, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint), conn, command, nParams, paramTypes, paramValues, paramLengths, paramFormats, resultFormat)
 end
 
-function PQsendPrepare(conn, stmtName, query, nParams::Cint, paramTypes)
+function PQsendPrepare(conn, stmtName, query, nParams, paramTypes)
     ccall((:PQsendPrepare, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cstring, Cint, Ptr{Oid}), conn, stmtName, query, nParams, paramTypes)
 end
 
-function PQsendQueryPrepared(conn, stmtName, nParams::Cint, paramValues, paramLengths, paramFormats, resultFormat::Cint)
+function PQsendQueryPrepared(conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat)
     ccall((:PQsendQueryPrepared, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cint, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint), conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat)
 end
 
