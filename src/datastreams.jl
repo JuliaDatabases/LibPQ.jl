@@ -70,6 +70,12 @@ end
 
 ### SINK BEGIN
 
+"""
+    Statement(sch::Data.Schema, ::Type{Data.Row}, append, connection::Connection, query::AbstractString) -> Statement
+
+Construct a `Statement` for use in streaming with DataStreams.
+This function is called by `Data.stream!(source, Statement, connection, query)`.
+"""
 function Statement(
     sch::Data.Schema,
     ::Type{Data.Row},
