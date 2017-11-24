@@ -4,6 +4,7 @@ using TestSetExtensions
 
 using DataStreams
 using NamedTuples
+using Nulls
 
 
 @testset ExtendedTestSet "LibPQ" begin
@@ -18,7 +19,7 @@ end
 @testset "Online" begin
     const DATABASE_USER = get(ENV, "LIBPQJL_DATABASE_USER", "postgres")
 
-    @testset "Example" begin
+    @testset "Example SELECT" begin
         conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=false)
         @test conn isa Connection
         @test isopen(conn)
@@ -40,6 +41,7 @@ end
         @test LibPQ.num_columns(result) == 1
         @test LibPQ.num_rows(result) == 1
         @test LibPQ.column_name(result, 1) == "typname"
+        @test LibPQ.column_number(result, "typname") == 1
 
         data = Data.stream!(result, NamedTuple)
 
@@ -75,6 +77,68 @@ end
 
         text_display_closed = sprint(show, conn)
         @test contains(text_display_closed, "closed")
+    end
+
+    @testset "Example INSERT" begin
+        conn = Connection("dbname=postgres user=$DATABASE_USER")
+
+        result = execute(conn, """
+            CREATE TEMPORARY TABLE libpqjl_test (
+                no_nulls    varchar(10) PRIMARY KEY,
+                yes_nulls   varchar(10)
+            );
+        """)
+        @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
+        clear!(result)
+
+        # get the data from PostgreSQL and let DataStreams construct my NamedTuple
+        result = execute(conn, """
+            SELECT no_nulls, yes_nulls FROM (
+                VALUES ('foo', 'bar'), ('baz', NULL)
+            ) AS temp (no_nulls, yes_nulls)
+            ORDER BY no_nulls DESC;
+            """;
+            throw_error=true,
+        )
+        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+        @test LibPQ.num_rows(result) == 2
+        @test LibPQ.num_columns(result) == 2
+
+        data = Data.stream!(result, NamedTuple)
+
+        @test data[:no_nulls] == ["foo", "baz"]
+        @test data[:yes_nulls][1] == "bar"
+        @test data[:yes_nulls][2] === null
+
+        clear!(result)
+
+        stmt = Data.stream!(
+            data,
+            Statement,
+            conn,
+            "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
+        )
+        @test num_params(stmt) == 2
+        @test num_columns(stmt) == 0  # an insert has no results
+        @test column_number(stmt, "no_nulls") == 0
+        @test column_names(stmt) == String[]
+
+        result = execute(
+            conn,
+            "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
+            throw_error=true,
+        )
+        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+        @test LibPQ.num_rows(result) == 2
+        @test LibPQ.num_columns(result) == 2
+
+        table_data = Data.stream!(result, NamedTuple)
+        @test table_data[:no_nulls] == data[:no_nulls]
+        @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
+        @test table_data[:yes_nulls][2] === null
+
+        clear!(result)
+        close(conn)
     end
 
     @testset "Connection" begin

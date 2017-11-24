@@ -67,3 +67,37 @@ function Data.streamfrom(
 end
 
 ### SOURCE END
+
+### SINK BEGIN
+
+function Statement(
+    sch::Data.Schema,
+    ::Type{Data.Row},
+    append::Bool,  # ignored
+    connection::Connection,
+    query::AbstractString,
+)
+    return prepare(connection, query)
+end
+
+Data.weakrefstrings(::Type{<:Statement}) = false
+Data.streamtypes(::Type{<:Statement}) = [Data.Row]
+
+function Data.streamto!(sink::Statement, ::Type{Data.Row}, row, row_num, col_num)
+    parameters = Vector{Union{String, Null}}(length(row))
+
+    # this should change to be whatever custom pgtype conversion function we invent
+    map!(parameters, values(row)) do val
+        if isnull(val)
+            null
+        elseif val isa AbstractString
+            convert(String, val)
+        else
+            string(val)
+        end
+    end
+
+    execute(sink, parameters; throw_error=true)
+end
+
+### SINK END

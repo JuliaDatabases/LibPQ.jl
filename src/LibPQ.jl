@@ -1,6 +1,6 @@
 module LibPQ
 
-export Connection, Result
+export Connection, Result, Statement
 export status, reset!, execute, clear,
     encoding, set_encoding!, reset_encoding!,
     num_columns, num_rows, num_params,
@@ -153,6 +153,18 @@ function reset_encoding!(jl_conn::Connection)
 end
 
 """
+    unique_id(jl_conn::Connection, prefix::AbstractString="") -> String
+
+Return a valid PostgreSQL identifier that is unique for the current connection.
+This is mostly used to create names for prepared statements.
+"""
+function unique_id(jl_conn::Connection, prefix::AbstractString="")
+    id_number, jl_conn.uid_counter = jl_conn.uid_counter, jl_conn.uid_counter + 1
+
+    return "__libpq_$(prefix)_$(id_number)__"
+end
+
+"""
     status(jl_conn::Connection) -> libpq_c.ConnStatusType
 
 Return the status of the PostgreSQL database connection according to libpq.
@@ -162,6 +174,15 @@ blocking connections are supported right now.
 See also: [`error_message`](@ref)
 """
 status(jl_conn::Connection) = libpq_c.PQstatus(jl_conn.conn)
+
+"""
+    transaction_status(jl_conn::Connection) -> libpq_c.PGTransactionStatusType
+
+Return the PostgreSQL database server's current in-transaction status for the connection.
+See [](https://www.postgresql.org/docs/10/static/libpq-status.html#LIBPQ-PQTRANSACTIONSTATUS)
+for information on the meaning of the possible return values.
+"""
+transaction_status(jl_conn::Connection) = libpq_c.PQtransactionStatus(jl_conn.conn)
 
 """
     close(jl_conn::Connection)
@@ -567,6 +588,86 @@ function column_number(jl_result::Result, column_name::AbstractString)::Int
 end
 
 ### RESULTS END
+
+### PREPARE BEGIN
+
+struct Statement
+    jl_conn::Connection
+    name::String
+    description::Result
+    num_params::Int
+end
+
+# currently no deallocation happens; they're deallocated at the end of the session per https://www.postgresql.org/docs/10/static/sql-deallocate.html
+function prepare(jl_conn::Connection, query::AbstractString)
+    uid = unique_id(jl_conn, "stmt")
+
+    jl_result = handle_result(
+        Result(libpq_c.PQprepare(
+            jl_conn.conn,
+            uid,
+            query,
+            0,  # infer all parameters from the query string
+            C_NULL,
+        ));
+        throw_error=true,
+    )
+
+    clear!(jl_result)
+
+    description = handle_result(
+        Result(libpq_c.PQdescribePrepared(
+            jl_conn.conn,
+            uid,
+        ));
+        throw_error=true,
+    )
+
+    Statement(jl_conn, uid, description, num_params(description))
+end
+
+num_params(stmt::Statement) = num_params(stmt.description)
+num_columns(stmt::Statement) = num_columns(stmt.description)
+
+function column_name(stmt::Statement, column_number::Integer)
+    column_name(stmt.description, column_number)
+end
+
+column_names(stmt::Statement) = column_names(stmt.description)
+
+function column_number(stmt::Statement, column_name::AbstractString)
+    column_number(stmt.description, column_name)
+end
+
+"""
+    execute(stmt::Statement, parameters::Vector{<:AbstractString}; throw_error=true) -> Result
+
+Execute a prepared statement on the PostgreSQL database and return a Result.
+If `throw_error` is `true`, throw an error and clear the result if the query results in a
+fatal error or unreadable response.
+"""
+function execute(
+    stmt::Statement,
+    parameters::AbstractVector{<:Union{String, Nullable{String}, Null}};
+    throw_error=true,
+)
+    num_params = length(parameters)
+
+    return handle_result(
+        Result(libpq_c.PQexecPrepared(
+            stmt.jl_conn.conn,
+            stmt.name,
+            num_params,
+            parameter_pointers(parameters),
+            C_NULL,  # paramLengths is ignored for text format parameters
+            zeros(Cint, num_params),  # all parameters in text format
+            zero(Cint),  # return result in text format
+        ));
+        throw_error=throw_error,
+    )
+end
+
+### PREPARE END
 
 include("datastreams.jl")
 
