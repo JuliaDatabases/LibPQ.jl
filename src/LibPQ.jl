@@ -6,7 +6,7 @@ export status, reset!, execute, clear,
     num_columns, num_rows, num_params,
     column_name, column_names, column_number
 
-using DocStringExtensions, DataStreams, Nulls
+using DocStringExtensions, DataStreams, Missings
 
 # Docstring template for types using DocStringExtensions
 @template TYPES =
@@ -274,13 +274,13 @@ struct ConnectionOption
     keyword::String
 
     "The name of the fallback environment variable for this option"
-    envvar::Union{String, Null}
+    envvar::Union{String, Missing}
 
     "The PostgreSQL compiled-in default for this option"
-    compiled::Union{String, Null}
+    compiled::Union{String, Missing}
 
     "The value of the option if set"
-    val::Union{String, Null}
+    val::Union{String, Missing}
 
     "The label of the option for display"
     label::String
@@ -351,7 +351,7 @@ function Base.show(io::IO, jl_conn::Connection)
 
     print(io, "PostgreSQL connection ($(status(jl_conn))) with parameters:")
     for ci_opt in conninfo(jl_conn)
-        if !isnull(ci_opt.val) && ci_opt.disptype != Debug
+        if !ismissing(ci_opt.val) && ci_opt.disptype != Debug
             print(io, "\n  ", ci_opt.keyword, " = ")
 
             if ci_opt.disptype == Password
@@ -493,7 +493,7 @@ fatal error or unreadable response.
 function execute(
     jl_conn::Connection,
     query::AbstractString,
-    parameters::AbstractVector{<:Union{String, Nullable{String}, Null}};
+    parameters::AbstractVector{<:Union{String, Missing}};
     throw_error=true,
 )
     num_params = length(parameters)
@@ -514,12 +514,12 @@ function execute(
 end
 
 function parameter_pointers(
-    parameters::AbstractVector{<:Union{String, Nullable{String}, Null}},
+    parameters::AbstractVector{<:Union{String, Missing}},
 )
     pointers = Vector{Ptr{UInt8}}(length(parameters))
 
     map!(pointers, parameters) do parameter
-        isnull(parameter) ? C_NULL : pointer(unsafe_get(parameter))
+        ismissing(parameter) ? C_NULL : pointer(parameter)
     end
 
     return pointers
@@ -698,7 +698,7 @@ fatal error or unreadable response.
 """
 function execute(
     stmt::Statement,
-    parameters::AbstractVector{<:Union{String, Nullable{String}, Null}};
+    parameters::AbstractVector{<:Union{String, Missing}};
     throw_error=true,
 )
     num_params = length(parameters)

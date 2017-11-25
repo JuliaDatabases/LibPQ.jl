@@ -9,7 +9,7 @@ function Data.schema(jl_result::Result, ::Type{Data.Field})
     ncols = num_columns(jl_result)
 
     Data.Schema(
-        fill(Union{String, Null}, ncols),  # types
+        fill(Union{String, Missing}, ncols),  # types
         column_names(jl_result),
         nrows,
     )
@@ -29,28 +29,12 @@ Data.accesspattern(jl_result::Result) = RandomAccess()
 function Data.streamfrom(
     jl_result::Result,
     ::Type{Data.Field},
-    ::Type{Nullable{String}},
+    ::Type{Union{String, Missing}},
     row::Int,
     col::Int,
-)::Nullable{String}
+)::Union{String, Missing}
     if libpq_c.PQgetisnull(jl_result.result, row - 1, col - 1) == 1
-        return Nullable()
-    else
-        return Nullable(
-            unsafe_string(libpq_c.PQgetvalue(jl_result.result, row - 1, col - 1))
-        )
-    end
-end
-
-function Data.streamfrom(
-    jl_result::Result,
-    ::Type{Data.Field},
-    ::Type{Union{String, Null}},
-    row::Int,
-    col::Int,
-)::Union{String, Null}
-    if libpq_c.PQgetisnull(jl_result.result, row - 1, col - 1) == 1
-        return null
+        return missing
     else
         return unsafe_string(libpq_c.PQgetvalue(jl_result.result, row - 1, col - 1))
     end
@@ -90,12 +74,12 @@ Data.weakrefstrings(::Type{<:Statement}) = false
 Data.streamtypes(::Type{<:Statement}) = [Data.Row]
 
 function Data.streamto!(sink::Statement, ::Type{Data.Row}, row, row_num, col_num)
-    parameters = Vector{Union{String, Null}}(length(row))
+    parameters = Vector{Union{String, Missing}}(length(row))
 
     # this should change to be whatever custom pgtype conversion function we invent
     map!(parameters, values(row)) do val
-        if isnull(val)
-            null
+        if ismissing(val)
+            missing
         elseif val isa AbstractString
             convert(String, val)
         else

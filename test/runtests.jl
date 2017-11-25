@@ -4,7 +4,7 @@ using TestSetExtensions
 
 using DataStreams
 using NamedTuples
-using Nulls
+using Missings
 
 
 @testset ExtendedTestSet "LibPQ" begin
@@ -108,7 +108,7 @@ end
 
         @test data[:no_nulls] == ["foo", "baz"]
         @test data[:yes_nulls][1] == "bar"
-        @test data[:yes_nulls][2] === null
+        @test data[:yes_nulls][2] === missing
 
         clear!(result)
 
@@ -121,7 +121,7 @@ end
         @test num_params(stmt) == 2
         @test num_columns(stmt) == 0  # an insert has no results
         @test column_number(stmt, "no_nulls") == 0
-        @test column_names(stmt) == String[]
+        @test column_names(stmt) == []
 
         result = execute(
             conn,
@@ -135,7 +135,7 @@ end
         table_data = Data.stream!(result, NamedTuple)
         @test table_data[:no_nulls] == data[:no_nulls]
         @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
-        @test table_data[:yes_nulls][2] === null
+        @test table_data[:yes_nulls][2] === missing
 
         clear!(result)
         close(conn)
@@ -212,7 +212,7 @@ end
 
             data = Data.stream!(result, NamedTuple)
 
-            @test isnull(data[1][1])
+            @test data[1][1] === missing
 
             clear!(result)
             @test result.cleared == true
@@ -233,7 +233,7 @@ end
 
             @test data[:no_nulls] == ["foo", "baz"]
             @test data[:yes_nulls][1] == "bar"
-            @test isnull(data[:yes_nulls][2])
+            @test data[:yes_nulls][2] === missing
 
             clear!(result)
             @test result.cleared == true
@@ -256,7 +256,7 @@ end
             data = Data.stream!(result, NamedTuple)
 
             @test data[:no_nulls] == ["baz", "foo"]
-            @test isnull(data[:yes_nulls][1])
+            @test data[:yes_nulls][1] === missing
             @test data[:yes_nulls][2] == "bar"
 
             clear!(result)
