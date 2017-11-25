@@ -121,7 +121,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.execute-Tuple{LibPQ.Connection,AbstractString,AbstractArray{#s208,1} where #s208<:Union{Nullable{String}, Nulls.Null, String}}",
+    "location": "pages/api.html#LibPQ.execute-Tuple{LibPQ.Connection,AbstractString,AbstractArray{#s208,1} where #s208<:Union{Missings.Missing, String}}",
     "page": "API",
     "title": "LibPQ.execute",
     "category": "Method",
@@ -137,7 +137,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.execute-Tuple{LibPQ.Statement,AbstractArray{#s1,1} where #s1<:Union{Nullable{String}, Nulls.Null, String}}",
+    "location": "pages/api.html#LibPQ.execute-Tuple{LibPQ.Statement,AbstractArray{#s1,1} where #s1<:Union{Missings.Missing, String}}",
     "page": "API",
     "title": "LibPQ.execute",
     "category": "Method",
@@ -373,7 +373,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.unsafe_string_or_null",
     "category": "Method",
-    "text": "unsafe_string_or_null(ptr::Cstring) -> Union{String, Null}\n\nConvert a Cstring to a Union{String, Null}, returning null if the pointer is C_NULL.\n\n\n\n"
+    "text": "unsafe_string_or_null(ptr::Cstring) -> Union{String, Missing}\n\nConvert a Cstring to a Union{String, Missing}, returning missing if the pointer is C_NULL.\n\n\n\n"
 },
 
 {
