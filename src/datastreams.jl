@@ -87,7 +87,7 @@ function Data.streamto!(sink::Statement, ::Type{Data.Row}, row, row_num, col_num
         end
     end
 
-    execute(sink, parameters; throw_error=true)
+    clear!(execute(sink, parameters; throw_error=true))
 end
 
 ### SINK END
