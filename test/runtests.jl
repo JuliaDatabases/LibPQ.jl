@@ -7,6 +7,8 @@ using NamedTuples
 using Missings
 
 
+Memento.config("critical")
+
 @testset ExtendedTestSet "LibPQ" begin
 
 @testset "ConninfoDisplay" begin
