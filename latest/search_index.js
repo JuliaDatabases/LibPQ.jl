@@ -17,6 +17,30 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "index.html#Examples-1",
+    "page": "Home",
+    "title": "Examples",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "index.html#Selection-1",
+    "page": "Home",
+    "title": "Selection",
+    "category": "section",
+    "text": "conn = Connection(\"dbname=postgres\")\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = 16\")\ndata = Data.stream!(result, NamedTuple)\nclear!(result)\n\n# the same but with parameters\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"])\ndata = Data.stream!(result, NamedTuple)\nclear!(result)\n\nclose(conn)"
+},
+
+{
+    "location": "index.html#Insertion-1",
+    "page": "Home",
+    "title": "Insertion",
+    "category": "section",
+    "text": "conn = Connection(\"dbname=postgres user=$DATABASE_USER\")\n\nresult = execute(conn, \"\"\"\n    CREATE TEMPORARY TABLE libpqjl_test (\n        no_nulls    varchar(10) PRIMARY KEY,\n        yes_nulls   varchar(10)\n    );\n\"\"\")\nclear!(result)\n\nData.stream!(\n    data,\n    Statement,\n    conn,\n    \"INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\$1, \\$2);\",\n)\n\nclose(conn)"
+},
+
+{
     "location": "pages/api.html#",
     "page": "API",
     "title": "API",
