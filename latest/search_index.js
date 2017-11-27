@@ -125,7 +125,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.execute",
     "category": "Method",
-    "text": "execute(jl_conn::Connection, query::AbstractString, parameters::Vector{<:AbstractString}; throw_error=true) -> Result\n\nRun a query on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\n\n\n"
+    "text": "execute(jl_conn::Connection, query::AbstractString, parameters::Vector{<:Parameter}; throw_error=true) -> Result\n\nRun a query on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\n\n\n"
 },
 
 {
@@ -141,7 +141,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.execute",
     "category": "Method",
-    "text": "execute(stmt::Statement, parameters::Vector{<:AbstractString}; throw_error=true) -> Result\n\nExecute a prepared statement on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\n\n\n"
+    "text": "execute(stmt::Statement, parameters::Vector{<:Parameter}; throw_error=true) -> Result\n\nExecute a prepared statement on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\n\n\n"
 },
 
 {
