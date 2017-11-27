@@ -74,7 +74,7 @@ Data.weakrefstrings(::Type{<:Statement}) = false
 Data.streamtypes(::Type{<:Statement}) = [Data.Row]
 
 function Data.streamto!(sink::Statement, ::Type{Data.Row}, row, row_num, col_num)
-    parameters = Vector{Union{String, Missing}}(length(row))
+    parameters = Vector{Parameter}(length(row))
 
     # this should change to be whatever custom pgtype conversion function we invent
     map!(parameters, values(row)) do val

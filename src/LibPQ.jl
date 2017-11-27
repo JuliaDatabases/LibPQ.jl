@@ -8,6 +8,8 @@ export status, reset!, execute, clear,
 
 using DocStringExtensions, DataStreams, Missings
 
+const Parameter = Union{String, Missing}
+
 # Docstring template for types using DocStringExtensions
 @template TYPES =
     """
@@ -484,7 +486,7 @@ function execute(jl_conn::Connection, query::AbstractString; throw_error=true)
 end
 
 """
-    execute(jl_conn::Connection, query::AbstractString, parameters::Vector{<:AbstractString}; throw_error=true) -> Result
+    execute(jl_conn::Connection, query::AbstractString, parameters::Vector{<:Parameter}; throw_error=true) -> Result
 
 Run a query on the PostgreSQL database and return a Result.
 If `throw_error` is `true`, throw an error and clear the result if the query results in a
@@ -493,7 +495,7 @@ fatal error or unreadable response.
 function execute(
     jl_conn::Connection,
     query::AbstractString,
-    parameters::AbstractVector{<:Union{String, Missing}};
+    parameters::AbstractVector{<:Parameter};
     throw_error=true,
 )
     num_params = length(parameters)
@@ -514,7 +516,7 @@ function execute(
 end
 
 function parameter_pointers(
-    parameters::AbstractVector{<:Union{String, Missing}},
+    parameters::AbstractVector{<:Parameter},
 )
     pointers = Vector{Ptr{UInt8}}(length(parameters))
 
@@ -690,17 +692,13 @@ function column_number(stmt::Statement, column_name::AbstractString)
 end
 
 """
-    execute(stmt::Statement, parameters::Vector{<:AbstractString}; throw_error=true) -> Result
+    execute(stmt::Statement, parameters::Vector{<:Parameter}; throw_error=true) -> Result
 
 Execute a prepared statement on the PostgreSQL database and return a Result.
 If `throw_error` is `true`, throw an error and clear the result if the query results in a
 fatal error or unreadable response.
 """
-function execute(
-    stmt::Statement,
-    parameters::AbstractVector{<:Union{String, Missing}};
-    throw_error=true,
-)
+function execute(stmt::Statement, parameters::AbstractVector{<:Parameter}; throw_error=true)
     num_params = length(parameters)
 
     return handle_result(
