@@ -17,7 +17,6 @@ notifications:
   email: false
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia -e 'Pkg.add("DataStreams"); Pkg.checkout("DataStreams");'
   - julia -e 'Pkg.clone(pwd()); Pkg.build("LibPQ"); Pkg.test("LibPQ"; coverage=true)'
 after_success:
   - julia -e 'cd(Pkg.dir("LibPQ")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
