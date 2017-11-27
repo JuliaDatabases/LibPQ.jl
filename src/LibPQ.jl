@@ -269,7 +269,7 @@ function Base.parse(::Type{ConninfoDisplay}, str::AbstractString)::ConninfoDispl
     elseif first(str) == 'D'
         Debug
     else
-        error(LOGGER, "Unexpected dispchar in PQconninfoOption")
+        error(LOGGER, "Unexpected dispchar '$str' in PQconninfoOption")
     end
 end
 
