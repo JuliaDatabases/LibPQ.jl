@@ -9,16 +9,27 @@ LibPQ.jl is a Julia wrapper for the PostgreSQL `libpq` C library.
 
 ## Features
 
+### Current
+
+* Connections
+  * Connect via DSN
+  * Connect via PostgreSQL connection string
+  * UTF-8 client encoding
+* Queries
+  * Create and execute queries with or without parameters
+  * Stream results using [DataStreams](https://github.com/JuliaData/DataStreams.jl)
+* Prepared Statements
+  * Create and execute prepared statements with or without parameters
+  * Stream table of parameters to execute the same statement multiple times with different data using DataStreams
+
 ### Goals
 
 *Note that these are goals and do not represent the current state of this package*
 
 LibPQ.jl aims to wrap `libpq` as documented in the PostgreSQL documentation, including all non-deprecated functionality and handling all documented error conditions.
 Where possible, asynchronous functionality will be wrapped in idiomatic Julia control flow.
-All Oids returned in query results will have type conversions defined, as long as I can find documentation on their structure.
-Some effort will be made to integrate with other packages (e.g., [https://github.com/JuliaData/DataStreams.jl](DataStreams.jl)) to facilitate conversion from query results to a malleable format.
-
-Above all, I am doing this for fun and I do not expect to hold this package to any particular standard of completeness or support.
+All Oids returned in query results will have type conversions (to String by default) defined, as long as I can find documentation on their structure.
+Some effort will be made to integrate with other packages (e.g., DataStreams, already implemented) to facilitate conversion from query results to a malleable format.
 
 ### Non-Goals
 
@@ -43,6 +54,46 @@ This package may not:
 * be as memory-efficient as possible (memory-safety will be prioritized)
 
 While I may never get to any of these, I welcome tested, documented contributions!
+
+## Requirements
+
+To use this package you must have `libpq` installed somewhere accessible from Julia such that you can run `dlopen(:libpq)`.
+Here are instructions for several package managers:
+
+### macOS (Homebrew)
+
+```sh
+brew install libpq
+```
+
+### Ubuntu/Debian (Apt)
+
+```sh
+apt install libpq5
+```
+
+### CentOS (Yum)
+
+```sh
+yum install postgresql-libs
+```
+
+### Amazon Linux (Yum)
+
+```sh
+yum install postgresql94-libs  # or another version
+```
+
+### Arch Linux (Pacman)
+
+```sh
+pacman -S postgresql-libs
+```
+
+### Windows
+
+Install PostgreSQL from [here](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads) or build it yourself.
+Then find `libpq.dll` and make sure it's available for Julia to load.
 
 ## Licenses
 
