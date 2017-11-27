@@ -6,9 +6,14 @@ export status, reset!, execute, clear,
     num_columns, num_rows, num_params,
     column_name, column_names, column_number
 
-using DocStringExtensions, DataStreams, Missings
+using DocStringExtensions
+using DataStreams
+using Memento
+using Missings
+import Compat: @__MODULE__
 
 const Parameter = Union{String, Missing}
+const LOGGER = get_logger(@__MODULE__)
 
 # Docstring template for types using DocStringExtensions
 @template TYPES =
@@ -25,9 +30,7 @@ const Parameter = Union{String, Missing}
 include(joinpath(@__DIR__, "utils.jl"))
 
 module libpq_c
-    function __init__()
-        const global LIBPQ_HANDLE = :libpq
-    end
+    const LIBPQ_HANDLE = :libpq
 
     include(joinpath(@__DIR__, "headers", "libpq-fe.jl"))
 end
@@ -69,9 +72,9 @@ function handle_new_connection(jl_conn::Connection; throw_error=true)
 
         if throw_error
             close(jl_conn)
-            error(err)
+            error(LOGGER, err)
         else
-            warn(err)
+            warn(LOGGER, err)
         end
     else
         # if connection is successful, set client_encoding
@@ -112,7 +115,7 @@ function encoding(jl_conn::Connection)
     encoding_id::Cint = libpq_c.PQclientEncoding(jl_conn.conn)
 
     if encoding_id == -1
-        error("libpq could not retrieve the connection's client encoding")
+        error(LOGGER, "libpq could not retrieve the connection's client encoding")
     end
 
     return unsafe_string(libpq_c.pg_encoding_to_char(encoding_id))
@@ -135,7 +138,7 @@ function set_encoding!(jl_conn::Connection, encoding::String)
     status = libpq_c.PQsetClientEncoding(jl_conn.conn, encoding)
 
     if status == -1
-        error("libpq could not set the connection's client encoding to $encoding")
+        error(LOGGER, "libpq could not set the connection's client encoding to $encoding")
     else
         jl_conn.encoding = encoding
     end
@@ -225,7 +228,7 @@ See [`handle_new_connection`](@ref) for information on the `throw_error` argumen
 """
 function reset!(jl_conn::Connection; throw_error=true)
     if jl_conn.closed
-        error("Cannot reset a connection that has been closed")
+        error(LOGGER, "Cannot reset a connection that has been closed")
     end
 
     libpq_c.PQreset(jl_conn.conn)
@@ -266,7 +269,7 @@ function Base.parse(::Type{ConninfoDisplay}, str::AbstractString)::ConninfoDispl
     elseif first(str) == 'D'
         Debug
     else
-        error("Unexpected dispchar in PQconninfoOption")
+        error(LOGGER, "Unexpected dispchar in PQconninfoOption")
     end
 end
 
@@ -321,7 +324,7 @@ function conninfo(jl_conn::Connection)
 
     ci_ptr = libpq_c.PQconninfo(jl_conn.conn)
     if ci_ptr == C_NULL
-        error("libpq could not allocate memory for connection info")
+        error(LOGGER, "libpq could not allocate memory for connection info")
     end
 
     # ci_ptr is an array of PQconninfoOptions terminated by a PQconninfoOption with the
@@ -456,16 +459,16 @@ function handle_result(jl_result::Result; throw_error::Bool=true)
     if result_status in (libpq_c.PGRES_BAD_RESPONSE, libpq_c.PGRES_FATAL_ERROR)
         if throw_error
             libpq_c.PQclear(jl_result.result)
-            error(err_msg)
+            error(LOGGER, err_msg)
         else
-            warn(err_msg)
+            warn(LOGGER, err_msg)
         end
     else
         if result_status == libpq_c.PGRES_NONFATAL_ERROR
-            warn(err_msg)
+            warn(LOGGER, err_msg)
         end
 
-        info(unsafe_string(libpq_c.PQcmdStatus(jl_result.result)))
+        info(LOGGER, unsafe_string(libpq_c.PQcmdStatus(jl_result.result)))
     end
 
     return jl_result
