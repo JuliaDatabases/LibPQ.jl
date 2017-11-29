@@ -3,6 +3,7 @@ using Compat: Test
 
 using DataStreams
 using NamedTuples
+using Memento
 using Missings
 
 
