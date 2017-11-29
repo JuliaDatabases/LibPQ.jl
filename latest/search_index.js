@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Selection",
     "category": "section",
-    "text": "conn = Connection(\"dbname=postgres\")\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = 16\")\ndata = Data.stream!(result, NamedTuple)\nclear!(result)\n\n# the same but with parameters\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"])\ndata = Data.stream!(result, NamedTuple)\nclear!(result)\n\nclose(conn)"
+    "text": "conn = Connection(\"dbname=postgres\")\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = 16\")\ndata = Data.stream!(result, NamedTuple)\nclear!(result)\n\n# the same but with parameters\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"])\ndata = Data.stream!(result, NamedTuple)\nclear!(result)\n\n# the same but using `fetch!` to handle streaming and clearing\ndata = fetch!(NamedTuple, execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"]))\n\nclose(conn)"
 },
 
 {
@@ -254,6 +254,14 @@ var documenterSearchIndex = {"docs": [
     "title": "LibPQ.Statement",
     "category": "Method",
     "text": "Statement(sch::Data.Schema, ::Type{Data.Row}, append, connection::Connection, query::AbstractString) -> Statement\n\nConstruct a Statement for use in streaming with DataStreams. This function is called by Data.stream!(source, Statement, connection, query).\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.fetch!-Tuple{Any,LibPQ.Result,Vararg{Any,N} where N}",
+    "page": "API",
+    "title": "LibPQ.fetch!",
+    "category": "Method",
+    "text": "fetch!(sink::Union{T, Type{T}}, result::Result, args...; kwargs...) where {T} -> T\n\nStream data to sink or a new structure of type T using Data.stream!. Any trailing args or kwargs are passed to Data.stream!. result is cleared upon completion.\n\n\n\n"
 },
 
 {

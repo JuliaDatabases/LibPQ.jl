@@ -9,6 +9,9 @@ result = execute(conn, &quot;SELECT typname FROM pg_type WHERE oid = \$1&quot;, 
 data = Data.stream!(result, NamedTuple)
 clear!(result)
 
+# the same but using `fetch!` to handle streaming and clearing
+data = fetch!(NamedTuple, execute(conn, &quot;SELECT typname FROM pg_type WHERE oid = \$1&quot;, [&quot;16&quot;]))
+
 close(conn)</code></pre><h3><a class="nav-anchor" id="Insertion-1" href="#Insertion-1">Insertion</a></h3><pre><code class="language-julia">conn = Connection(&quot;dbname=postgres user=$DATABASE_USER&quot;)
 
 result = execute(conn, &quot;&quot;&quot;
