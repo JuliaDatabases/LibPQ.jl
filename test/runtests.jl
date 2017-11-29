@@ -1,15 +1,15 @@
 using LibPQ
-using Base.Test
-using TestSetExtensions
+using Compat: Test
 
 using DataStreams
 using NamedTuples
+using Memento
 using Missings
 
 
 Memento.config("critical")
 
-@testset ExtendedTestSet "LibPQ" begin
+@testset "LibPQ" begin
 
 @testset "ConninfoDisplay" begin
     @test parse(LibPQ.ConninfoDisplay, "") == LibPQ.Normal

@@ -1,5 +1,6 @@
 julia 0.6
-Compat 0.26
+BinDeps 0.6
+Compat 0.33
 DataStreams 0.3.1
 DocStringExtensions
 Missings 0.2.1
