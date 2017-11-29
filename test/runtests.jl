@@ -73,6 +73,15 @@ end
         clear!(result)
         @test result.cleared == true
 
+        # the same but with fetch
+        data = fetch!(NamedTuple, execute(
+            conn,
+            "SELECT typname FROM pg_type WHERE oid = \$1",
+            ["16"],
+        ))
+
+        @test data[:typname][1] == "bool"
+
         close(conn)
         @test !isopen(conn)
         @test conn.closed == true
@@ -309,6 +318,21 @@ end
                 close(conn)
                 @test !isopen(conn)
             end
+        end
+
+        @testset "Interface Errors" begin
+            conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            result = execute(
+                conn,
+                "SELECT typname FROM pg_type WHERE oid = \$1",
+                ["16"],
+            )
+            clear!(result)
+            @test_throws ErrorException fetch!(NamedTuple, result)
+
+            close(conn)
+            @test !isopen(conn)
         end
     end
 end

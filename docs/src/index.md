@@ -20,6 +20,9 @@ result = execute(conn, "SELECT typname FROM pg_type WHERE oid = \$1", ["16"])
 data = Data.stream!(result, NamedTuple)
 clear!(result)
 
+# the same but using `fetch!` to handle streaming and clearing
+data = fetch!(NamedTuple, execute(conn, "SELECT typname FROM pg_type WHERE oid = \$1", ["16"]))
+
 close(conn)
 ```
 
