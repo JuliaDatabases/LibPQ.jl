@@ -91,3 +91,26 @@ function Data.streamto!(sink::Statement, ::Type{Data.Row}, row, row_num, col_num
 end
 
 ### SINK END
+
+### FETCH BEGIN
+
+# fetch! is not part of the DataSreams API
+
+"""
+    fetch!(sink::Union{T, Type{T}}, result::Result, args...; kwargs...) where {T} -> T
+
+Stream data to `sink` or a new structure of type T using [`Data.stream!`](https://juliadata.github.io/DataStreams.jl/stable/#Data.stream!-1).
+Any trailing `args` or `kwargs` are passed to `Data.stream!`.
+`result` is cleared upon completion.
+"""
+function fetch!(sink, result::Result, args...; kwargs...)
+    if result.cleared
+        error(LOGGER, "Cannot fetch a cleared Result")
+    end
+
+    data = Data.stream!(result, sink, args...; kwargs...)
+    clear!(result)
+    return data
+end
+
+### FETCH END

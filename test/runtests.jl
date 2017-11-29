@@ -73,6 +73,15 @@ end
         clear!(result)
         @test result.cleared == true
 
+        # the same but with fetch
+        data = fetch!(NamedTuple, execute(
+            conn,
+            "SELECT typname FROM pg_type WHERE oid = \$1",
+            ["16"],
+        ))
+
+        @test data[:typname][1] == "bool"
+
         close(conn)
         @test !isopen(conn)
         @test conn.closed == true

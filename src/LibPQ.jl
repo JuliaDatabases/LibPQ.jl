@@ -1,7 +1,7 @@
 module LibPQ
 
 export Connection, Result, Statement
-export status, reset!, execute, clear,
+export status, reset!, execute, clear, fetch!,
     encoding, set_encoding!, reset_encoding!,
     num_columns, num_rows, num_params,
     column_name, column_names, column_number
