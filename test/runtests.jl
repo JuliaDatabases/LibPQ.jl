@@ -1,5 +1,5 @@
 using LibPQ
-using Base.Test
+using Compat: Test
 using TestSetExtensions
 
 using DataStreams
