@@ -1,6 +1,5 @@
 using LibPQ
 using Compat: Test
-using TestSetExtensions
 
 using DataStreams
 using NamedTuples
@@ -9,7 +8,7 @@ using Missings
 
 Memento.config("critical")
 
-@testset ExtendedTestSet "LibPQ" begin
+@testset "LibPQ" begin
 
 @testset "ConninfoDisplay" begin
     @test parse(LibPQ.ConninfoDisplay, "") == LibPQ.Normal
