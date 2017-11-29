@@ -319,6 +319,21 @@ end
                 @test !isopen(conn)
             end
         end
+
+        @testset "Interface Errors" begin
+            conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            result = execute(
+                conn,
+                "SELECT typname FROM pg_type WHERE oid = \$1",
+                ["16"],
+            )
+            clear!(result)
+            @test_throws ErrorException fetch!(NamedTuple, result)
+
+            close(conn)
+            @test !isopen(conn)
+        end
     end
 end
 
