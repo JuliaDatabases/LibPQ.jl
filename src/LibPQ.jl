@@ -2,6 +2,7 @@ module LibPQ
 
 export Connection, Result, Statement
 export status, reset!, execute, clear, fetch!,
+    server_version, @pqv_str,
     encoding, set_encoding!, reset_encoding!,
     num_columns, num_rows, num_params,
     column_name, column_names, column_number
@@ -97,6 +98,90 @@ function Connection(str::AbstractString; throw_error=true)
         Connection(libpq_c.PQconnectdb(str));
         throw_error=throw_error,
     )
+end
+
+"""
+    server_version(jl_conn::Connection) -> VersionNumber
+
+Get the PostgreSQL version of the server.
+
+See [33.2. Connection Status Functions](https://www.postgresql.org/docs/10/static/libpq-status.html#LIBPQ-PQSERVERVERSION)
+for information on the integer returned by `PQserverVersion` that is parsed by this
+function.
+
+See [`@pqv_str`](@ref) for information on how this packages represents PostgreSQL version
+numbers.
+"""
+function server_version(jl_conn::Connection)
+    version_int = libpq_c.PQserverVersion(jl_conn.conn)
+
+    first_major = version_int ÷ 10000
+    version = if first_major >= 10
+        # new style (only major-minor)
+        return VersionNumber(first_major, 0, version_int % 100)
+    else
+        # old style (major-major-minor)
+        return VersionNumber(first_major, (version_int % 10000) ÷ 100, version_int % 100)
+    end
+
+    return version
+end
+
+"""
+    @pqv_str -> VersionNumber
+
+Parse a PostgreSQL version.
+
+!!! note
+
+    As of version 10.0, PostgreSQL moved from a three-part version number (where the first
+    two parts represent the major version and the third represents the minor version) to a
+    two-part major-minor version number.
+    In LibPQ.jl, we represent this using the first two `VersionNumber` components as the
+    major version and the third as the minor version.
+
+    ## Examples
+
+    ```jldoctest
+    julia> pqv"10.1" == v"10.0.1"
+    true
+
+    julia> pqv"9.2.5" == v"9.2.5"
+    true
+    ```
+"""
+macro pqv_str(str)
+    _pqv_str(str)
+end
+
+function _pqv_str(str)
+    splitted = map(x -> parse(Int, x)::Int, split(str, '.'))
+
+    if isempty(splitted)
+        throw(ArgumentError("PostgreSQL version must contain at least one integer"))
+    end
+
+    version = if splitted[1] >= 10
+        if length(splitted) == 1
+            VersionNumber(splitted[1])
+        elseif length(splitted) == 2
+            VersionNumber(splitted[1], 0, splitted[2])
+        else
+            throw(ArgumentError(
+                "PostgreSQL versions only have two components starting at version 10"
+            ))
+        end
+    else
+        if length(splitted) > 3
+            throw(ArgumentError(
+                "PostgreSQL versions cannot have more than three components"
+            ))
+        end
+
+        VersionNumber(splitted...)
+    end
+
+    return version
 end
 
 """

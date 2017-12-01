@@ -1,6 +1,7 @@
 using LibPQ
 using Compat: Test
 
+import Compat: @__MODULE__
 using DataStreams
 using NamedTuples
 using Memento
@@ -16,6 +17,34 @@ Memento.config("critical")
     @test parse(LibPQ.ConninfoDisplay, "*") == LibPQ.Password
     @test parse(LibPQ.ConninfoDisplay, "D") == LibPQ.Debug
     @test_throws ErrorException parse(LibPQ.ConninfoDisplay, "N")
+end
+
+@testset "Version Numbers" begin
+    valid_versions = [
+        (pqv"11", v"11"),
+        (pqv"11.80", v"11.0.80"),
+        (pqv"10.1", v"10.0.1"),
+        (pqv"9.1.5", v"9.1.5"),
+        (pqv"9.2", v"9.2.0"),
+        (pqv"8", v"8.0.0"),
+    ]
+
+    @testset "Valid Versions" for (pg_version, jl_version) in valid_versions
+        @test pg_version == jl_version
+    end
+
+    invalid_versions = [
+        "10.1.1",
+        "10.0.1",
+        "10.0.0.1",
+        "9.0.0.1",
+        "",
+    ]
+
+    # can't do cross-version macro testing apparently
+    @testset "Invalid Versions" for pg_version_str in invalid_versions
+        @test_throws ArgumentError LibPQ._pqv_str(pg_version_str)
+    end
 end
 
 @testset "Online" begin
@@ -153,6 +182,13 @@ end
     end
 
     @testset "Connection" begin
+        @testset "Version Numbers" begin
+            conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            # update this test before PostgreSQL 20.0 ;)
+            @test pqv"7" <= server_version(conn) <= pqv"20"
+        end
+
         @testset "Encoding" begin
             conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
