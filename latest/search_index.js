@@ -209,6 +209,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "pages/api.html#LibPQ.prepare-Tuple{LibPQ.Connection,AbstractString}",
+    "page": "API",
+    "title": "LibPQ.prepare",
+    "category": "Method",
+    "text": "prepare(jl_conn::Connection, query::AbstractString) -> Statement\n\nCreate a prepared statement on the PostgreSQL server using libpq. The statement is given an generated unique name using unique_id.\n\nnote: Note\nCurrently the statement is not explicitly deallocated, but it is deallocated at the end of session per the PostgreSQL documentation on DEALLOCATE.\n\n\n\n"
+},
+
+{
     "location": "pages/api.html#LibPQ.reset!-Tuple{LibPQ.Connection}",
     "page": "API",
     "title": "LibPQ.reset!",
@@ -390,14 +398,6 @@ var documenterSearchIndex = {"docs": [
     "title": "LibPQ.handle_result",
     "category": "Method",
     "text": "handle_result(jl_result::Result; throw_error::Bool=true) -> Result\n\nCheck status and handle errors for newly-created result objects.\n\nIf throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response. Otherwise a warning is shown.\n\nAlso print an info message about the result.\n\n\n\n"
-},
-
-{
-    "location": "pages/api.html#LibPQ.prepare-Tuple{LibPQ.Connection,AbstractString}",
-    "page": "API",
-    "title": "LibPQ.prepare",
-    "category": "Method",
-    "text": "prepare(jl_conn::Connection, query::AbstractString) -> Statement\n\nCreate a prepared statement on the PostgreSQL server using libpq. The statement is given an generated unique name using unique_id.\n\nnote: Note\nCurrently the statement is not explicitly deallocated, but it is deallocated at the end of session per the PostgreSQL documentation on DEALLOCATE.\n\n\n\n"
 },
 
 {
