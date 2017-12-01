@@ -225,6 +225,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "pages/api.html#LibPQ.server_version-Tuple{LibPQ.Connection}",
+    "page": "API",
+    "title": "LibPQ.server_version",
+    "category": "Method",
+    "text": "server_version(jl_conn::Connection) -> VersionNumber\n\nGet the PostgreSQL version of the server.\n\nSee 33.2. Connection Status Functions for information on the integer returned by PQserverVersion that is parsed by this function.\n\nSee @pqv_str for information on how this packages represents PostgreSQL version numbers.\n\n\n\n"
+},
+
+{
     "location": "pages/api.html#LibPQ.set_encoding!-Tuple{LibPQ.Connection,String}",
     "page": "API",
     "title": "LibPQ.set_encoding!",
@@ -246,6 +254,14 @@ var documenterSearchIndex = {"docs": [
     "title": "LibPQ.status",
     "category": "Method",
     "text": "status(jl_result::Result) -> libpq_c.ExecStatusType\n\nReturn the status of a result's corresponding database query according to libpq. Only CONNECTION_OK and CONNECTION_BAD are valid for blocking connections, and only blocking connections are supported right now.\n\nSee also: error_message\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.@pqv_str-Tuple{Any}",
+    "page": "API",
+    "title": "LibPQ.@pqv_str",
+    "category": "Macro",
+    "text": "@pqv_str -> VersionNumber\n\nParse a PostgreSQL version.\n\nnote: Note\nAs of version 10.0, PostgreSQL moved from a three-part version number (where the first two parts represent the major version and the third represents the minor version) to a two-part major-minor version number. In LibPQ.jl, we represent this using the first two VersionNumber components as the major version and the third as the minor version.Examplesjulia> pqv\"10.1\" == v\"10.0.1\"\ntrue\n\njulia> pqv\"9.2.5\" == v\"9.2.5\"\ntrue\n\n\n\n"
 },
 
 {
@@ -413,7 +429,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ API",
     "category": "section",
-    "text": "Modules = [LibPQ]\nPages = [\"LibPQ.jl\", \"utils.jl\", \"datastreams.jl\"]"
+    "text": "DocTestSetup = quote\n    using LibPQ\nendModules = [LibPQ]\nPages = [\"LibPQ.jl\", \"utils.jl\", \"datastreams.jl\"]"
 },
 
 ]}
