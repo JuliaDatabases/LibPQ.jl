@@ -110,7 +110,7 @@ function fetch!(sink, result::Result, args...; kwargs...)
 
     data = Data.stream!(result, sink, args...; kwargs...)
     clear!(result)
-    return data
+    return Data.close!(data)
 end
 
 ### FETCH END
