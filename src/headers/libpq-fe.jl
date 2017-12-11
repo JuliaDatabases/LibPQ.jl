@@ -296,7 +296,7 @@ function PQconnectdb(conninfo)
     ccall((:PQconnectdb, LIBPQ_HANDLE), Ptr{PGconn}, (Cstring,), conninfo)
 end
 
-function PQconnectdbParams(keywords, values, expand_dbname::Cint)
+function PQconnectdbParams(keywords, values, expand_dbname)
     ccall((:PQconnectdbParams, LIBPQ_HANDLE), Ptr{PGconn}, (Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Cint), keywords, values, expand_dbname)
 end
 
@@ -313,7 +313,7 @@ function PQconndefaults()
 end
 
 function PQconninfoParse(conninfo, errmsg)
-    ccall((:PQconninfoParse, LIBPQ_HANDLE), Ptr{PQconninfoOption}, (Cstring, Ptr{Cstring}), conninfo, errmsg)
+    ccall((:PQconninfoParse, LIBPQ_HANDLE), Ptr{PQconninfoOption}, (Cstring, Ptr{Ptr{UInt8}}), conninfo, errmsg)
 end
 
 function PQconninfo(conn)

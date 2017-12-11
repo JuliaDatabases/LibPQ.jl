@@ -37,6 +37,24 @@ module libpq_c
 end
 
 ### CONNECTIONS BEGIN
+show_option(str::String) = string(replace(str, [' ', '\\'], s -> "\\$s"))
+show_option(bool::Bool) = ifelse(bool, 't', 'f')
+show_option(num::Real) = num
+
+const CONNECTION_OPTION_DEFAULTS = Dict{String, String}(
+    "DateStyle" => "ISO, YMD",
+    "IntervalStyle" => "iso_8601",
+    "TimeZone" => "UTC",
+)
+
+const CONNECTION_PARAMETER_DEFAULTS = Dict{String, String}(
+    "client_encoding" => "UTF8",
+    "application_name" => "LibPQ.jl",
+    "options" => join(
+        ("-c $k=$(show_option(v))" for (k, v) in CONNECTION_OPTION_DEFAULTS),
+        " ",
+    ),
+)
 
 "A connection to a PostgreSQL database."
 mutable struct Connection
@@ -94,8 +112,25 @@ documentation ([33.1.1. Connection Strings](https://www.postgresql.org/docs/10/s
 See [`handle_new_connection`](@ref) for information on the `throw_error` argument.
 """
 function Connection(str::AbstractString; throw_error=true)
+    ci_array = conninfo(str)
+
+    keywords = String[]
+    values = String[]
+
+    for (k, v) in CONNECTION_PARAMETER_DEFAULTS
+        push!(keywords, k)
+        push!(values, v)
+    end
+
+    for ci in ci_array
+        if !ismissing(ci.val)
+            push!(keywords, ci.keyword)
+            push!(values, ci.val)
+        end
+    end
+
     return handle_new_connection(
-        Connection(libpq_c.PQconnectdb(str));
+        Connection(libpq_c.PQconnectdbParams(keywords, values, false));
         throw_error=throw_error,
     )
 end
@@ -405,12 +440,19 @@ end
 Get all connection options for a connection.
 """
 function conninfo(jl_conn::Connection)
-    ci_array = Vector{ConnectionOption}()
-
     ci_ptr = libpq_c.PQconninfo(jl_conn.conn)
+
     if ci_ptr == C_NULL
         error(LOGGER, "libpq could not allocate memory for connection info")
     end
+
+    ci_array = conninfo(ci_ptr)
+    libpq_c.PQconninfoFree(ci_ptr)
+    return ci_array
+end
+
+function conninfo(ci_ptr::Ptr{libpq_c.PQconninfoOption})
+    ci_array = Vector{ConnectionOption}()
 
     # ci_ptr is an array of PQconninfoOptions terminated by a PQconninfoOption with the
     # keyword field set to C_NULL
@@ -423,8 +465,25 @@ function conninfo(jl_conn::Connection)
         ci_opt = unsafe_load(ci_ptr, ci_opt_idx)
     end
 
-    libpq_c.PQconninfoFree(ci_ptr)
+    return ci_array
+end
 
+function conninfo(str::AbstractString)
+    err_ref = Ref{Ptr{UInt8}}(C_NULL)
+    ci_ptr = libpq_c.PQconninfoParse(str, err_ref)
+
+    if ci_ptr == C_NULL
+        error(LOGGER, "libpq could not allocate memory for connection info")
+    end
+
+    if err_ref[] != C_NULL
+        err_msg = unsafe_string(err_ref[])
+        libpq_c.PQfreemem(err_ref[])
+        error(err_msg)
+    end
+
+    ci_array = conninfo(ci_ptr)
+    libpq_c.PQconninfoFree(ci_ptr)
     return ci_array
 end
 
