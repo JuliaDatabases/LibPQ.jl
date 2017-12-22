@@ -135,10 +135,17 @@ function handle_new_connection(jl_conn::Connection; throw_error=true)
 end
 
 """
-    Connection(str::AbstractString; throw_error=true) -> Connection
+    Connection(
+        str::AbstractString;
+        throw_error=true,
+        type_map::Associative=LibPQ.PQTypeMap(),
+        conversions::Associative=LibPQ.PQConversions(),
+    ) -> Connection
 
 Create a `Connection` from a connection string as specified in the PostgreSQL
 documentation ([33.1.1. Connection Strings](https://www.postgresql.org/docs/10/static/libpq-connect.html#LIBPQ-CONNSTRING)).
+
+For information on the `type_map` and `conversions` arguments, see [Type Conversions](@ref).
 
 See [`handle_new_connection`](@ref) for information on the `throw_error` argument.
 """
@@ -360,7 +367,7 @@ end
 """
     isopen(jl_conn::Connection) -> Bool
 
-Check whether a connection is open
+Check whether a connection is open.
 """
 Base.isopen(jl_conn::Connection) = !jl_conn.closed
 
@@ -499,6 +506,11 @@ function conninfo(ci_ptr::Ptr{libpq_c.PQconninfoOption})
     return ci_array
 end
 
+"""
+    conninfo(str::AbstractString) -> Vector{ConnectionOption}
+
+Parse connection options from a connection string (either a URI or key-value pairs).
+"""
 function conninfo(str::AbstractString)
     err_ref = Ref{Ptr{UInt8}}(C_NULL)
     ci_ptr = libpq_c.PQconninfoParse(str, err_ref)
@@ -555,10 +567,13 @@ mutable struct Result <: Data.Source
     "True if the PGresult object has been cleaned up"
     cleared::Bool
 
+    "PostgreSQL Oids for each column in the result"
     column_oids::Vector{Oid}
 
+    "Julia types for each column in the result"
     column_types::Vector{Type}
 
+    "Conversions from PostgreSQL data to Julia types for each column in the result"
     column_funcs::Vector{Base.Callable}
 
     # TODO: attach encoding per https://wiki.postgresql.org/wiki/Driver_development#Result_object_and_client_encoding
@@ -696,12 +711,32 @@ function handle_result(jl_result::Result; throw_error::Bool=true)
 end
 
 """
-    execute(jl_conn::Connection, query::AbstractString; throw_error=true) -> Result
+    execute(
+        {jl_conn::Connection, query::AbstractString | stmt::Statement},
+        [parameters::AbstractVector,]
+        throw_error=true,
+        column_types::Associative=ColumnTypeMap(),
+        type_map::Associative=LibPQ.PQTypeMap(),
+        conversions::Associative=LibPQ.PQConversions(),
+    ) -> Result
 
-Run a query on the PostgreSQL database and return a Result.
+Run a query on the PostgreSQL database and return a `Result`.
 If `throw_error` is `true`, throw an error and clear the result if the query results in a
 fatal error or unreadable response.
+
+The query may be passed as `Connection` and `AbstractString` (SQL) arguments, or as a
+`Statement`.
+
+`execute` optionally takes a `parameters` vector which passes query parameters as strings to
+PostgreSQL.
+
+`column_types` accepts type overrides for columns in the result which take priority over
+those in `type_map`.
+For information on the `column_types`, `type_map`, and `conversions` arguments, see
+[Type Conversions](@ref).
 """
+function execute end
+
 function execute(jl_conn::Connection, query::AbstractString; throw_error=true, kwargs...)
     return handle_result(
         Result(libpq_c.PQexec(jl_conn.conn, query), jl_conn; kwargs...);
@@ -709,13 +744,6 @@ function execute(jl_conn::Connection, query::AbstractString; throw_error=true, k
     )
 end
 
-"""
-    execute(jl_conn::Connection, query::AbstractString, parameters::Vector{<:Parameter}; throw_error=true) -> Result
-
-Run a query on the PostgreSQL database and return a Result.
-If `throw_error` is `true`, throw an error and clear the result if the query results in a
-fatal error or unreadable response.
-"""
 function execute(
     jl_conn::Connection,
     query::AbstractString,
@@ -741,6 +769,13 @@ function execute(
     )
 end
 
+"""
+    string_parameters(parameters::AbstractVector) -> Vector{Union{String, Missing}}
+
+Convert parameters to strings which can be passed to libpq, propagating `missing`.
+"""
+function string_parameters end
+
 string_parameters(parameters::AbstractVector{<:Parameter}) = parameters
 function string_parameters(parameters::AbstractVector{>:Missing})
     map(parameters) do parameter
@@ -749,9 +784,13 @@ function string_parameters(parameters::AbstractVector{>:Missing})
 end
 string_parameters(parameters::AbstractVector) = map(string, parameters)
 
-function parameter_pointers(
-    parameters::AbstractVector{<:Parameter},
-)
+"""
+    parameter_pointers(parameters::AbstractVector{<:Parameter}) -> Vector{Ptr{UInt8}}
+
+Given a vector of parameters, returns a vector of pointers to either the string bytes in the
+original or `C_NULL` if the element is `missing`.
+"""
+function parameter_pointers(parameters::AbstractVector{<:Parameter})
     pointers = Vector{Ptr{UInt8}}(length(parameters))
 
     map!(pointers, parameters) do parameter
@@ -805,7 +844,7 @@ function column_name(jl_result::Result, column_number::Integer)
 end
 
 """
-    column_names(jl_result::Result, column_number::Integer) -> Vector{String}
+    column_names(jl_result::Result) -> Vector{String}
 
 Return the names of all the columns in the query result.
 """
@@ -814,7 +853,7 @@ function column_names(jl_result::Result)
 end
 
 """
-    column_number(jl_result::Result, column_name::AbstractString) -> Int
+    column_number(jl_result::Result, column_name::Union{AbstractString, Symbol}) -> Int
 
 Return the index (1-based) of the column named `column_name`.
 """
@@ -823,6 +862,11 @@ function column_number(jl_result::Result, column_name::Union{AbstractString, Sym
     return libpq_c.PQfnumber(jl_result.result, String(column_name)) + 1
 end
 
+"""
+    column_number(jl_result::Result, column_idx::Integer) -> Int
+
+Return the index of the column if it is valid, or error.
+"""
 function column_number(jl_result::Result, colnum::Integer)::Int
     if !checkindex(Bool, 1:num_columns(jl_result), colnum)
         throw(BoundsError(column_names(jl_result), colnum))
@@ -831,8 +875,18 @@ function column_number(jl_result::Result, colnum::Integer)::Int
     return colnum
 end
 
+"""
+    column_oids(jl_result::Result) -> Vector{LibPQ.Oid}
+
+Return the PostgreSQL oids for each column in the result.
+"""
 column_oids(jl_result::Result) = jl_result.column_oids
 
+"""
+    column_types(jl_result::Result) -> Vector{Type}
+
+Return the corresponding Julia types for each column in the result.
+"""
 column_types(jl_result::Result) = jl_result.column_types
 
 
@@ -911,7 +965,7 @@ Return the number of columns that would be returned by executing the prepared st
 num_columns(stmt::Statement) = num_columns(stmt.description)
 
 """
-    column_name(jl_result::Result, column_number::Integer) -> String
+    column_name(stmt::Statement, column_number::Integer) -> String
 
 Return the name of the column at index `column_number` (1-based) that would be returned by
 executing the prepared statement.
@@ -921,7 +975,7 @@ function column_name(stmt::Statement, column_number::Integer)
 end
 
 """
-    column_names(jl_result::Result, column_number::Integer) -> Vector{String}
+    column_names(stmt::Statement) -> Vector{String}
 
 Return the names of all the columns in the query result that would be returned by executing
 the prepared statement.
@@ -929,7 +983,7 @@ the prepared statement.
 column_names(stmt::Statement) = column_names(stmt.description)
 
 """
-    column_number(jl_result::Result, column_name::AbstractString) -> Int
+    column_number(stmt::Statement, column_name::AbstractString) -> Int
 
 Return the index (1-based) of the column named `column_name` that would be returned by
 executing the prepared statement.
@@ -938,13 +992,6 @@ function column_number(stmt::Statement, column_name::AbstractString)
     column_number(stmt.description, column_name)
 end
 
-"""
-    execute(stmt::Statement, parameters::Vector{<:Parameter}; throw_error=true) -> Result
-
-Execute a prepared statement on the PostgreSQL database and return a Result.
-If `throw_error` is `true`, throw an error and clear the result if the query results in a
-fatal error or unreadable response.
-"""
 function execute(
     stmt::Statement,
     parameters::AbstractVector;
