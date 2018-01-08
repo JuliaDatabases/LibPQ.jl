@@ -116,7 +116,7 @@ If `throw_error` is `true`, an error will be thrown if the connection's status i
 Otherwise, a warning will be shown and the user should call `close` or `reset!` on the
 returned `Connection`.
 """
-function handle_new_connection(jl_conn::Connection; throw_error=true)
+function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
     if status(jl_conn) == libpq_c.CONNECTION_BAD
         err = error_message(jl_conn)
 
@@ -137,7 +137,7 @@ end
 """
     Connection(
         str::AbstractString;
-        throw_error=true,
+        throw_error::Bool=true,
         type_map::Associative=LibPQ.PQTypeMap(),
         conversions::Associative=LibPQ.PQConversions(),
     ) -> Connection
@@ -149,7 +149,7 @@ For information on the `type_map` and `conversions` arguments, see [Type Convers
 
 See [`handle_new_connection`](@ref) for information on the `throw_error` argument.
 """
-function Connection(str::AbstractString; throw_error=true, kwargs...)
+function Connection(str::AbstractString; throw_error::Bool=true, kwargs...)
     ci_array = conninfo(str)
 
     keywords = String[]
@@ -384,7 +384,7 @@ See [`handle_new_connection`](@ref) for information on the `throw_error` argumen
     This function can be called on a connection with status `CONNECTION_BAD`, for example,
     but cannot be called on a connection that has been closed.
 """
-function reset!(jl_conn::Connection; throw_error=true)
+function reset!(jl_conn::Connection; throw_error::Bool=true)
     if jl_conn.closed
         error(LOGGER, "Cannot reset a connection that has been closed")
     end
@@ -714,7 +714,7 @@ end
     execute(
         {jl_conn::Connection, query::AbstractString | stmt::Statement},
         [parameters::AbstractVector,]
-        throw_error=true,
+        throw_error::Bool=true,
         column_types::Associative=ColumnTypeMap(),
         type_map::Associative=LibPQ.PQTypeMap(),
         conversions::Associative=LibPQ.PQConversions(),
@@ -737,7 +737,12 @@ For information on the `column_types`, `type_map`, and `conversions` arguments, 
 """
 function execute end
 
-function execute(jl_conn::Connection, query::AbstractString; throw_error=true, kwargs...)
+function execute(
+    jl_conn::Connection,
+    query::AbstractString;
+    throw_error::Bool=true,
+    kwargs...
+)
     return handle_result(
         Result(libpq_c.PQexec(jl_conn.conn, query), jl_conn; kwargs...);
         throw_error=throw_error,
@@ -748,7 +753,7 @@ function execute(
     jl_conn::Connection,
     query::AbstractString,
     parameters::AbstractVector;
-    throw_error=true,
+    throw_error::Bool=true,
     kwargs...
 )
     num_params = length(parameters)
@@ -995,7 +1000,7 @@ end
 function execute(
     stmt::Statement,
     parameters::AbstractVector;
-    throw_error=true,
+    throw_error::Bool=true,
     kwargs...
 )
     num_params = length(parameters)
