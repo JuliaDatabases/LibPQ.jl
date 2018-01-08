@@ -677,7 +677,7 @@ function PQcmdTuples(res)
 end
 
 function PQgetvalue(res, tup_num, field_num)
-    ccall((:PQgetvalue, LIBPQ_HANDLE), Cstring, (Ptr{PGresult}, Cint, Cint), res, tup_num, field_num)
+    ccall((:PQgetvalue, LIBPQ_HANDLE), Ptr{UInt8}, (Ptr{PGresult}, Cint, Cint), res, tup_num, field_num)
 end
 
 function PQgetlength(res, tup_num, field_num)
@@ -756,8 +756,8 @@ function PQescapeByteaConn(conn, from, from_length::Csize_t, to_length)
     ccall((:PQescapeByteaConn, LIBPQ_HANDLE), Ptr{Cuchar}, (Ptr{PGconn}, Ptr{Cuchar}, Csize_t, Ptr{Csize_t}), conn, from, from_length, to_length)
 end
 
-function PQunescapeBytea(strtext, retbuflen)
-    ccall((:PQunescapeBytea, LIBPQ_HANDLE), Ptr{Cuchar}, (Ptr{Cuchar}, Ptr{Csize_t}), strtext, retbuflen)
+function PQunescapeBytea(strtext, retbuflen::Ref{Csize_t})
+    ccall((:PQunescapeBytea, LIBPQ_HANDLE), Ptr{Cuchar}, (Ptr{Cuchar}, Ref{Csize_t}), strtext, retbuflen)
 end
 
 function PQescapeString(to, from, length::Csize_t)

@@ -5,13 +5,10 @@ function Data.schema(jl_result::Result)
 end
 
 function Data.schema(jl_result::Result, ::Type{Data.Field})
-    nrows = num_rows(jl_result)
-    ncols = num_columns(jl_result)
-
-    Data.Schema(
-        fill(Union{String, Missing}, ncols),  # types
+    return Data.Schema(
+        Type[Union{T, Missing} for T in column_types(jl_result)],
         column_names(jl_result),
-        nrows,
+        num_rows(jl_result),
     )
 end
 
@@ -29,14 +26,15 @@ Data.accesspattern(jl_result::Result) = RandomAccess()
 function Data.streamfrom(
     jl_result::Result,
     ::Type{Data.Field},
-    ::Type{Union{String, Missing}},
+    ::Type{Union{T, Missing}},
     row::Int,
     col::Int,
-)::Union{String, Missing}
+)::Union{T, Missing} where T
     if libpq_c.PQgetisnull(jl_result.result, row - 1, col - 1) == 1
         return missing
     else
-        return unsafe_string(libpq_c.PQgetvalue(jl_result.result, row - 1, col - 1))
+        oid = jl_result.column_oids[col]
+        return jl_result.column_funcs[col](PQValue{oid}(jl_result, row, col))::T
     end
 end
 

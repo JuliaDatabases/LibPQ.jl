@@ -1,7 +1,12 @@
 julia 0.6
 BinDeps 0.6
-Compat 0.33
+Compat 0.37
 DataStreams 0.3.1
 DocStringExtensions
+Decimals 0.2.1
+IterTools
+LayerDicts
 Missings 0.2.1
 Memento 0.3
+OffsetArrays
+TimeZones

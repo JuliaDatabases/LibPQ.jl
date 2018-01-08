@@ -7,10 +7,19 @@ export status, reset!, execute, clear, fetch!, prepare,
     num_columns, num_rows, num_params,
     column_name, column_names, column_number
 
+export PQChar
+
+using Compat.Dates
 using DocStringExtensions
+using Decimals
 using DataStreams
+using Base.Iterators: zip, product
+using IterTools: imap
+using LayerDicts
 using Memento
 using Missings
+using OffsetArrays
+using TimeZones
 import Compat: @__MODULE__
 
 const Parameter = Union{String, Missing}
@@ -31,10 +40,19 @@ const LOGGER = get_logger(@__MODULE__)
 include(joinpath(@__DIR__, "utils.jl"))
 
 module libpq_c
+    export Oid
+
     const LIBPQ_HANDLE = :libpq
 
     include(joinpath(@__DIR__, "headers", "libpq-fe.jl"))
 end
+
+using .libpq_c
+
+include("typemaps.jl")
+
+const LIBPQ_TYPE_MAP = PQTypeMap()
+const LIBPQ_CONVERSIONS = PQConversions()
 
 ### CONNECTIONS BEGIN
 show_option(str::String) = string(replace(str, [' ', '\\'], s -> "\\$s"))
@@ -61,16 +79,29 @@ mutable struct Connection
     "A pointer to a libpq PGconn object (C_NULL if closed)"
     conn::Ptr{libpq_c.PGconn}
 
-    "True if the connection is closed and the PGconn object has been cleaned up"
-    closed::Bool
-
     "libpq client encoding (string encoding of returned data)"
     encoding::String
 
     "Integer counter for generating connection-level unique identifiers"
     uid_counter::UInt
 
-    Connection(conn::Ptr, closed=false) = new(conn, closed, "UTF8", 0)
+    "Connection-level type correspondence map"
+    type_map::PQTypeMap
+
+    "Connection-level conversion functions"
+    func_map::PQConversions
+
+    "True if the connection is closed and the PGconn object has been cleaned up"
+    closed::Bool
+
+    function Connection(
+        conn::Ptr,
+        closed=false;
+        type_map::Associative=PQTypeMap(),
+        conversions::Associative=PQConversions(),
+    )
+        return new(conn, "UTF8", 0, PQTypeMap(type_map), PQConversions(conversions), closed)
+    end
 end
 
 """
@@ -85,7 +116,7 @@ If `throw_error` is `true`, an error will be thrown if the connection's status i
 Otherwise, a warning will be shown and the user should call `close` or `reset!` on the
 returned `Connection`.
 """
-function handle_new_connection(jl_conn::Connection; throw_error=true)
+function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
     if status(jl_conn) == libpq_c.CONNECTION_BAD
         err = error_message(jl_conn)
 
@@ -104,14 +135,21 @@ function handle_new_connection(jl_conn::Connection; throw_error=true)
 end
 
 """
-    Connection(str::AbstractString; throw_error=true) -> Connection
+    Connection(
+        str::AbstractString;
+        throw_error::Bool=true,
+        type_map::Associative=LibPQ.PQTypeMap(),
+        conversions::Associative=LibPQ.PQConversions(),
+    ) -> Connection
 
 Create a `Connection` from a connection string as specified in the PostgreSQL
 documentation ([33.1.1. Connection Strings](https://www.postgresql.org/docs/10/static/libpq-connect.html#LIBPQ-CONNSTRING)).
 
+For information on the `type_map` and `conversions` arguments, see [Type Conversions](@ref).
+
 See [`handle_new_connection`](@ref) for information on the `throw_error` argument.
 """
-function Connection(str::AbstractString; throw_error=true)
+function Connection(str::AbstractString; throw_error::Bool=true, kwargs...)
     ci_array = conninfo(str)
 
     keywords = String[]
@@ -130,7 +168,7 @@ function Connection(str::AbstractString; throw_error=true)
     end
 
     return handle_new_connection(
-        Connection(libpq_c.PQconnectdbParams(keywords, values, false));
+        Connection(libpq_c.PQconnectdbParams(keywords, values, false); kwargs...);
         throw_error=throw_error,
     )
 end
@@ -329,7 +367,7 @@ end
 """
     isopen(jl_conn::Connection) -> Bool
 
-Check whether a connection is open
+Check whether a connection is open.
 """
 Base.isopen(jl_conn::Connection) = !jl_conn.closed
 
@@ -346,7 +384,7 @@ See [`handle_new_connection`](@ref) for information on the `throw_error` argumen
     This function can be called on a connection with status `CONNECTION_BAD`, for example,
     but cannot be called on a connection that has been closed.
 """
-function reset!(jl_conn::Connection; throw_error=true)
+function reset!(jl_conn::Connection; throw_error::Bool=true)
     if jl_conn.closed
         error(LOGGER, "Cannot reset a connection that has been closed")
     end
@@ -468,6 +506,11 @@ function conninfo(ci_ptr::Ptr{libpq_c.PQconninfoOption})
     return ci_array
 end
 
+"""
+    conninfo(str::AbstractString) -> Vector{ConnectionOption}
+
+Parse connection options from a connection string (either a URI or key-value pairs).
+"""
 function conninfo(str::AbstractString)
     err_ref = Ref{Ptr{UInt8}}(C_NULL)
     ci_ptr = libpq_c.PQconninfoParse(str, err_ref)
@@ -524,7 +567,63 @@ mutable struct Result <: Data.Source
     "True if the PGresult object has been cleaned up"
     cleared::Bool
 
+    "PostgreSQL Oids for each column in the result"
+    column_oids::Vector{Oid}
+
+    "Julia types for each column in the result"
+    column_types::Vector{Type}
+
+    "Conversions from PostgreSQL data to Julia types for each column in the result"
+    column_funcs::Vector{Base.Callable}
+
     # TODO: attach encoding per https://wiki.postgresql.org/wiki/Driver_development#Result_object_and_client_encoding
+    function Result(
+        result::Ptr{libpq_c.PGresult},
+        jl_conn::Connection,
+        cleared=false;
+        column_types::Associative=ColumnTypeMap(),
+        type_map::Associative=PQTypeMap(),
+        conversions::Associative=PQConversions(),
+    )
+        jl_result = new(result, cleared)
+
+        column_type_map = ColumnTypeMap()
+        for (k, v) in column_types
+            column_type_map[column_number(jl_result, k)] = v
+        end
+
+        type_lookup = LayerDict(
+            PQTypeMap(type_map),
+            jl_conn.type_map,
+            LIBPQ_TYPE_MAP,
+            _DEFAULT_TYPE_MAP,
+        )
+
+        func_lookup = LayerDict(
+            PQConversions(conversions),
+            jl_conn.func_map,
+            LIBPQ_CONVERSIONS,
+            _DEFAULT_CONVERSIONS,
+            _FALLBACK_CONVERSION,
+        )
+
+        jl_result.column_oids = col_oids = map(1:num_columns(jl_result)) do col_num
+            libpq_c.PQftype(jl_result.result, col_num - 1)
+        end
+
+        jl_result.column_types = col_types = collect(Type, imap(enumerate(col_oids)) do itr
+            col_num, col_oid = itr
+            get(column_type_map, col_num) do
+                get(type_lookup, col_oid, String)
+            end
+        end)
+
+        jl_result.column_funcs = collect(Base.Callable, imap(col_oids, col_types) do oid, typ
+            func_lookup[(oid, typ)]
+        end)
+
+        return jl_result
+    end
 end
 
 """
@@ -539,13 +638,6 @@ function Base.show(io::IO, jl_result::Result)
         print(io, " (cleared)")
     end
 end
-
-"""
-    Result(result::Ptr{libpq_c.PGresult}) -> Result
-
-Construct a `Result` from a `libpg_c.PGresult`
-"""
-Result(result::Ptr{libpq_c.PGresult}) = Result(result, false)
 
 """
     status(jl_result::Result) -> libpq_c.ExecStatusType
@@ -619,33 +711,53 @@ function handle_result(jl_result::Result; throw_error::Bool=true)
 end
 
 """
-    execute(jl_conn::Connection, query::AbstractString; throw_error=true) -> Result
+    execute(
+        {jl_conn::Connection, query::AbstractString | stmt::Statement},
+        [parameters::AbstractVector,]
+        throw_error::Bool=true,
+        column_types::Associative=ColumnTypeMap(),
+        type_map::Associative=LibPQ.PQTypeMap(),
+        conversions::Associative=LibPQ.PQConversions(),
+    ) -> Result
 
-Run a query on the PostgreSQL database and return a Result.
+Run a query on the PostgreSQL database and return a `Result`.
 If `throw_error` is `true`, throw an error and clear the result if the query results in a
 fatal error or unreadable response.
+
+The query may be passed as `Connection` and `AbstractString` (SQL) arguments, or as a
+`Statement`.
+
+`execute` optionally takes a `parameters` vector which passes query parameters as strings to
+PostgreSQL.
+
+`column_types` accepts type overrides for columns in the result which take priority over
+those in `type_map`.
+For information on the `column_types`, `type_map`, and `conversions` arguments, see
+[Type Conversions](@ref).
 """
-function execute(jl_conn::Connection, query::AbstractString; throw_error=true)
+function execute end
+
+function execute(
+    jl_conn::Connection,
+    query::AbstractString;
+    throw_error::Bool=true,
+    kwargs...
+)
     return handle_result(
-        Result(libpq_c.PQexec(jl_conn.conn, query));
+        Result(libpq_c.PQexec(jl_conn.conn, query), jl_conn; kwargs...);
         throw_error=throw_error,
     )
 end
 
-"""
-    execute(jl_conn::Connection, query::AbstractString, parameters::Vector{<:Parameter}; throw_error=true) -> Result
-
-Run a query on the PostgreSQL database and return a Result.
-If `throw_error` is `true`, throw an error and clear the result if the query results in a
-fatal error or unreadable response.
-"""
 function execute(
     jl_conn::Connection,
     query::AbstractString,
-    parameters::AbstractVector{<:Parameter};
-    throw_error=true,
+    parameters::AbstractVector;
+    throw_error::Bool=true,
+    kwargs...
 )
     num_params = length(parameters)
+    string_params = string_parameters(parameters)
 
     return handle_result(
         Result(libpq_c.PQexecParams(
@@ -653,18 +765,44 @@ function execute(
             query,
             num_params,
             C_NULL,  # set paramTypes to C_NULL to have the server infer a type
-            parameter_pointers(parameters),
+            parameter_pointers(string_params),
             C_NULL,  # paramLengths is ignored for text format parameters
             zeros(Cint, num_params),  # all parameters in text format
             zero(Cint),  # return result in text format
-        ));
+        ), jl_conn, kwargs...);
         throw_error=throw_error,
     )
 end
 
-function parameter_pointers(
-    parameters::AbstractVector{<:Parameter},
-)
+"""
+    string_parameters(parameters::AbstractVector) -> Vector{Union{String, Missing}}
+
+Convert parameters to strings which can be passed to libpq, propagating `missing`.
+"""
+function string_parameters end
+
+string_parameters(parameters::AbstractVector{<:Parameter}) = parameters
+
+# vector which can't contain missing
+string_parameters(parameters::AbstractVector) = map(string, parameters)
+
+# vector which might contain missings
+function string_parameters(parameters::AbstractVector{>:Missing})
+    collect(
+        Union{String, Missing},
+        imap(parameters) do parameter
+            ismissing(parameter) ? missing : string(parameter)
+        end
+    )
+end
+
+"""
+    parameter_pointers(parameters::AbstractVector{<:Parameter}) -> Vector{Ptr{UInt8}}
+
+Given a vector of parameters, returns a vector of pointers to either the string bytes in the
+original or `C_NULL` if the element is `missing`.
+"""
+function parameter_pointers(parameters::AbstractVector{<:Parameter})
     pointers = Vector{Ptr{UInt8}}(length(parameters))
 
     map!(pointers, parameters) do parameter
@@ -718,23 +856,51 @@ function column_name(jl_result::Result, column_number::Integer)
 end
 
 """
-    column_names(jl_result::Result, column_number::Integer) -> Vector{String}
+    column_names(jl_result::Result) -> Vector{String}
 
 Return the names of all the columns in the query result.
 """
 function column_names(jl_result::Result)
-    [column_name(jl_result, i) for i in 1:num_columns(jl_result)]
+    return [column_name(jl_result, i) for i in 1:num_columns(jl_result)]
 end
 
 """
-    column_number(jl_result::Result, column_name::AbstractString) -> Int
+    column_number(jl_result::Result, column_name::Union{AbstractString, Symbol}) -> Int
 
 Return the index (1-based) of the column named `column_name`.
 """
-function column_number(jl_result::Result, column_name::AbstractString)::Int
+function column_number(jl_result::Result, column_name::Union{AbstractString, Symbol})::Int
     # todo: check cleared?
-    libpq_c.PQfnumber(jl_result.result, String(column_name)) + 1
+    return libpq_c.PQfnumber(jl_result.result, String(column_name)) + 1
 end
+
+"""
+    column_number(jl_result::Result, column_idx::Integer) -> Int
+
+Return the index of the column if it is valid, or error.
+"""
+function column_number(jl_result::Result, column_idx::Integer)::Int
+    if !checkindex(Bool, 1:num_columns(jl_result), column_idx)
+        throw(BoundsError(column_names(jl_result), column_idx))
+    end
+
+    return column_idx
+end
+
+"""
+    column_oids(jl_result::Result) -> Vector{LibPQ.Oid}
+
+Return the PostgreSQL oids for each column in the result.
+"""
+column_oids(jl_result::Result) = jl_result.column_oids
+
+"""
+    column_types(jl_result::Result) -> Vector{Type}
+
+Return the corresponding Julia types for each column in the result.
+"""
+column_types(jl_result::Result) = jl_result.column_types
+
 
 ### RESULTS END
 
@@ -779,7 +945,7 @@ function prepare(jl_conn::Connection, query::AbstractString)
             query,
             0,  # infer all parameters from the query string
             C_NULL,
-        ));
+        ), jl_conn);
         throw_error=true,
     )
 
@@ -789,7 +955,7 @@ function prepare(jl_conn::Connection, query::AbstractString)
         Result(libpq_c.PQdescribePrepared(
             jl_conn.conn,
             uid,
-        ));
+        ), jl_conn);
         throw_error=true,
     )
 
@@ -811,7 +977,7 @@ Return the number of columns that would be returned by executing the prepared st
 num_columns(stmt::Statement) = num_columns(stmt.description)
 
 """
-    column_name(jl_result::Result, column_number::Integer) -> String
+    column_name(stmt::Statement, column_number::Integer) -> String
 
 Return the name of the column at index `column_number` (1-based) that would be returned by
 executing the prepared statement.
@@ -821,7 +987,7 @@ function column_name(stmt::Statement, column_number::Integer)
 end
 
 """
-    column_names(jl_result::Result, column_number::Integer) -> Vector{String}
+    column_names(stmt::Statement) -> Vector{String}
 
 Return the names of all the columns in the query result that would be returned by executing
 the prepared statement.
@@ -829,7 +995,7 @@ the prepared statement.
 column_names(stmt::Statement) = column_names(stmt.description)
 
 """
-    column_number(jl_result::Result, column_name::AbstractString) -> Int
+    column_number(stmt::Statement, column_name::AbstractString) -> Int
 
 Return the index (1-based) of the column named `column_name` that would be returned by
 executing the prepared statement.
@@ -838,32 +1004,32 @@ function column_number(stmt::Statement, column_name::AbstractString)
     column_number(stmt.description, column_name)
 end
 
-"""
-    execute(stmt::Statement, parameters::Vector{<:Parameter}; throw_error=true) -> Result
-
-Execute a prepared statement on the PostgreSQL database and return a Result.
-If `throw_error` is `true`, throw an error and clear the result if the query results in a
-fatal error or unreadable response.
-"""
-function execute(stmt::Statement, parameters::AbstractVector{<:Parameter}; throw_error=true)
+function execute(
+    stmt::Statement,
+    parameters::AbstractVector;
+    throw_error::Bool=true,
+    kwargs...
+)
     num_params = length(parameters)
+    string_params = string_parameters(parameters)
 
     return handle_result(
         Result(libpq_c.PQexecPrepared(
             stmt.jl_conn.conn,
             stmt.name,
             num_params,
-            parameter_pointers(parameters),
+            parameter_pointers(string_params),
             C_NULL,  # paramLengths is ignored for text format parameters
             zeros(Cint, num_params),  # all parameters in text format
             zero(Cint),  # return result in text format
-        ));
+        ), stmt.jl_conn, kwargs...);
         throw_error=throw_error,
     )
 end
 
 ### PREPARE END
 
+include("parsing.jl")
 include("datastreams.jl")
 
 end

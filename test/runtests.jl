@@ -2,15 +2,22 @@ using LibPQ
 using Compat: Test
 
 import Compat: @__MODULE__
+using Compat.Dates
 using DataStreams
-using NamedTuples
+using Decimals
 using Memento
 using Missings
+using NamedTuples
+using OffsetArrays
+using TestSetExtensions
+using TimeZones
 
 
 Memento.config("critical")
 
-@testset "LibPQ" begin
+const TESTSET_TYPE = VERSION < v"0.7-" ? ExtendedTestSet : Test.DefaultTestSet
+
+@testset TESTSET_TYPE "LibPQ" begin
 
 @testset "ConninfoDisplay" begin
     @test parse(LibPQ.ConninfoDisplay, "") == LibPQ.Normal
@@ -85,7 +92,7 @@ end
         result = execute(
             conn,
             "SELECT typname FROM pg_type WHERE oid = \$1",
-            ["16"];
+            [16];
             throw_error=false,
         )
         @test result isa Result
@@ -106,7 +113,7 @@ end
         data = fetch!(NamedTuple, execute(
             conn,
             "SELECT typname FROM pg_type WHERE oid = \$1",
-            ["16"],
+            [16],
         ))
 
         @test data[:typname][1] == "bool"
@@ -262,7 +269,6 @@ end
             @test data[1][1] === missing
 
             clear!(result)
-            @test result.cleared == true
 
             result = execute(conn, """
                 SELECT no_nulls, yes_nulls FROM (
@@ -283,7 +289,6 @@ end
             @test data[:yes_nulls][2] === missing
 
             clear!(result)
-            @test result.cleared == true
 
             # NULL first this time, to check for errors that might come up with lazy
             # initialization of the output data vectors
@@ -307,10 +312,130 @@ end
             @test data[:yes_nulls][2] == "bar"
 
             clear!(result)
-            @test result.cleared == true
-
             close(conn)
-            @test !isopen(conn)
+        end
+
+        @testset "Type Conversions" begin
+            @testset "Automatic" begin
+                conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+                result = execute(conn, """
+                    SELECT oid, typname, typlen, typbyval, typcategory
+                    FROM pg_type
+                    WHERE typname IN ('bool', 'int8', 'text')
+                    ORDER BY typname;
+                    """;
+                    throw_error=true,
+                )
+                @test result isa Result
+                @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+                @test LibPQ.num_rows(result) == 3
+                @test LibPQ.num_columns(result) == 5
+                @test LibPQ.column_types(result) == [LibPQ.Oid, String, Int16, Bool, PQChar]
+
+                data = Data.stream!(result, NamedTuple)
+
+                @test map(eltype, values(data)) == map(T -> Union{T, Missing}, [LibPQ.Oid, String, Int16, Bool, PQChar])
+                @test data[:oid] == LibPQ.Oid[LibPQ.PQ_SYSTEM_TYPES[t] for t in (:bool, :int8, :text)]
+                @test data[:typname] == ["bool", "int8", "text"]
+                @test data[:typlen] == [1, 8, -1]
+                @test data[:typbyval] == [true, true, false]
+                @test data[:typcategory] == ['B', 'N', 'S']
+
+                clear!(result)
+                close(conn)
+            end
+
+            @testset "Parsing" begin
+                conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+                test_data = [
+                    ("3", Cint(3)),
+                    ("3::int8", Int64(3)),
+                    ("3::int4", Int32(3)),
+                    ("3::int2", Int16(3)),
+                    ("3::float8", Float64(3)),
+                    ("3::float4", Float32(3)),
+                    ("3::oid", LibPQ.Oid(3)),
+                    ("3::numeric", decimal("3")),
+                    ("$(BigFloat(pi))::numeric", decimal(BigFloat(pi))),
+                    ("$(big"4608230166434464229556241992703")::numeric", parse(Decimal, "4608230166434464229556241992703")),
+                    ("E'\\\\xDEADBEEF'::bytea", hex2bytes("DEADBEEF")),
+                    ("E'\\\\000'::bytea", UInt8[0o000]),
+                    ("E'\\\\047'::bytea", UInt8[0o047]),
+                    ("E'\\''::bytea", UInt8[0o047]),
+                    ("E'\\\\134'::bytea", UInt8[0o134]),
+                    ("E'\\\\\\\\'::bytea", UInt8[0o134]),
+                    ("E'\\\\001'::bytea", UInt8[0o001]),
+                    ("E'\\\\176'::bytea", UInt8[0o176]),
+                    ("'3'::\"char\"", PQChar('3')),
+                    ("'t'::bool", true),
+                    ("'T'::bool", true),
+                    ("'true'::bool", true),
+                    ("'TRUE'::bool", true),
+                    ("'tRuE'::bool", true),
+                    ("'y'::bool", true),
+                    ("'YEs'::bool", true),
+                    ("'on'::bool", true),
+                    ("1::bool", true),
+                    ("true", true),
+                    ("'f'::bool", false),
+                    ("'F'::bool", false),
+                    ("'false'::bool", false),
+                    ("'FALSE'::bool", false),
+                    ("'fAlsE'::bool", false),
+                    ("'n'::bool", false),
+                    ("'nO'::bool", false),
+                    ("'off'::bool", false),
+                    ("0::bool", false),
+                    ("false", false),
+                    ("TIMESTAMP '2004-10-19 10:23:54'", DateTime(2004, 10, 19, 10, 23, 54)),
+                    ("'infinity'::timestamp", typemax(DateTime)),
+                    ("'-infinity'::timestamp", typemin(DateTime)),
+                    ("'epoch'::timestamp", DateTime(1970, 1, 1, 0, 0, 0)),
+                    # ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-00'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC")),
+                    # ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-02'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC-2")),
+                    # ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54+10'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC+10")),
+                    ("'infinity'::timestamptz", ZonedDateTime(typemax(DateTime), tz"UTC")),
+                    ("'-infinity'::timestamptz", ZonedDateTime(typemin(DateTime), tz"UTC")),
+                    # ("'epoch'::timestamptz", ZonedDateTime(1970, 1, 1, 0, 0, 0, tz"UTC")),
+                    ("'{{{1,2,3},{4,5,6}}}'::int2[]", reshape(Int16[1 2 3; 4 5 6], 1, 2, 3)),
+                    ("'{}'::int2[]", Int16[]),
+                    ("'{{{1,2,3},{4,5,6}}}'::int4[]", reshape(Int32[1 2 3; 4 5 6], 1, 2, 3)),
+                    ("'{{{1,2,3},{4,5,6}}}'::int8[]", reshape(Int64[1 2 3; 4 5 6], 1, 2, 3)),
+                    ("'{{{1,2,3},{4,5,6}}}'::float4[]", reshape(Float32[1 2 3; 4 5 6], 1, 2, 3)),
+                    ("'{{{1,2,3},{4,5,6}}}'::float8[]", reshape(Float64[1 2 3; 4 5 6], 1, 2, 3)),
+                    ("'{{{1,2,3},{4,5,6}}}'::oid[]", reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3)),
+                    ("'{{{1,2,3},{4,5,6}}}'::numeric[]", reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3)),
+                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copy!(OffsetArray(Int16, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copy!(OffsetArray(Int32, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copy!(OffsetArray(Int64, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copy!(OffsetArray(Float32, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copy!(OffsetArray(Float64, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copy!(OffsetArray(LibPQ.Oid, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copy!(OffsetArray(Decimal, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                ]
+
+                for (test_str, data) in test_data
+                    result = execute(conn, "SELECT $test_str;")
+
+                    try
+                        @test LibPQ.num_rows(result) == 1
+                        @test LibPQ.num_columns(result) == 1
+                        @test LibPQ.column_types(result)[1] >: typeof(data)
+
+                        oid = LibPQ.column_oids(result)[1]
+                        func = result.column_funcs[1]
+                        parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                        @test parsed == data
+                        @test typeof(parsed) == typeof(data)
+                    finally
+                        clear!(result)
+                    end
+                end
+
+                close(conn)
+            end
         end
 
         @testset "Query Errors" begin
@@ -362,7 +487,7 @@ end
             result = execute(
                 conn,
                 "SELECT typname FROM pg_type WHERE oid = \$1",
-                ["16"],
+                [16],
             )
             clear!(result)
             @test_throws ErrorException fetch!(NamedTuple, result)
