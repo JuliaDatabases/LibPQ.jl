@@ -872,12 +872,12 @@ end
 
 Return the index of the column if it is valid, or error.
 """
-function column_number(jl_result::Result, colnum::Integer)::Int
-    if !checkindex(Bool, 1:num_columns(jl_result), colnum)
-        throw(BoundsError(column_names(jl_result), colnum))
+function column_number(jl_result::Result, column_idx::Integer)::Int
+    if !checkindex(Bool, 1:num_columns(jl_result), column_idx)
+        throw(BoundsError(column_names(jl_result), column_idx))
     end
 
-    return colnum
+    return column_idx
 end
 
 """
