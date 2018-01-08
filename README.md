@@ -11,6 +11,8 @@ LibPQ.jl is a Julia wrapper for the PostgreSQL `libpq` C library.
 
 ### Current
 
+* Build
+  * Installs `libpq` with Apt, Yum, or Homebrew
 * Connections
   * Connect via DSN
   * Connect via PostgreSQL connection string
@@ -18,6 +20,7 @@ LibPQ.jl is a Julia wrapper for the PostgreSQL `libpq` C library.
 * Queries
   * Create and execute queries with or without parameters
   * Stream results using [DataStreams](https://github.com/JuliaData/DataStreams.jl)
+  * Configurably convert a variety of PostgreSQL types to corresponding Julia types
 * Prepared Statements
   * Create and execute prepared statements with or without parameters
   * Stream table of parameters to execute the same statement multiple times with different data using DataStreams
@@ -46,19 +49,18 @@ This package will not:
 
 This package may not:
 
-* install libpq or PostgreSQL
 * test on multiple install configurations
 * aim to support any particular versions of libpq or PostgreSQL
 * support conversion from some Oid to some type
 * provide easy access to every possible connection method
-* be as memory-efficient as possible (memory-safety will be prioritized)
+* be as memory-efficient as possible
 
 While I may never get to any of these, I welcome tested, documented contributions!
 
 ## Requirements
 
 To use this package you must have `libpq` installed somewhere accessible from Julia such that you can run `dlopen(:libpq)`.
-Here are instructions for several package managers:
+`Pkg.build("LibPQ")` should handle this, but in case it doesn't, here are instructions for several package managers:
 
 ### macOS (Homebrew)
 
