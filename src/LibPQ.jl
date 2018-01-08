@@ -782,12 +782,19 @@ Convert parameters to strings which can be passed to libpq, propagating `missing
 function string_parameters end
 
 string_parameters(parameters::AbstractVector{<:Parameter}) = parameters
-function string_parameters(parameters::AbstractVector{>:Missing})
-    map(parameters) do parameter
-        ismissing(parameter) ? parameter : string(parameter)
-    end
-end
+
+# vector which can't contain missing
 string_parameters(parameters::AbstractVector) = map(string, parameters)
+
+# vector which might contain missings
+function string_parameters(parameters::AbstractVector{>:Missing})
+    collect(
+        Union{String, Missing},
+        imap(parameters) do parameter
+            ismissing(parameter) ? missing : string(parameter)
+        end
+    )
+end
 
 """
     parameter_pointers(parameters::AbstractVector{<:Parameter}) -> Vector{Ptr{UInt8}}
