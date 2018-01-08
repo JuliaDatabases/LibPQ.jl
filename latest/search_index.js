@@ -53,7 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.Connection",
     "category": "Type",
-    "text": "type Connection\n\nA connection to a PostgreSQL database.\n\nFields:\n\nconn\nA pointer to a libpq PGconn object (C_NULL if closed)\nclosed\nTrue if the connection is closed and the PGconn object has been cleaned up\nencoding\nlibpq client encoding (string encoding of returned data)\nuid_counter\nInteger counter for generating connection-level unique identifiers\n\n\n\n"
+    "text": "type Connection\n\nA connection to a PostgreSQL database.\n\nFields:\n\nconn\nA pointer to a libpq PGconn object (C_NULL if closed)\nencoding\nlibpq client encoding (string encoding of returned data)\nuid_counter\nInteger counter for generating connection-level unique identifiers\ntype_map\nConnection-level type correspondence map\nfunc_map\nConnection-level conversion functions\nclosed\nTrue if the connection is closed and the PGconn object has been cleaned up\n\n\n\n"
 },
 
 {
@@ -61,7 +61,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.Connection",
     "category": "Method",
-    "text": "Connection(str::AbstractString; throw_error=true) -> Connection\n\nCreate a Connection from a connection string as specified in the PostgreSQL documentation (33.1.1. Connection Strings).\n\nSee handle_new_connection for information on the throw_error argument.\n\n\n\n"
+    "text": "Connection(\n    str::AbstractString;\n    throw_error::Bool=true,\n    type_map::Associative=LibPQ.PQTypeMap(),\n    conversions::Associative=LibPQ.PQConversions(),\n) -> Connection\n\nCreate a Connection from a connection string as specified in the PostgreSQL documentation (33.1.1. Connection Strings).\n\nFor information on the type_map and conversions arguments, see Type Conversions.\n\nSee handle_new_connection for information on the throw_error argument.\n\n\n\n"
 },
 
 {
@@ -69,15 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.Result",
     "category": "Type",
-    "text": "type Result <: DataStreams.Data.Source\n\nA result from a PostgreSQL database query\n\nFields:\n\nresult\nA pointer to a libpq PGresult object (C_NULL if cleared)\ncleared\nTrue if the PGresult object has been cleaned up\n\n\n\n"
-},
-
-{
-    "location": "pages/api.html#LibPQ.Result-Tuple{Ptr{Void}}",
-    "page": "API",
-    "title": "LibPQ.Result",
-    "category": "Method",
-    "text": "Result(result::Ptr{libpq_c.PGresult}) -> Result\n\nConstruct a Result from a libpg_c.PGresult\n\n\n\n"
+    "text": "type Result <: DataStreams.Data.Source\n\nA result from a PostgreSQL database query\n\nFields:\n\nresult\nA pointer to a libpq PGresult object (C_NULL if cleared)\ncleared\nTrue if the PGresult object has been cleaned up\ncolumn_oids\nPostgreSQL Oids for each column in the result\ncolumn_types\nJulia types for each column in the result\ncolumn_funcs\nConversions from PostgreSQL data to Julia types for each column in the result\n\n\n\n"
 },
 
 {
@@ -101,7 +93,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.column_name",
     "category": "Method",
-    "text": "column_name(jl_result::Result, column_number::Integer) -> String\n\nReturn the name of the column at index column_number (1-based) that would be returned by executing the prepared statement.\n\n\n\n"
+    "text": "column_name(stmt::Statement, column_number::Integer) -> String\n\nReturn the name of the column at index column_number (1-based) that would be returned by executing the prepared statement.\n\n\n\n"
 },
 
 {
@@ -109,7 +101,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.column_names",
     "category": "Method",
-    "text": "column_names(jl_result::Result, column_number::Integer) -> Vector{String}\n\nReturn the names of all the columns in the query result.\n\n\n\n"
+    "text": "column_names(jl_result::Result) -> Vector{String}\n\nReturn the names of all the columns in the query result.\n\n\n\n"
 },
 
 {
@@ -117,15 +109,23 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.column_names",
     "category": "Method",
-    "text": "column_names(jl_result::Result, column_number::Integer) -> Vector{String}\n\nReturn the names of all the columns in the query result that would be returned by executing the prepared statement.\n\n\n\n"
+    "text": "column_names(stmt::Statement) -> Vector{String}\n\nReturn the names of all the columns in the query result that would be returned by executing the prepared statement.\n\n\n\n"
 },
 
 {
-    "location": "pages/api.html#LibPQ.column_number-Tuple{LibPQ.Result,AbstractString}",
+    "location": "pages/api.html#LibPQ.column_number-Tuple{LibPQ.Result,Integer}",
     "page": "API",
     "title": "LibPQ.column_number",
     "category": "Method",
-    "text": "column_number(jl_result::Result, column_name::AbstractString) -> Int\n\nReturn the index (1-based) of the column named column_name.\n\n\n\n"
+    "text": "column_number(jl_result::Result, column_idx::Integer) -> Int\n\nReturn the index of the column if it is valid, or error.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.column_number-Tuple{LibPQ.Result,Union{AbstractString, Symbol}}",
+    "page": "API",
+    "title": "LibPQ.column_number",
+    "category": "Method",
+    "text": "column_number(jl_result::Result, column_name::Union{AbstractString, Symbol}) -> Int\n\nReturn the index (1-based) of the column named column_name.\n\n\n\n"
 },
 
 {
@@ -133,7 +133,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.column_number",
     "category": "Method",
-    "text": "column_number(jl_result::Result, column_name::AbstractString) -> Int\n\nReturn the index (1-based) of the column named column_name that would be returned by executing the prepared statement.\n\n\n\n"
+    "text": "column_number(stmt::Statement, column_name::AbstractString) -> Int\n\nReturn the index (1-based) of the column named column_name that would be returned by executing the prepared statement.\n\n\n\n"
 },
 
 {
@@ -145,27 +145,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.execute-Tuple{LibPQ.Connection,AbstractString,AbstractArray{#s208,1} where #s208<:Union{Missings.Missing, String}}",
+    "location": "pages/api.html#LibPQ.execute",
     "page": "API",
     "title": "LibPQ.execute",
-    "category": "Method",
-    "text": "execute(jl_conn::Connection, query::AbstractString, parameters::Vector{<:Parameter}; throw_error=true) -> Result\n\nRun a query on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\n\n\n"
-},
-
-{
-    "location": "pages/api.html#LibPQ.execute-Tuple{LibPQ.Connection,AbstractString}",
-    "page": "API",
-    "title": "LibPQ.execute",
-    "category": "Method",
-    "text": "execute(jl_conn::Connection, query::AbstractString; throw_error=true) -> Result\n\nRun a query on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\n\n\n"
-},
-
-{
-    "location": "pages/api.html#LibPQ.execute-Tuple{LibPQ.Statement,AbstractArray{#s1,1} where #s1<:Union{Missings.Missing, String}}",
-    "page": "API",
-    "title": "LibPQ.execute",
-    "category": "Method",
-    "text": "execute(stmt::Statement, parameters::Vector{<:Parameter}; throw_error=true) -> Result\n\nExecute a prepared statement on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\n\n\n"
+    "category": "Function",
+    "text": "execute(\n    {jl_conn::Connection, query::AbstractString | stmt::Statement},\n    [parameters::AbstractVector,]\n    throw_error::Bool=true,\n    column_types::Associative=ColumnTypeMap(),\n    type_map::Associative=LibPQ.PQTypeMap(),\n    conversions::Associative=LibPQ.PQConversions(),\n) -> Result\n\nRun a query on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\nThe query may be passed as Connection and AbstractString (SQL) arguments, or as a Statement.\n\nexecute optionally takes a parameters vector which passes query parameters as strings to PostgreSQL.\n\ncolumn_types accepts type overrides for columns in the result which take priority over those in type_map. For information on the column_types, type_map, and conversions arguments, see Type Conversions.\n\n\n\n"
 },
 
 {
@@ -333,7 +317,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "Base.isopen",
     "category": "Method",
-    "text": "isopen(jl_conn::Connection) -> Bool\n\nCheck whether a connection is open\n\n\n\n"
+    "text": "isopen(jl_conn::Connection) -> Bool\n\nCheck whether a connection is open.\n\n\n\n"
 },
 
 {
@@ -358,6 +342,30 @@ var documenterSearchIndex = {"docs": [
     "title": "Base.show",
     "category": "Method",
     "text": "show(io::IO, jl_result::Result)\n\nShow a PostgreSQL result and whether it has been cleared.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.column_oids-Tuple{LibPQ.Result}",
+    "page": "API",
+    "title": "LibPQ.column_oids",
+    "category": "Method",
+    "text": "column_oids(jl_result::Result) -> Vector{LibPQ.Oid}\n\nReturn the PostgreSQL oids for each column in the result.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.column_types-Tuple{LibPQ.Result}",
+    "page": "API",
+    "title": "LibPQ.column_types",
+    "category": "Method",
+    "text": "column_types(jl_result::Result) -> Vector{Type}\n\nReturn the corresponding Julia types for each column in the result.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.conninfo-Tuple{AbstractString}",
+    "page": "API",
+    "title": "LibPQ.conninfo",
+    "category": "Method",
+    "text": "conninfo(str::AbstractString) -> Vector{ConnectionOption}\n\nParse connection options from a connection string (either a URI or key-value pairs).\n\n\n\n"
 },
 
 {
@@ -398,6 +406,22 @@ var documenterSearchIndex = {"docs": [
     "title": "LibPQ.handle_result",
     "category": "Method",
     "text": "handle_result(jl_result::Result; throw_error::Bool=true) -> Result\n\nCheck status and handle errors for newly-created result objects.\n\nIf throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response. Otherwise a warning is shown.\n\nAlso print an info message about the result.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.parameter_pointers-Tuple{AbstractArray{#s209,1} where #s209<:Union{Missings.Missing, String}}",
+    "page": "API",
+    "title": "LibPQ.parameter_pointers",
+    "category": "Method",
+    "text": "parameter_pointers(parameters::AbstractVector{<:Parameter}) -> Vector{Ptr{UInt8}}\n\nGiven a vector of parameters, returns a vector of pointers to either the string bytes in the original or C_NULL if the element is missing.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#LibPQ.string_parameters",
+    "page": "API",
+    "title": "LibPQ.string_parameters",
+    "category": "Function",
+    "text": "string_parameters(parameters::AbstractVector) -> Vector{Union{String, Missing}}\n\nConvert parameters to strings which can be passed to libpq, propagating missing.\n\n\n\n"
 },
 
 {
