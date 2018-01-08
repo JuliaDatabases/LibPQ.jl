@@ -1,3 +1,9 @@
+# Symbol keys are PostgreSQL's internal names for its types.
+# These may not correspond well to the common names, e.g., "char(n)" is :bpchar.
+# This dictionary is generated with the deps/system_type_map.jl script and contains only
+# PostgreSQL's system-defined types.
+# It is expected (but might not be guaranteed) that these are the same across versions and
+# installations.
 const PQ_SYSTEM_TYPES = Dict{Symbol, Oid}(
     :bool => 16, :bytea => 17, :char => 18, :name => 19, :int8 => 20, :int2 => 21,
     :int2vector => 22, :int4 => 23, :regproc => 24, :text => 25, :oid => 26, :tid => 27,
@@ -113,7 +119,17 @@ const PQ_SYSTEM_TYPES = Dict{Symbol, Oid}(
     :_pg_user_mappings => 12534, :user_mapping_options => 12538, :user_mappings => 12542,
 )
 
-const PQ_SYSTEM_OIDS = Dict{Oid, Symbol}((v => k) for (k, v) in PQ_SYSTEM_TYPES)
+# If we ever need the reverse mapping:
+# const PQ_SYSTEM_OIDS = Dict{Oid, Symbol}((v => k) for (k, v) in PQ_SYSTEM_TYPES)
+
+"""
+    oid(typ::Union{Symbol, String, Integer}) -> LibPQ.Oid
+
+Convert a PostgreSQL type from a `String` or `Symbol` representation to its oid
+representation.
+Integers are converted directly to `LibPQ.Oid`s.
+"""
+function oid end
 
 oid(typ::Symbol) = PQ_SYSTEM_TYPES[typ]
 oid(o::Integer) = PQ_SYSTEM_TYPES[convert(Oid, oid)]
