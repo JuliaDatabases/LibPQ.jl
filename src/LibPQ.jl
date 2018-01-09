@@ -769,7 +769,7 @@ function execute(
             C_NULL,  # paramLengths is ignored for text format parameters
             zeros(Cint, num_params),  # all parameters in text format
             zero(Cint),  # return result in text format
-        ), jl_conn, kwargs...);
+        ), jl_conn; kwargs...);
         throw_error=throw_error,
     )
 end
@@ -1022,7 +1022,7 @@ function execute(
             C_NULL,  # paramLengths is ignored for text format parameters
             zeros(Cint, num_params),  # all parameters in text format
             zero(Cint),  # return result in text format
-        ), stmt.jl_conn, kwargs...);
+        ), stmt.jl_conn; kwargs...);
         throw_error=throw_error,
     )
 end
