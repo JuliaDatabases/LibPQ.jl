@@ -23,7 +23,11 @@ using TimeZones
 import Compat: @__MODULE__
 
 const Parameter = Union{String, Missing}
-const LOGGER = get_logger(@__MODULE__)
+const LOGGER = getlogger(@__MODULE__)
+
+function __init__()
+    Memento.register(LOGGER)
+end
 
 # Docstring template for types using DocStringExtensions
 @template TYPES =
