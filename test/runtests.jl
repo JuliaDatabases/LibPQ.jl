@@ -347,94 +347,135 @@ end
             end
 
             @testset "Parsing" begin
-                conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+                @testset "Default Types" begin
+                    conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-                test_data = [
-                    ("3", Cint(3)),
-                    ("3::int8", Int64(3)),
-                    ("3::int4", Int32(3)),
-                    ("3::int2", Int16(3)),
-                    ("3::float8", Float64(3)),
-                    ("3::float4", Float32(3)),
-                    ("3::oid", LibPQ.Oid(3)),
-                    ("3::numeric", decimal("3")),
-                    ("$(BigFloat(pi))::numeric", decimal(BigFloat(pi))),
-                    ("$(big"4608230166434464229556241992703")::numeric", parse(Decimal, "4608230166434464229556241992703")),
-                    ("E'\\\\xDEADBEEF'::bytea", hex2bytes("DEADBEEF")),
-                    ("E'\\\\000'::bytea", UInt8[0o000]),
-                    ("E'\\\\047'::bytea", UInt8[0o047]),
-                    ("E'\\''::bytea", UInt8[0o047]),
-                    ("E'\\\\134'::bytea", UInt8[0o134]),
-                    ("E'\\\\\\\\'::bytea", UInt8[0o134]),
-                    ("E'\\\\001'::bytea", UInt8[0o001]),
-                    ("E'\\\\176'::bytea", UInt8[0o176]),
-                    ("'3'::\"char\"", PQChar('3')),
-                    ("'t'::bool", true),
-                    ("'T'::bool", true),
-                    ("'true'::bool", true),
-                    ("'TRUE'::bool", true),
-                    ("'tRuE'::bool", true),
-                    ("'y'::bool", true),
-                    ("'YEs'::bool", true),
-                    ("'on'::bool", true),
-                    ("1::bool", true),
-                    ("true", true),
-                    ("'f'::bool", false),
-                    ("'F'::bool", false),
-                    ("'false'::bool", false),
-                    ("'FALSE'::bool", false),
-                    ("'fAlsE'::bool", false),
-                    ("'n'::bool", false),
-                    ("'nO'::bool", false),
-                    ("'off'::bool", false),
-                    ("0::bool", false),
-                    ("false", false),
-                    ("TIMESTAMP '2004-10-19 10:23:54'", DateTime(2004, 10, 19, 10, 23, 54)),
-                    ("'infinity'::timestamp", typemax(DateTime)),
-                    ("'-infinity'::timestamp", typemin(DateTime)),
-                    ("'epoch'::timestamp", DateTime(1970, 1, 1, 0, 0, 0)),
-                    # ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-00'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC")),
-                    # ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-02'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC-2")),
-                    # ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54+10'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC+10")),
-                    ("'infinity'::timestamptz", ZonedDateTime(typemax(DateTime), tz"UTC")),
-                    ("'-infinity'::timestamptz", ZonedDateTime(typemin(DateTime), tz"UTC")),
-                    # ("'epoch'::timestamptz", ZonedDateTime(1970, 1, 1, 0, 0, 0, tz"UTC")),
-                    ("'{{{1,2,3},{4,5,6}}}'::int2[]", reshape(Int16[1 2 3; 4 5 6], 1, 2, 3)),
-                    ("'{}'::int2[]", Int16[]),
-                    ("'{{{1,2,3},{4,5,6}}}'::int4[]", reshape(Int32[1 2 3; 4 5 6], 1, 2, 3)),
-                    ("'{{{1,2,3},{4,5,6}}}'::int8[]", reshape(Int64[1 2 3; 4 5 6], 1, 2, 3)),
-                    ("'{{{1,2,3},{4,5,6}}}'::float4[]", reshape(Float32[1 2 3; 4 5 6], 1, 2, 3)),
-                    ("'{{{1,2,3},{4,5,6}}}'::float8[]", reshape(Float64[1 2 3; 4 5 6], 1, 2, 3)),
-                    ("'{{{1,2,3},{4,5,6}}}'::oid[]", reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3)),
-                    ("'{{{1,2,3},{4,5,6}}}'::numeric[]", reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3)),
-                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copy!(OffsetArray(Int16, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copy!(OffsetArray(Int32, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copy!(OffsetArray(Int64, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copy!(OffsetArray(Float32, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copy!(OffsetArray(Float64, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copy!(OffsetArray(LibPQ.Oid, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                    ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copy!(OffsetArray(Decimal, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                ]
+                    test_data = [
+                        ("3", Cint(3)),
+                        ("3::int8", Int64(3)),
+                        ("3::int4", Int32(3)),
+                        ("3::int2", Int16(3)),
+                        ("3::float8", Float64(3)),
+                        ("3::float4", Float32(3)),
+                        ("3::oid", LibPQ.Oid(3)),
+                        ("3::numeric", decimal("3")),
+                        ("$(BigFloat(pi))::numeric", decimal(BigFloat(pi))),
+                        ("$(big"4608230166434464229556241992703")::numeric", parse(Decimal, "4608230166434464229556241992703")),
+                        ("E'\\\\xDEADBEEF'::bytea", hex2bytes("DEADBEEF")),
+                        ("E'\\\\000'::bytea", UInt8[0o000]),
+                        ("E'\\\\047'::bytea", UInt8[0o047]),
+                        ("E'\\''::bytea", UInt8[0o047]),
+                        ("E'\\\\134'::bytea", UInt8[0o134]),
+                        ("E'\\\\\\\\'::bytea", UInt8[0o134]),
+                        ("E'\\\\001'::bytea", UInt8[0o001]),
+                        ("E'\\\\176'::bytea", UInt8[0o176]),
+                        ("'3'::\"char\"", PQChar('3')),
+                        ("'t'::bool", true),
+                        ("'T'::bool", true),
+                        ("'true'::bool", true),
+                        ("'TRUE'::bool", true),
+                        ("'tRuE'::bool", true),
+                        ("'y'::bool", true),
+                        ("'YEs'::bool", true),
+                        ("'on'::bool", true),
+                        ("1::bool", true),
+                        ("true", true),
+                        ("'f'::bool", false),
+                        ("'F'::bool", false),
+                        ("'false'::bool", false),
+                        ("'FALSE'::bool", false),
+                        ("'fAlsE'::bool", false),
+                        ("'n'::bool", false),
+                        ("'nO'::bool", false),
+                        ("'off'::bool", false),
+                        ("0::bool", false),
+                        ("false", false),
+                        ("TIMESTAMP '2004-10-19 10:23:54'", DateTime(2004, 10, 19, 10, 23, 54)),
+                        ("'infinity'::timestamp", typemax(DateTime)),
+                        ("'-infinity'::timestamp", typemin(DateTime)),
+                        ("'epoch'::timestamp", DateTime(1970, 1, 1, 0, 0, 0)),
+                        # ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-00'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC")),
+                        # ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-02'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC-2")),
+                        # ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54+10'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC+10")),
+                        ("'infinity'::timestamptz", ZonedDateTime(typemax(DateTime), tz"UTC")),
+                        ("'-infinity'::timestamptz", ZonedDateTime(typemin(DateTime), tz"UTC")),
+                        # ("'epoch'::timestamptz", ZonedDateTime(1970, 1, 1, 0, 0, 0, tz"UTC")),
+                        ("'{{{1,2,3},{4,5,6}}}'::int2[]", reshape(Int16[1 2 3; 4 5 6], 1, 2, 3)),
+                        ("'{}'::int2[]", Int16[]),
+                        ("'{{{1,2,3},{4,5,6}}}'::int4[]", reshape(Int32[1 2 3; 4 5 6], 1, 2, 3)),
+                        ("'{{{1,2,3},{4,5,6}}}'::int8[]", reshape(Int64[1 2 3; 4 5 6], 1, 2, 3)),
+                        ("'{{{1,2,3},{4,5,6}}}'::float4[]", reshape(Float32[1 2 3; 4 5 6], 1, 2, 3)),
+                        ("'{{{1,2,3},{4,5,6}}}'::float8[]", reshape(Float64[1 2 3; 4 5 6], 1, 2, 3)),
+                        ("'{{{1,2,3},{4,5,6}}}'::oid[]", reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3)),
+                        ("'{{{1,2,3},{4,5,6}}}'::numeric[]", reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3)),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copy!(OffsetArray(Int16, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copy!(OffsetArray(Int32, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copy!(OffsetArray(Int64, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copy!(OffsetArray(Float32, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copy!(OffsetArray(Float64, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copy!(OffsetArray(LibPQ.Oid, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copy!(OffsetArray(Decimal, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                    ]
 
-                for (test_str, data) in test_data
-                    result = execute(conn, "SELECT $test_str;")
+                    for (test_str, data) in test_data
+                        result = execute(conn, "SELECT $test_str;")
 
-                    try
-                        @test LibPQ.num_rows(result) == 1
-                        @test LibPQ.num_columns(result) == 1
-                        @test LibPQ.column_types(result)[1] >: typeof(data)
+                        try
+                            @test LibPQ.num_rows(result) == 1
+                            @test LibPQ.num_columns(result) == 1
+                            @test LibPQ.column_types(result)[1] >: typeof(data)
 
-                        oid = LibPQ.column_oids(result)[1]
-                        func = result.column_funcs[1]
-                        parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
-                        @test parsed == data
-                        @test typeof(parsed) == typeof(data)
-                    finally
-                        clear!(result)
+                            oid = LibPQ.column_oids(result)[1]
+                            func = result.column_funcs[1]
+                            parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                            @test parsed == data
+                            @test typeof(parsed) == typeof(data)
+                        finally
+                            clear!(result)
+                        end
                     end
+
+                    close(conn)
                 end
 
-                close(conn)
+                @testset "Specified Types" begin
+                    conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+                    test_data = [
+                        ("3", UInt, UInt(3)),
+                        ("3::int8", UInt16, UInt16(3)),
+                        ("3::int4", Int32, Int32(3)),
+                        ("3::int2", UInt8, UInt8(3)),
+                        ("3::oid", UInt32, UInt32(3)),
+                        ("3::numeric", Float64, 3.0),
+                        ("'3'::\"char\"", Char, '3'),
+                        ("'foobar'", Symbol, :foobar),
+                    ]
+
+                    for (test_str, typ, data) in test_data
+                        result = execute(
+                            conn,
+                            "SELECT $test_str;",
+                            column_types=Dict(1 => typ),
+                        )
+
+                        try
+                            @test LibPQ.num_rows(result) == 1
+                            @test LibPQ.num_columns(result) == 1
+                            @test LibPQ.column_types(result)[1] >: typeof(data)
+
+                            oid = LibPQ.column_oids(result)[1]
+                            func = result.column_funcs[1]
+                            parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                            @test parsed == data
+                            @test typeof(parsed) == typeof(data)
+                        finally
+                            clear!(result)
+                        end
+                    end
+
+                    close(conn)
+                end
             end
         end
 

@@ -42,6 +42,9 @@ Base.endof(pqv::PQValue) = endof(string_view(pqv))
 # fallback, because Base is bad with string iteration
 Base.parse(::Type{T}, pqv::PQValue) where {T} = parse(T, string_view(pqv))
 
+# allow parsing as a Symbol anything which works as a String
+Base.parse(::Type{Symbol}, pqv::PQValue) = Symbol(string_view(pqv))
+
 function Base.start(pqv::PQValue)
     sv = string_view(pqv)
     return (sv, start(sv))
@@ -81,6 +84,7 @@ Base.parse(::Type{String}, pqv::PQValue{PQ_SYSTEM_TYPES[:bpchar]}) = rstrip(pqv,
 # char is "char"
 _DEFAULT_TYPE_MAP[:char] = PQChar
 Base.parse(::Type{PQChar}, pqv::PQValue{PQ_SYSTEM_TYPES[:char]}) = PQChar(first(pqv))
+Base.parse(::Type{Char}, pqv::PQValue{PQ_SYSTEM_TYPES[:char]}) = Char(parse(PQChar, pqv))
 # varchar, text, and name are all String
 
 ## binary data
