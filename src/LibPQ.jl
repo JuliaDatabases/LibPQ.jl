@@ -63,8 +63,9 @@ show_option(str::String) = string(replace(str, [' ', '\\'], s -> "\\$s"))
 show_option(bool::Bool) = ifelse(bool, 't', 'f')
 show_option(num::Real) = num
 
+# values containing spaces may not work correctly on PostgreSQL versions before 9.6
 const CONNECTION_OPTION_DEFAULTS = Dict{String, String}(
-    "DateStyle" => "ISO, YMD",
+    "DateStyle" => "ISO,YMD",
     "IntervalStyle" => "iso_8601",
     "TimeZone" => "UTC",
 )
