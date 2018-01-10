@@ -450,6 +450,8 @@ end
                         ("3::numeric", Float64, 3.0),
                         ("'3'::\"char\"", Char, '3'),
                         ("'foobar'", Symbol, :foobar),
+                        ("0::int8", DateTime, DateTime(1970, 1, 1, 0)),
+                        ("0::int8", ZonedDateTime, ZonedDateTime(1970, 1, 1, 0, tz"UTC")),
                     ]
 
                     for (test_str, typ, data) in test_data

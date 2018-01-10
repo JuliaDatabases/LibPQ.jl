@@ -171,6 +171,15 @@ function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timesta
     return parse(ZonedDateTime, str, TIMESTAMPTZ_FORMATS[end])
 end
 
+# UNIX timestamps
+function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
+    unix2datetime(parse(Int64, pqv))
+end
+
+function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
+    TimeZones.unix2zdt(parse(Int64, pqv))
+end
+
 ## arrays
 # numeric arrays never have double quotes and always use ',' as a separator
 function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
