@@ -9,6 +9,12 @@ addons:
 julia:
   - 0.6
   - nightly
+env:
+  - POSTGRESQL_VERSION=9.4
+  - POSTGRESQL_VERSION=9.6
+before_install:
+  - sudo service postgresql stop && sudo service postgresql start $POSTGRESQL_VERSION
+  - psql -U postgres -tc 'SHOW server_version'
 matrix:
   allow_failures:
     - julia: nightly
