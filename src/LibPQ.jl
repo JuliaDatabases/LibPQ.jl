@@ -20,7 +20,7 @@ using Memento
 using Missings
 using OffsetArrays
 using TimeZones
-import Compat: @__MODULE__
+using Compat: @__MODULE__, AbstractDict
 
 const Parameter = Union{String, Missing}
 const LOGGER = getlogger(@__MODULE__)
@@ -102,8 +102,8 @@ mutable struct Connection
     function Connection(
         conn::Ptr,
         closed=false;
-        type_map::Associative=PQTypeMap(),
-        conversions::Associative=PQConversions(),
+        type_map::AbstractDict=PQTypeMap(),
+        conversions::AbstractDict=PQConversions(),
     )
         return new(conn, "UTF8", 0, PQTypeMap(type_map), PQConversions(conversions), closed)
     end
@@ -143,8 +143,8 @@ end
     Connection(
         str::AbstractString;
         throw_error::Bool=true,
-        type_map::Associative=LibPQ.PQTypeMap(),
-        conversions::Associative=LibPQ.PQConversions(),
+        type_map::AbstractDict=LibPQ.PQTypeMap(),
+        conversions::AbstractDict=LibPQ.PQConversions(),
     ) -> Connection
 
 Create a `Connection` from a connection string as specified in the PostgreSQL
@@ -586,9 +586,9 @@ mutable struct Result <: Data.Source
         result::Ptr{libpq_c.PGresult},
         jl_conn::Connection,
         cleared=false;
-        column_types::Associative=ColumnTypeMap(),
-        type_map::Associative=PQTypeMap(),
-        conversions::Associative=PQConversions(),
+        column_types::AbstractDict=ColumnTypeMap(),
+        type_map::AbstractDict=PQTypeMap(),
+        conversions::AbstractDict=PQConversions(),
     )
         jl_result = new(result, cleared)
 
@@ -720,9 +720,9 @@ end
         {jl_conn::Connection, query::AbstractString | stmt::Statement},
         [parameters::AbstractVector,]
         throw_error::Bool=true,
-        column_types::Associative=ColumnTypeMap(),
-        type_map::Associative=LibPQ.PQTypeMap(),
-        conversions::Associative=LibPQ.PQConversions(),
+        column_types::AbstractDict=ColumnTypeMap(),
+        type_map::AbstractDict=LibPQ.PQTypeMap(),
+        conversions::AbstractDict=LibPQ.PQConversions(),
     ) -> Result
 
 Run a query on the PostgreSQL database and return a `Result`.

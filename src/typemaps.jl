@@ -135,15 +135,15 @@ oid(typ::Symbol) = PQ_SYSTEM_TYPES[typ]
 oid(o::Integer) = PQ_SYSTEM_TYPES[convert(Oid, oid)]
 oid(typ::String) = oid(Symbol(typ))
 
-struct PQTypeMap <: Associative{Oid, Type}
+struct PQTypeMap <: AbstractDict{Oid, Type}
     type_map::Dict{Oid, Type}
 end
 
 PQTypeMap(type_map::PQTypeMap) = type_map
-PQTypeMap(type_map::Associative{Oid, Type}) = PQTypeMap(Dict(type_map))
+PQTypeMap(type_map::AbstractDict{Oid, Type}) = PQTypeMap(Dict(type_map))
 PQTypeMap() = PQTypeMap(Dict{Oid, Type}())
 
-function PQTypeMap(user_map::Associative)
+function PQTypeMap(user_map::AbstractDict)
     type_map = PQTypeMap()
 
     for (k, v) in user_map
@@ -178,12 +178,12 @@ const _DEFAULT_TYPE_MAP = PQTypeMap(Dict{Oid, Type}())
 
 const ColumnTypeMap = Dict{Cint, Type}
 
-struct PQConversions <: Associative{Tuple{Oid, Type}, Base.Callable}
+struct PQConversions <: AbstractDict{Tuple{Oid, Type}, Base.Callable}
     func_map::Dict{Tuple{Oid, Type}, Base.Callable}
 end
 
 PQConversions(func_map::PQConversions) = func_map
-function PQConversions(func_map::Associative{Tuple{Oid, Type}, Base.Callable})
+function PQConversions(func_map::AbstractDict{Tuple{Oid, Type}, Base.Callable})
     return Dict{Tuple{Oid, Type}, Base.Callable}(func_map)
 end
 PQConversions() = PQConversions(Dict{Tuple{Oid, Type}, Base.Callable}())

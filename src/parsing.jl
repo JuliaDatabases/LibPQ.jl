@@ -244,7 +244,7 @@ for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
 end
 
 
-struct FallbackConversion <: Associative{Tuple{Oid, Type}, Base.Callable}
+struct FallbackConversion <: AbstractDict{Tuple{Oid, Type}, Base.Callable}
 end
 
 function Base.getindex(cmap::FallbackConversion, oid_typ::Tuple{Integer, Type})
