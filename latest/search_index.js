@@ -61,7 +61,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.Connection",
     "category": "Method",
-    "text": "Connection(\n    str::AbstractString;\n    throw_error::Bool=true,\n    type_map::Associative=LibPQ.PQTypeMap(),\n    conversions::Associative=LibPQ.PQConversions(),\n) -> Connection\n\nCreate a Connection from a connection string as specified in the PostgreSQL documentation (33.1.1. Connection Strings).\n\nFor information on the type_map and conversions arguments, see Type Conversions.\n\nSee handle_new_connection for information on the throw_error argument.\n\n\n\n"
+    "text": "Connection(\n    str::AbstractString;\n    throw_error::Bool=true,\n    type_map::AbstractDict=LibPQ.PQTypeMap(),\n    conversions::AbstractDict=LibPQ.PQConversions(),\n) -> Connection\n\nCreate a Connection from a connection string as specified in the PostgreSQL documentation (33.1.1. Connection Strings).\n\nFor information on the type_map and conversions arguments, see Type Conversions.\n\nSee handle_new_connection for information on the throw_error argument.\n\n\n\n"
 },
 
 {
@@ -149,7 +149,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.execute",
     "category": "Function",
-    "text": "execute(\n    {jl_conn::Connection, query::AbstractString | stmt::Statement},\n    [parameters::AbstractVector,]\n    throw_error::Bool=true,\n    column_types::Associative=ColumnTypeMap(),\n    type_map::Associative=LibPQ.PQTypeMap(),\n    conversions::Associative=LibPQ.PQConversions(),\n) -> Result\n\nRun a query on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\nThe query may be passed as Connection and AbstractString (SQL) arguments, or as a Statement.\n\nexecute optionally takes a parameters vector which passes query parameters as strings to PostgreSQL.\n\ncolumn_types accepts type overrides for columns in the result which take priority over those in type_map. For information on the column_types, type_map, and conversions arguments, see Type Conversions.\n\n\n\n"
+    "text": "execute(\n    {jl_conn::Connection, query::AbstractString | stmt::Statement},\n    [parameters::AbstractVector,]\n    throw_error::Bool=true,\n    column_types::AbstractDict=ColumnTypeMap(),\n    type_map::AbstractDict=LibPQ.PQTypeMap(),\n    conversions::AbstractDict=LibPQ.PQConversions(),\n) -> Result\n\nRun a query on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\nThe query may be passed as Connection and AbstractString (SQL) arguments, or as a Statement.\n\nexecute optionally takes a parameters vector which passes query parameters as strings to PostgreSQL.\n\ncolumn_types accepts type overrides for columns in the result which take priority over those in type_map. For information on the column_types, type_map, and conversions arguments, see Type Conversions.\n\n\n\n"
 },
 
 {
