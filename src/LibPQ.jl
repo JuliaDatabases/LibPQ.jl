@@ -1032,6 +1032,25 @@ function execute(
     )
 end
 
+function execute(
+    stmt::Statement;
+    throw_error::Bool=true,
+    kwargs...
+)
+    return handle_result(
+        Result(libpq_c.PQexecPrepared(
+            stmt.jl_conn.conn,
+            stmt.name,
+            0,  # no parameters
+            C_NULL,
+            C_NULL,  # paramLengths is ignored for text format parameters
+            C_NULL,  # all parameters in text format
+            zero(Cint),  # return result in text format
+        ), stmt.jl_conn; kwargs...);
+        throw_error=throw_error,
+    )
+end
+
 ### PREPARE END
 
 include("parsing.jl")

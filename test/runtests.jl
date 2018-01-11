@@ -539,6 +539,54 @@ end
             @test !isopen(conn)
         end
     end
+
+    @testset "Statements" begin
+        @testset "No Params, Output" begin
+            conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            stmt = prepare(conn, "SELECT oid, typname FROM pg_type")
+
+            @test LibPQ.num_columns(stmt) == 2
+            @test LibPQ.num_params(stmt) == 0
+            @test LibPQ.column_names(stmt) == ["oid", "typname"]
+
+            result = execute(stmt; throw_error=true)
+
+            @test LibPQ.num_columns(result) == 2
+            @test LibPQ.column_names(result) == ["oid", "typname"]
+            @test LibPQ.column_types(result) == [LibPQ.Oid, String]
+            @test LibPQ.num_rows(result) > 0
+
+            clear!(result)
+
+            close(conn)
+        end
+
+        @testset "Params, Output" begin
+            conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            stmt = prepare(conn, "SELECT oid, typname FROM pg_type WHERE oid = \$1")
+
+            @test LibPQ.num_columns(stmt) == 2
+            @test LibPQ.num_params(stmt) == 1
+            @test LibPQ.column_names(stmt) == ["oid", "typname"]
+
+            result = execute(stmt, [16]; throw_error=true)
+
+            @test LibPQ.num_columns(result) == 2
+            @test LibPQ.column_names(result) == ["oid", "typname"]
+            @test LibPQ.column_types(result) == [LibPQ.Oid, String]
+            @test LibPQ.num_rows(result) == 1
+
+            data = fetch!(NamedTuple, result)
+            @test data[:oid][1] == 16
+            @test data[:typname][1] == "bool"
+
+            clear!(result)
+
+            close(conn)
+        end
+    end
 end
 
 end
