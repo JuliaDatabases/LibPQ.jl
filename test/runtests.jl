@@ -315,6 +315,85 @@ end
             close(conn)
         end
 
+        @testset "Not Nulls" begin
+            conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            result = execute(conn, "SELECT NULL"; not_null=[false], throw_error=true)
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test LibPQ.num_columns(result) == 1
+            @test LibPQ.num_rows(result) == 1
+
+            data = Data.stream!(result, NamedTuple)
+
+            @test data[1][1] === missing
+
+            clear!(result)
+
+            result = execute(conn, "SELECT NULL"; not_null=true, throw_error=true)
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test LibPQ.num_columns(result) == 1
+            @test LibPQ.num_rows(result) == 1
+
+            @test_throws ErrorException Data.stream!(result, NamedTuple)
+
+            clear!(result)
+
+            result = execute(conn, "SELECT NULL"; not_null=[true], throw_error=true)
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test LibPQ.num_columns(result) == 1
+            @test LibPQ.num_rows(result) == 1
+
+            @test_throws ErrorException Data.stream!(result, NamedTuple)
+
+            clear!(result)
+
+            result = execute(conn, """
+                SELECT no_nulls, yes_nulls FROM (
+                    VALUES ('foo', 'bar'), ('baz', NULL)
+                ) AS temp (no_nulls, yes_nulls)
+                ORDER BY no_nulls DESC;
+                """;
+                not_null=[true, false],
+                throw_error=true,
+            )
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
+
+            data = Data.stream!(result, NamedTuple)
+
+            @test data[:no_nulls] == ["foo", "baz"]
+            @test data[:no_nulls] isa Vector{String}
+            @test data[:yes_nulls][1] == "bar"
+            @test data[:yes_nulls][2] === missing
+            @test data[:yes_nulls] isa Vector{Union{String, Missing}}
+
+            clear!(result)
+
+            result = execute(conn, """
+                SELECT no_nulls, yes_nulls FROM (
+                    VALUES ('foo', 'bar'), ('baz', NULL)
+                ) AS temp (no_nulls, yes_nulls)
+                ORDER BY no_nulls DESC;
+                """;
+                not_null=false,
+                throw_error=true,
+            )
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
+
+            data = Data.stream!(result, NamedTuple)
+
+            @test data[:no_nulls] == ["foo", "baz"]
+            @test data[:no_nulls] isa Vector{Union{String, Missing}}
+            @test data[:yes_nulls][1] == "bar"
+            @test data[:yes_nulls][2] === missing
+            @test data[:yes_nulls] isa Vector{Union{String, Missing}}
+
+            clear!(result)
+        end
+
         @testset "Type Conversions" begin
             @testset "Automatic" begin
                 conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)

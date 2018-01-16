@@ -578,6 +578,9 @@ mutable struct Result <: Data.Source
     "Julia types for each column in the result"
     column_types::Vector{Type}
 
+    "Whether to expect NULL for each column (whether output data can have `missing`)"
+    not_null::Vector{Bool}
+
     "Conversions from PostgreSQL data to Julia types for each column in the result"
     column_funcs::Vector{Base.Callable}
 
@@ -589,6 +592,7 @@ mutable struct Result <: Data.Source
         column_types::AbstractDict=ColumnTypeMap(),
         type_map::AbstractDict=PQTypeMap(),
         conversions::AbstractDict=PQConversions(),
+        not_null=false,
     )
         jl_result = new(result, cleared)
 
@@ -626,6 +630,33 @@ mutable struct Result <: Data.Source
         jl_result.column_funcs = collect(Base.Callable, imap(col_oids, col_types) do oid, typ
             func_lookup[(oid, typ)]
         end)
+
+        # figure out which columns the user says may contain nulls
+        if not_null isa Bool
+            jl_result.not_null = fill(not_null, size(col_types))
+        elseif not_null isa AbstractArray
+            if eltype(not_null) === Bool
+                if length(not_null) != length(col_types)
+                    throw(ArgumentError(
+                        "The length of keyword argument not_null, when an array, must be equal to the number of columns"
+                    ))
+                end
+
+                jl_result.not_null = not_null
+            else
+                # assume array of column names
+                jl_result.not_null = fill(false, size(col_types))
+
+                for col_name in not_null
+                    col_num = column_number(jl_result, col_name)
+                    jl_result.not_null[col_num] = true
+                end
+            end
+        else
+            throw(ArgumentError(
+                "Unsupported type $(typeof(not_null)) for keyword argument not_null"
+            ))
+        end
 
         return jl_result
     end

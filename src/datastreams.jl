@@ -5,8 +5,12 @@ function Data.schema(jl_result::Result)
 end
 
 function Data.schema(jl_result::Result, ::Type{Data.Field})
+    types = map(jl_result.not_null, column_types(jl_result)) do not_null, col_type
+        not_null ? col_type : Union{col_type, Missing}
+    end
+
     return Data.Schema(
-        Type[Union{T, Missing} for T in column_types(jl_result)],
+        types,
         column_names(jl_result),
         num_rows(jl_result),
     )
@@ -23,29 +27,56 @@ end
 Data.streamtype(::Type{Result}, ::Type{Data.Field}) = true
 Data.accesspattern(jl_result::Result) = RandomAccess()
 
+# function Data.streamfrom(
+#     jl_result::Result,
+#     ::Type{Data.Field},
+#     ::Type{Union{T, Missing}},
+#     row::Int,
+#     col::Int,
+# )::Union{T, Missing} where T
+#     if libpq_c.PQgetisnull(jl_result.result, row - 1, col - 1) == 1
+#         return missing
+#     else
+#         oid = jl_result.column_oids[col]
+#         return jl_result.column_funcs[col](PQValue{oid}(jl_result, row, col))::T
+#     end
+# end
+
+@inline _non_null_type(::Type{Union{T, Missing}}) where {T} = T
+@inline _non_null_type(::Type{T}) where {T} = T
+
+# allow types that aren't just unions to handle nulls
 function Data.streamfrom(
     jl_result::Result,
     ::Type{Data.Field},
-    ::Type{Union{T, Missing}},
+    ::Type{T},
     row::Int,
     col::Int,
-)::Union{T, Missing} where T
+)::T where T>:Missing
+    NNT = _non_null_type(T)
+
     if libpq_c.PQgetisnull(jl_result.result, row - 1, col - 1) == 1
         return missing
     else
         oid = jl_result.column_oids[col]
-        return jl_result.column_funcs[col](PQValue{oid}(jl_result, row, col))::T
+        return jl_result.column_funcs[col](PQValue{oid}(jl_result, row, col))::NNT
     end
 end
 
+# if a user says they don't want Missing, error on NULL
 function Data.streamfrom(
     jl_result::Result,
     ::Type{Data.Field},
-    ::Type{String},
+    ::Type{T},
     row::Int,
     col::Int,
-)::String
-    unsafe_string(libpq_c.PQgetvalue(jl_result.result, row - 1, col - 1))
+)::T where T
+    if libpq_c.PQgetisnull(jl_result.result, row - 1, col - 1) == 1
+        error("Unexpected NULL at column $col row $row")
+    end
+
+    oid = jl_result.column_oids[col]
+    return jl_result.column_funcs[col](PQValue{oid}(jl_result, row, col))
 end
 
 ### SOURCE END
