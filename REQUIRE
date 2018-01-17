@@ -4,6 +4,7 @@ Compat 0.41
 DataStreams 0.3.1
 DocStringExtensions
 Decimals 0.2.1
+@osx Homebrew
 IterTools
 LayerDicts
 Missings 0.2.1
