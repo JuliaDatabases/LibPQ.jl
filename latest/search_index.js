@@ -69,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.Result",
     "category": "Type",
-    "text": "type Result <: DataStreams.Data.Source\n\nA result from a PostgreSQL database query\n\nFields:\n\nresult\nA pointer to a libpq PGresult object (C_NULL if cleared)\ncleared\nTrue if the PGresult object has been cleaned up\ncolumn_oids\nPostgreSQL Oids for each column in the result\ncolumn_types\nJulia types for each column in the result\ncolumn_funcs\nConversions from PostgreSQL data to Julia types for each column in the result\n\n\n\n"
+    "text": "type Result <: DataStreams.Data.Source\n\nA result from a PostgreSQL database query\n\nFields:\n\nresult\nA pointer to a libpq PGresult object (C_NULL if cleared)\ncleared\nTrue if the PGresult object has been cleaned up\ncolumn_oids\nPostgreSQL Oids for each column in the result\ncolumn_types\nJulia types for each column in the result\nnot_null\nWhether to expect NULL for each column (whether output data can have missing)\ncolumn_funcs\nConversions from PostgreSQL data to Julia types for each column in the result\n\n\n\n"
 },
 
 {
@@ -409,7 +409,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.parameter_pointers-Tuple{AbstractArray{#s209,1} where #s209<:Union{Missings.Missing, String}}",
+    "location": "pages/api.html#LibPQ.parameter_pointers-Tuple{AbstractArray{#s211,1} where #s211<:Union{Missings.Missing, String}}",
     "page": "API",
     "title": "LibPQ.parameter_pointers",
     "category": "Method",
