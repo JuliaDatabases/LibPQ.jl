@@ -520,7 +520,7 @@ function conninfo(str::AbstractString)
     err_ref = Ref{Ptr{UInt8}}(C_NULL)
     ci_ptr = libpq_c.PQconninfoParse(str, err_ref)
 
-    if ci_ptr == C_NULL
+    if ci_ptr == C_NULL && err_ref[] == C_NULL
         error(LOGGER, "libpq could not allocate memory for connection info")
     end
 
