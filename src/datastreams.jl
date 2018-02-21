@@ -42,8 +42,8 @@ Data.accesspattern(jl_result::Result) = RandomAccess()
 #     end
 # end
 
-@inline _non_null_type(::Type{Union{T, Missing}}) where {T} = T
-@inline _non_null_type(::Type{T}) where {T} = T
+# @inline _non_null_type(::Type{Union{T, Missing}}) where {T} = T
+# @inline _non_null_type(::Type{T}) where {T} = T
 
 # allow types that aren't just unions to handle nulls
 function Data.streamfrom(
@@ -53,13 +53,11 @@ function Data.streamfrom(
     row::Int,
     col::Int,
 )::T where T>:Missing
-    NNT = _non_null_type(T)
-
     if libpq_c.PQgetisnull(jl_result.result, row - 1, col - 1) == 1
         return missing
     else
         oid = jl_result.column_oids[col]
-        return jl_result.column_funcs[col](PQValue{oid}(jl_result, row, col))::NNT
+        return jl_result.column_funcs[col](PQValue{oid}(jl_result, row, col))  # ::_non_null_type(T) except https://github.com/JuliaData/Missings.jl/issues/80
     end
 end
 
