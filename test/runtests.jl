@@ -58,8 +58,8 @@ end
     const DATABASE_USER = get(ENV, "LIBPQJL_DATABASE_USER", "postgres")
 
     @testset "Example SELECT" begin
-        conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=false)
-        @test conn isa Connection
+        conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=false)
+        @test conn isa LibPQ.Connection
         @test isopen(conn)
         @test status(conn) == LibPQ.libpq_c.CONNECTION_OK
         @test conn.closed == false
@@ -73,7 +73,7 @@ end
             "SELECT typname FROM pg_type WHERE oid = 16";
             throw_error=false,
         )
-        @test result isa Result
+        @test result isa LibPQ.Result
         @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
         @test result.cleared == false
         @test LibPQ.num_columns(result) == 1
@@ -95,7 +95,7 @@ end
             [16];
             throw_error=false,
         )
-        @test result isa Result
+        @test result isa LibPQ.Result
         @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
         @test result.cleared == false
         @test LibPQ.num_columns(result) == 1
@@ -127,7 +127,7 @@ end
     end
 
     @testset "Example INSERT and DELETE" begin
-        conn = Connection("dbname=postgres user=$DATABASE_USER")
+        conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
 
         result = execute(conn, """
             CREATE TEMPORARY TABLE libpqjl_test (
@@ -161,7 +161,7 @@ end
 
         stmt = Data.stream!(
             data,
-            Statement,
+            LibPQ.Statement,
             conn,
             "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
         )
@@ -224,11 +224,11 @@ end
         close(conn)
     end
 
-    @testset "Connection" begin
+    @testset "LibPQ.Connection" begin
         @testset "do" begin
             local saved_conn
 
-            was_open = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true) do jl_conn
+            was_open = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true) do jl_conn
                 saved_conn = jl_conn
                 return isopen(jl_conn)
             end
@@ -236,20 +236,20 @@ end
             @test was_open
             @test !isopen(saved_conn)
 
-            @test_throws ErrorException Connection("dbname=123fake"; throw_error=true) do jl_conn
+            @test_throws ErrorException LibPQ.Connection("dbname=123fake"; throw_error=true) do jl_conn
                 @test false
             end
         end
 
         @testset "Version Numbers" begin
-            conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
             # update this test before PostgreSQL 20.0 ;)
             @test LibPQ.pqv"7" <= LibPQ.server_version(conn) <= LibPQ.pqv"20"
         end
 
         @testset "Encoding" begin
-            conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
             @test LibPQ.encoding(conn) == "UTF8"
 
@@ -276,8 +276,8 @@ end
 
         @testset "Bad Connection" begin
             @testset "throw_error=false" begin
-                conn = Connection("dbname=123fake"; throw_error=false)
-                @test conn isa Connection
+                conn = LibPQ.Connection("dbname=123fake"; throw_error=false)
+                @test conn isa LibPQ.Connection
                 @test status(conn) == LibPQ.libpq_c.CONNECTION_BAD
                 @test conn.closed == false
 
@@ -292,10 +292,10 @@ end
             end
 
             @testset "throw_error=true" begin
-                @test_throws ErrorException Connection("dbname=123fake"; throw_error=true)
+                @test_throws ErrorException LibPQ.Connection("dbname=123fake"; throw_error=true)
 
-                conn = Connection("dbname=123fake"; throw_error=false)
-                @test conn isa Connection
+                conn = LibPQ.Connection("dbname=123fake"; throw_error=false)
+                @test conn isa LibPQ.Connection
                 @test status(conn) == LibPQ.libpq_c.CONNECTION_BAD
                 @test conn.closed == false
 
@@ -309,7 +309,7 @@ end
 
     @testset "Results" begin
         @testset "Nulls" begin
-            conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
             result = execute(conn, "SELECT NULL"; throw_error=true)
             @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
@@ -352,7 +352,7 @@ end
                 """;
                 throw_error=true,
             )
-            @test result isa Result
+            @test result isa LibPQ.Result
             @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
             @test LibPQ.num_rows(result) == 2
             @test LibPQ.num_columns(result) == 2
@@ -368,7 +368,7 @@ end
         end
 
         @testset "Not Nulls" begin
-            conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
             result = execute(conn, "SELECT NULL"; not_null=[false], throw_error=true)
             @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
@@ -448,7 +448,7 @@ end
 
         @testset "Type Conversions" begin
             @testset "Automatic" begin
-                conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+                conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
                 result = execute(conn, """
                     SELECT oid, typname, typlen, typbyval, typcategory
@@ -458,7 +458,7 @@ end
                     """;
                     throw_error=true,
                 )
-                @test result isa Result
+                @test result isa LibPQ.Result
                 @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
                 @test LibPQ.num_rows(result) == 3
                 @test LibPQ.num_columns(result) == 5
@@ -479,7 +479,7 @@ end
 
             @testset "Parsing" begin
                 @testset "Default Types" begin
-                    conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+                    conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
                     test_data = [
                         ("3", Cint(3)),
@@ -570,7 +570,7 @@ end
                 end
 
                 @testset "Specified Types" begin
-                    conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+                    conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
                     test_data = [
                         ("3", UInt, UInt(3)),
@@ -614,7 +614,7 @@ end
 
         @testset "Query Errors" begin
             @testset "Syntax Errors" begin
-                conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+                conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
                 result = execute(conn, "SELORCT NUUL;"; throw_error=false)
                 @test status(result) == LibPQ.libpq_c.PGRES_FATAL_ERROR
@@ -632,7 +632,7 @@ end
             end
 
             @testset "Wrong No. Parameters" begin
-                conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+                conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
                 result = execute(conn, "SELORCT \$1;", String[]; throw_error=false)
                 @test status(result) == LibPQ.libpq_c.PGRES_FATAL_ERROR
@@ -656,7 +656,7 @@ end
         end
 
         @testset "Interface Errors" begin
-            conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
             result = execute(
                 conn,
@@ -673,7 +673,7 @@ end
 
     @testset "Statements" begin
         @testset "No Params, Output" begin
-            conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
             stmt = prepare(conn, "SELECT oid, typname FROM pg_type")
 
@@ -694,7 +694,7 @@ end
         end
 
         @testset "Params, Output" begin
-            conn = Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
             stmt = prepare(conn, "SELECT oid, typname FROM pg_type WHERE oid = \$1")
 

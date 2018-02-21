@@ -1,6 +1,5 @@
 module LibPQ
 
-export Connection, Result, Statement
 export status, reset!, execute, clear, fetch!, prepare,
     num_columns, num_rows, num_params, num_affected_rows
 

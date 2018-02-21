@@ -10,7 +10,7 @@
 ### Selection
 
 ```julia
-conn = Connection("dbname=postgres")
+conn = LibPQ.Connection("dbname=postgres")
 result = execute(conn, "SELECT typname FROM pg_type WHERE oid = 16")
 data = Data.stream!(result, NamedTuple)
 clear!(result)
@@ -29,7 +29,7 @@ close(conn)
 ### Insertion
 
 ```julia
-conn = Connection("dbname=postgres user=$DATABASE_USER")
+conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
 
 result = execute(conn, """
     CREATE TEMPORARY TABLE libpqjl_test (
@@ -41,7 +41,7 @@ clear!(result)
 
 Data.stream!(
     data,
-    Statement,
+    LibPQ.Statement,
     conn,
     "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
 )

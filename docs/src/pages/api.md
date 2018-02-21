@@ -14,37 +14,37 @@ end
 LibPQ.Connection
 execute
 prepare
-status(::Connection)
-Base.close(::Connection)
-Base.isopen(::Connection)
-reset!(::Connection)
-Base.show(::IO, ::Connection)
+status(::LibPQ.Connection)
+Base.close(::LibPQ.Connection)
+Base.isopen(::LibPQ.Connection)
+reset!(::LibPQ.Connection)
+Base.show(::IO, ::LibPQ.Connection)
 ```
 
 ### Results
 
 ```@docs
 LibPQ.Result
-status(::Result)
-clear!(::Result)
-num_rows(::Result)
-num_columns(::Result)
-Base.show(::IO, ::Result)
+status(::LibPQ.Result)
+clear!(::LibPQ.Result)
+num_rows(::LibPQ.Result)
+num_columns(::LibPQ.Result)
+Base.show(::IO, ::LibPQ.Result)
 ```
 
 ### Statements
 
 ```@docs
 LibPQ.Statement
-num_columns(::Statement)
-num_params(::Statement)
-Base.show(::IO, ::Statement)
+num_columns(::LibPQ.Statement)
+num_params(::LibPQ.Statement)
+Base.show(::IO, ::LibPQ.Statement)
 ```
 
 ### DataStreams Integration
 
 ```@docs
-LibPQ.Statement(::LibPQ.DataStreams.Data.Schema, ::Type{LibPQ.DataStreams.Data.Row}, ::Bool, ::Connection, ::AbstractString)
+LibPQ.Statement(::LibPQ.DataStreams.Data.Schema, ::Type{LibPQ.DataStreams.Data.Row}, ::Bool, ::LibPQ.Connection, ::AbstractString)
 LibPQ.fetch!
 ```
 
@@ -60,7 +60,7 @@ LibPQ.set_encoding!
 LibPQ.reset_encoding!
 LibPQ.transaction_status
 LibPQ.unique_id
-LibPQ.error_message(::Connection)
+LibPQ.error_message(::LibPQ.Connection)
 ```
 
 ### Connection Info
@@ -81,8 +81,8 @@ LibPQ.column_names
 LibPQ.column_number
 LibPQ.column_oids
 LibPQ.column_types
-LibPQ.num_params(::Result)
-LibPQ.error_message(::Result)
+LibPQ.num_params(::LibPQ.Result)
+LibPQ.error_message(::LibPQ.Result)
 ```
 
 ### Type Conversions
