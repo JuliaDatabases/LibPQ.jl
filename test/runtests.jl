@@ -209,6 +209,18 @@ end
 
         clear!(result)
 
+        result = execute(
+            conn,
+            "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2), (\$3, \$4);",
+            Union{String, Missing}["foo", "bar", "quz", missing],
+
+        )
+        @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
+        @test num_rows(result) == 0
+        @test num_affected_rows(result) == 2
+
+        clear!(result)
+
         close(conn)
     end
 
