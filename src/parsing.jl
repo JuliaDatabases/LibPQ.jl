@@ -1,9 +1,12 @@
-# wrapper for value
+"A wrapper for one value in a PostgreSQL result."
 struct PQValue{OID}
+    "PostgreSQL result"
     jl_result::Result
 
-    # 0-indexed
+    "Row index of the result (0-indexed)"
     row::Cint
+
+    "Column index of the result (0-indexed)"
     col::Cint
 
     function PQValue{OID}(jl_result::Result, row::Integer, col::Integer) where OID
@@ -11,26 +14,81 @@ struct PQValue{OID}
     end
 end
 
+"""
+    PQValue(jl_result::Result, row::Integer, col::Integer) -> PQValue
+    PQValue{OID}(jl_result::Result, row::Integer, col::Integer) -> PQValue{OID}
+
+Construct a `PQValue` wrapping one value in a PostgreSQL result.
+Row and column positions are provided 1-indexed.
+If the `OID` type parameter is not provided, the Oid of the field will be retrieved from
+the result.
+"""
 function PQValue(jl_result::Result, row::Integer, col::Integer)
     oid = libpq_c.PQftype(jl_result.result, col - 1)
 
     return PQValue{oid}(jl_result, row, col)
 end
 
-# strlen
+"""
+    num_bytes(pqv::PQValue) -> Cint
+
+The length in bytes of the `PQValue`'s corresponding data.
+LibPQ.jl currently always uses text format, so this is equivalent to C's `strlen`.
+
+See also: [`data_pointer`](@ref)
+"""
 num_bytes(pqv::PQValue) = libpq_c.PQgetlength(pqv.jl_result.result, pqv.row, pqv.col)
 
+"""
+    data_pointer(pqv::PQValue) -> Ptr{UInt8}
+
+Get a raw pointer to the data for one value in a PostgreSQL result.
+This data will be freed by libpq when the result is cleared, and should only be used
+temporarily.
+"""
 data_pointer(pqv::PQValue) = libpq_c.PQgetvalue(pqv.jl_result.result, pqv.row, pqv.col)
 
+"""
+    unsafe_string(pqv::PQValue) -> String
+
+Construct a `String` from a `PQValue` by copying the data.
+"""
 function Base.unsafe_string(pqv::PQValue)
     return unsafe_string(data_pointer(pqv), num_bytes(pqv))
 end
 
+"""
+    string_view(pqv::PQValue) -> String
+
+Wrap a `PQValue`'s underlying data in a `String`.
+This function uses [`data_pointer`](@ref) and [`num_bytes`](@ref) and does not copy.
+
+!!! note
+
+    The underlying data will be freed by libpq when the result is cleared, and should only
+    be used temporarily.
+
+See also: [`bytes_view`](@ref)
+"""
 function string_view(pqv::PQValue)
     return String(unsafe_wrap(Vector{UInt8}, data_pointer(pqv), num_bytes(pqv)))
 end
 
-# includes null
+"""
+    bytes_view(pqv::PQValue) -> Vector{UInt8}
+
+Wrap a `PQValue`'s underlying data in a vector of bytes.
+This function uses [`data_pointer`](@ref) and [`num_bytes`](@ref) and does not copy.
+
+This function differs from [`string_view`](@ref) as it keeps the `\0` byte at the end.
+`PQValue` parsing functions should use `bytes_view` when the data returned by PostgreSQL
+is not in UTF-8.
+
+!!! note
+
+    The underlying data will be freed by libpq when the result is cleared, and should only
+    be used temporarily.
+"""
 bytes_view(pqv::PQValue) = unsafe_wrap(Vector{UInt8}, data_pointer(pqv), num_bytes(pqv) + 1)
 
 Base.String(pqv::PQValue) = unsafe_string(pqv)
@@ -39,7 +97,16 @@ Base.convert(::Type{String}, pqv::PQValue) = String(pqv)
 Base.length(pqv::PQValue) = length(string_view(pqv))
 Base.endof(pqv::PQValue) = endof(string_view(pqv))
 
-# fallback, because Base is bad with string iteration
+# Fallback, because Base requires string iteration state to be indices into the string.
+# In an ideal world, PQValue would be an AbstractString and this particular method would
+# not be necessary.
+"""
+    parse(::Type{T}, pqv::PQValue) -> T
+
+Parse a value of type `T` from a `PQValue`.
+By default, this uses any existing `parse` method for parsing a value of type `T` from a
+`String`.
+"""
 Base.parse(::Type{T}, pqv::PQValue) where {T} = parse(T, string_view(pqv))
 
 # allow parsing as a Symbol anything which works as a String
@@ -256,7 +323,6 @@ for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
     end
 end
 
-
 struct FallbackConversion <: AbstractDict{Tuple{Oid, Type}, Base.Callable}
 end
 
@@ -270,4 +336,9 @@ end
 
 Base.haskey(cmap::FallbackConversion, oid_typ::Tuple{Integer, Type}) = true
 
+"""
+A fallback conversion mapping (like [`PQConversions`](@ref) which holds a single function
+for converting PostgreSQL data of a given Oid to a given Julia type, using the [`parse`](@ref)
+function.
+"""
 const _FALLBACK_CONVERSION = FallbackConversion()

@@ -5,6 +5,7 @@ makedocs(;
     format=:html,
     pages=[
         "Home" => "index.md",
+        "Type Conversions" => "pages/type-conversions.md",
         "API" => "pages/api.md",
     ],
     repo="https://github.com/invenia/LibPQ.jl/blob/{commit}{path}#L{line}",

@@ -20,7 +20,7 @@ LibPQ.jl is a Julia wrapper for the PostgreSQL `libpq` C library.
 * Queries
   * Create and execute queries with or without parameters
   * Stream results using [DataStreams](https://github.com/JuliaData/DataStreams.jl)
-  * Configurably convert a variety of PostgreSQL types to corresponding Julia types
+  * Configurably convert a variety of PostgreSQL types to corresponding Julia types (see the **Type Conversions** section of the docs)
 * Prepared Statements
   * Create and execute prepared statements with or without parameters
   * Stream table of parameters to execute the same statement multiple times with different data using DataStreams

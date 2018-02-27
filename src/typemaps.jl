@@ -1,9 +1,13 @@
-# Symbol keys are PostgreSQL's internal names for its types.
-# These may not correspond well to the common names, e.g., "char(n)" is :bpchar.
-# This dictionary is generated with the deps/system_type_map.jl script and contains only
-# PostgreSQL's system-defined types.
-# It is expected (but might not be guaranteed) that these are the same across versions and
-# installations.
+"""
+    const PQ_SYSTEM_TYPES::Dict{Symbol, Oid}
+
+Internal mapping of PostgreSQL's default types from PostgreSQL internal name to Oid.
+The names may not correspond well to the common names, e.g., "char(n)" is :bpchar.
+This dictionary is generated with the `deps/system_type_map.jl` script and contains only
+PostgreSQL's system-defined types.
+It is expected (but might not be guaranteed) that these are the same across versions and
+installations.
+"""
 const PQ_SYSTEM_TYPES = Dict{Symbol, Oid}(
     :bool => 16, :bytea => 17, :char => 18, :name => 19, :int8 => 20, :int2 => 21,
     :int2vector => 22, :int4 => 23, :regproc => 24, :text => 25, :oid => 26, :tid => 27,
@@ -125,16 +129,17 @@ const PQ_SYSTEM_TYPES = Dict{Symbol, Oid}(
 """
     oid(typ::Union{Symbol, String, Integer}) -> LibPQ.Oid
 
-Convert a PostgreSQL type from a `String` or `Symbol` representation to its oid
+Convert a PostgreSQL type from an `AbstractString` or `Symbol` representation to its oid
 representation.
 Integers are converted directly to `LibPQ.Oid`s.
 """
 function oid end
 
 oid(typ::Symbol) = PQ_SYSTEM_TYPES[typ]
-oid(o::Integer) = PQ_SYSTEM_TYPES[convert(Oid, oid)]
-oid(typ::String) = oid(Symbol(typ))
+oid(o::Integer) = convert(Oid, o)
+oid(typ::AbstractString) = oid(Symbol(typ))
 
+"A mapping from PostgreSQL Oid to Julia type."
 struct PQTypeMap <: AbstractDict{Oid, Type}
     type_map::Dict{Oid, Type}
 end
@@ -143,6 +148,14 @@ PQTypeMap(type_map::PQTypeMap) = type_map
 PQTypeMap(type_map::AbstractDict{Oid, Type}) = PQTypeMap(Dict(type_map))
 PQTypeMap() = PQTypeMap(Dict{Oid, Type}())
 
+"""
+    PQTypeMap(d::AbstractDict) -> PQTypeMap
+
+Creates a `PQTypeMap` from any mapping from PostgreSQL types to Julia types.
+Each PostgreSQL type is passed through [`oid`](@ref) and so can be specified as an Oid or
+PostgreSQL's internal name for the type (as a `Symbol` or `AbstractString`).
+These names are stored in the keys of [`PQ_SYSTEM_TYPES`](@ref).
+"""
 function PQTypeMap(user_map::AbstractDict)
     type_map = PQTypeMap()
 
@@ -155,16 +168,22 @@ end
 
 const LayerPQTypeMap = LayerDict{Oid, Type}
 
-# TODO: clean up the code below using `oid`
-Base.getindex(tmap::PQTypeMap, oid::Integer) = tmap.type_map[convert(Oid, oid)]
-Base.getindex(tmap::PQTypeMap, typ::Symbol) = tmap[PQ_SYSTEM_TYPES[typ]]
+"""
+    Base.getindex(tmap::PQTypeMap, typ) -> Type
 
-function Base.setindex!(tmap::PQTypeMap, val::Type, oid::Integer)
-    setindex!(tmap.type_map, val, convert(Oid, oid))
-end
+Get the Julia type corresponding to the given PostgreSQL type (any type accepted by
+[`oid`](@ref)) according to `tmap`.
+"""
+Base.getindex(tmap::PQTypeMap, typ) = tmap.type_map[oid(typ)]
 
-function Base.setindex!(tmap::PQTypeMap, val::Type, typ::Symbol)
-    setindex!(tmap, val, PQ_SYSTEM_TYPES[typ])
+"""
+    Base.setindex!(tmap::PQTypeMap, val::Type, typ)
+
+Set the Julia type corresponding to the given PostgreSQL type (any type accepted by
+[`oid`](@ref)) in `tmap`.
+"""
+function Base.setindex!(tmap::PQTypeMap, val::Type, typ)
+    setindex!(tmap.type_map, val, oid(typ))
 end
 
 Base.start(tmap::PQTypeMap) = start(tmap.type_map)
@@ -174,10 +193,22 @@ Base.done(tmap::PQTypeMap, state) = done(tmap.type_map, state)
 Base.length(tmap::PQTypeMap) = length(tmap.type_mapp)
 Base.keys(tmap::PQTypeMap) = keys(tmap.type_map)
 
+"""
+    const _DEFAULT_TYPE_MAP::PQTypeMap
+
+The [`PQTypeMap`](@ref) containing the default type mappings for LibPQ.jl.
+This should not be mutated; LibPQ-level type mappings can be added to
+[`LIBPQ_TYPE_MAP`](@ref).
+"""
 const _DEFAULT_TYPE_MAP = PQTypeMap(Dict{Oid, Type}())
 
+# type alias for convenience
 const ColumnTypeMap = Dict{Cint, Type}
 
+"""
+A mapping from Oid and Julia type pairs to the function for converting a PostgreSQL value
+with said Oid to said Julia type.
+"""
 struct PQConversions <: AbstractDict{Tuple{Oid, Type}, Base.Callable}
     func_map::Dict{Tuple{Oid, Type}, Base.Callable}
 end
@@ -188,16 +219,28 @@ function PQConversions(func_map::AbstractDict{Tuple{Oid, Type}, Base.Callable})
 end
 PQConversions() = PQConversions(Dict{Tuple{Oid, Type}, Base.Callable}())
 
-function Base.getindex(cmap::PQConversions, oid_typ::Tuple{Integer, Type})
-    getindex(cmap.func_map, (convert(Oid, oid_typ[1]), oid_typ[2]))
+"""
+    Base.getindex(cmap::PQConversions, oid_typ::Tuple{Any, Type}) -> Base.Callable
+
+Get the function according to `cmap` for converting a PostgreSQL value of some PostgreSQL
+type (any type accepted by [`oid`](@ref)) to some Julia type.
+"""
+function Base.getindex(cmap::PQConversions, oid_typ::Tuple{Any, Type})
+    getindex(cmap.func_map, (oid(oid_typ[1]), oid_typ[2]))
 end
 
+"""
+    Base.setindex!(cmap::PQConversions, val::Base.Callable, oid_typ::Tuple{Any, Type})
+
+Set the function in `cmap` for converting a PostgreSQL value of some PostgreSQL type (any
+type accepted by [`oid`](@ref)) to some Julia type.
+"""
 function Base.setindex!(
     cmap::PQConversions,
     val::Base.Callable,
-    oid_typ::Tuple{Integer, Type},
+    oid_typ::Tuple{Any, Type},
 )
-    setindex!(cmap.func_map, val, (convert(Oid, oid_typ[1]), oid_typ[2]))
+    setindex!(cmap.func_map, val, (oid(oid_typ[1]), oid_typ[2]))
 end
 
 Base.start(cmap::PQConversions) = start(cmap.func_map)
@@ -207,10 +250,18 @@ Base.done(cmap::PQConversions, state) = done(cmap.func_map, state)
 Base.length(cmap::PQConversions) = length(cmap.func_map)
 Base.keys(cmap::PQConversions) = keys(cmap.func_map)
 
+"""
+    const _DEFAULT_CONVERSIONS::PQConversions
+
+The [`PQConversions`](@ref) containing the default conversion functions for LibPQ.jl.
+This should not be mutated; LibPQ-level conversion functions can be added to
+[`LIBPQ_CONVERSIONS`](@ref).
+"""
 const _DEFAULT_CONVERSIONS = PQConversions()
 
 ## WRAPPER TYPES
 
+"A one-byte character type for correspondence with PostgreSQL's one-byte \"char\" type."
 primitive type PQChar 8 end
 
 Base.UInt8(c::PQChar) = reinterpret(UInt8, c)
