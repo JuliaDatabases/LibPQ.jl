@@ -153,6 +153,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "pages/api.html#LibPQ.num_affected_rows-Tuple{LibPQ.Result}",
+    "page": "API",
+    "title": "LibPQ.num_affected_rows",
+    "category": "Method",
+    "text": "num_affected_rows(jl_result::Result) -> Int\n\nReturn the number of rows affected by the command returning the result. This is useful for counting the rows affected by operations such as INSERT, UPDATE and DELETE that do not return rows but affect them. This will be 0 if the query does not affect any row.\n\n\n\n"
+},
+
+{
     "location": "pages/api.html#LibPQ.num_columns-Tuple{LibPQ.Result}",
     "page": "API",
     "title": "LibPQ.num_columns",
@@ -245,7 +253,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.status",
     "category": "Method",
-    "text": "status(jl_result::Result) -> libpq_c.ExecStatusType\n\nReturn the status of a result's corresponding database query according to libpq. Only CONNECTION_OK and CONNECTION_BAD are valid for blocking connections, and only blocking connections are supported right now.\n\nSee also: error_message\n\n\n\n"
+    "text": "status(jl_result::Result) -> libpq_c.ExecStatusType\n\nReturn the status of a result\'s corresponding database query according to libpq. Only CONNECTION_OK and CONNECTION_BAD are valid for blocking connections, and only blocking connections are supported right now.\n\nSee also: error_message\n\n\n\n"
 },
 
 {
@@ -293,7 +301,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.ConninfoDisplay",
     "category": "Type",
-    "text": "Indicator for how to display a PostgreSQL connection option (PQconninfoOption).\n\nPossible values are:\n\nNormal (libpq: \"\"): display as is\nPassword (libpq: \"*\"): hide the value of this field\nDebug (libpq: \"D\"): don't show by default\n\n\n\n"
+    "text": "Indicator for how to display a PostgreSQL connection option (PQconninfoOption).\n\nPossible values are:\n\nNormal (libpq: \"\"): display as is\nPassword (libpq: \"*\"): hide the value of this field\nDebug (libpq: \"D\"): don\'t show by default\n\n\n\n"
 },
 
 {
@@ -397,7 +405,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.handle_new_connection",
     "category": "Method",
-    "text": "handle_new_connection(jl_conn::Connection; throw_error=true) -> Connection\n\nCheck status and handle errors for newly-created connections. Also set the client encoding (23.3. Character Set Support) to jl_conn.encoding.\n\nIf throw_error is true, an error will be thrown if the connection's status is CONNECTION_BAD and the PGconn object will be cleaned up. Otherwise, a warning will be shown and the user should call close or reset! on the returned Connection.\n\n\n\n"
+    "text": "handle_new_connection(jl_conn::Connection; throw_error=true) -> Connection\n\nCheck status and handle errors for newly-created connections. Also set the client encoding (23.3. Character Set Support) to jl_conn.encoding.\n\nIf throw_error is true, an error will be thrown if the connection\'s status is CONNECTION_BAD and the PGconn object will be cleaned up. Otherwise, a warning will be shown and the user should call close or reset! on the returned Connection.\n\n\n\n"
 },
 
 {
@@ -429,7 +437,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.transaction_status",
     "category": "Method",
-    "text": "transaction_status(jl_conn::Connection) -> libpq_c.PGTransactionStatusType\n\nReturn the PostgreSQL database server's current in-transaction status for the connection. See  for information on the meaning of the possible return values.\n\n\n\n"
+    "text": "transaction_status(jl_conn::Connection) -> libpq_c.PGTransactionStatusType\n\nReturn the PostgreSQL database server\'s current in-transaction status for the connection. See  for information on the meaning of the possible return values.\n\n\n\n"
 },
 
 {
