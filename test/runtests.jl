@@ -126,7 +126,7 @@ end
         @test contains(text_display_closed, "closed")
     end
 
-    @testset "Example INSERT" begin
+    @testset "Example INSERT and DELETE" begin
         conn = Connection("dbname=postgres user=$DATABASE_USER")
 
         result = execute(conn, """
@@ -165,6 +165,7 @@ end
             conn,
             "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
         )
+        @test_throws ArgumentError num_affected_rows(stmt.description)
         @test num_params(stmt) == 2
         @test num_columns(stmt) == 0  # an insert has no results
         @test column_number(stmt, "no_nulls") == 0
@@ -185,6 +186,41 @@ end
         @test table_data[:yes_nulls][2] === missing
 
         clear!(result)
+
+        result = execute(
+            conn,
+            "DELETE FROM libpqjl_test WHERE no_nulls = 'foo';";
+            throw_error=true,
+        )
+        @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
+        @test num_rows(result) == 0
+        @test num_affected_rows(result) == 1
+
+        clear!(result)
+
+        result = execute(
+            conn,
+            "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
+            throw_error=true,
+        )
+        table_data_after_delete = Data.stream!(result, NamedTuple)
+        @test table_data_after_delete[:no_nulls] == ["baz"]
+        @test table_data_after_delete[:yes_nulls][1] === missing
+
+        clear!(result)
+
+        result = execute(
+            conn,
+            "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2), (\$3, \$4);",
+            Union{String, Missing}["foo", "bar", "quz", missing],
+
+        )
+        @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
+        @test num_rows(result) == 0
+        @test num_affected_rows(result) == 2
+
+        clear!(result)
+
         close(conn)
     end
 
