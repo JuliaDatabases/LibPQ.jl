@@ -159,7 +159,7 @@ end
 Create a `Connection` from a connection string as specified in the PostgreSQL
 documentation ([33.1.1. Connection Strings](https://www.postgresql.org/docs/10/static/libpq-connect.html#LIBPQ-CONNSTRING)).
 
-For information on the `type_map` and `conversions` arguments, see [Type Conversions](@ref).
+For information on the `type_map` and `conversions` arguments, see [Type Conversions](@ref typeconv).
 
 See [`handle_new_connection`](@ref) for information on the `throw_error` argument.
 """
@@ -796,7 +796,7 @@ PostgreSQL.
 `column_types` accepts type overrides for columns in the result which take priority over
 those in `type_map`.
 For information on the `column_types`, `type_map`, and `conversions` arguments, see
-[Type Conversions](@ref).
+[Type Conversions](@ref typeconv).
 """
 function execute end
 
