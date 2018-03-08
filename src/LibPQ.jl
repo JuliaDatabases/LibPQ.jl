@@ -40,7 +40,11 @@ include(joinpath(@__DIR__, "utils.jl"))
 module libpq_c
     export Oid
 
-    const LIBPQ_HANDLE = :libpq
+    include(joinpath(@__DIR__, "..", "deps", "deps.jl"))
+
+    function __init__()
+        check_deps()
+    end
 
     include(joinpath(@__DIR__, "headers", "libpq-fe.jl"))
 end
