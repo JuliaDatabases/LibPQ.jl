@@ -10,8 +10,8 @@ julia:
   - 0.6
   - nightly
 env:
-  - POSTGRESQL_VERSION=9.4
-  - POSTGRESQL_VERSION=9.6
+  - POSTGRESQL_VERSION=9.4 PGHOST="/var/run/postgresql"
+  - POSTGRESQL_VERSION=9.6 PGHOST="/var/run/postgresql"
 before_install:
   - sudo service postgresql stop && sudo service postgresql start $POSTGRESQL_VERSION
   - psql -U postgres -tc 'SHOW server_version'
