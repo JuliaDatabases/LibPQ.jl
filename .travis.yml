@@ -15,6 +15,7 @@ env:
 before_install:
   - sudo service postgresql stop && sudo service postgresql start $POSTGRESQL_VERSION
   - psql -U postgres -tc 'SHOW server_version'
+  - psql -U postgres -c '\conninfo'
 matrix:
   allow_failures:
     - julia: nightly
