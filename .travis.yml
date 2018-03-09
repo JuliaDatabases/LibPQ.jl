@@ -20,6 +20,9 @@ matrix:
   allow_failures:
     - julia: nightly
   fast_finish: true
+  include:
+    - os: osx
+      julia: 0.6
 notifications:
   email: false
 script:
