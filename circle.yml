@@ -1,0 +1,41 @@
+version: 2
+
+defaults: &DEFAULTS
+  environment:
+    PKG_NAME: LibPQ
+  macos:
+    xcode: "9.0"
+
+test: &TEST
+  steps:
+    - checkout
+    - run:
+        name: Install Julia
+        command: brew cask install julia
+    - run:
+        name: Install PostgreSQL
+        command: brew install postgresql
+    - run:
+        name: Start PostgreSQL
+        command: brew services start postgresql
+    - run:
+        name: Print PostgreSQL info
+        command: |
+          psql -d postgres -tc 'SHOW server_version'
+          psql -d postgres -c '\conninfo'
+    - run:
+        name: Build package
+        command: julia -e "Pkg.clone(pwd(), \"$PKG_NAME\"); Pkg.build(\"$PKG_NAME\")"
+    - run:
+        name: Test package
+        command: env LIBPQJL_DATABASE_USER=$USER julia -e "Pkg.test(\"$PKG_NAME\")"
+
+jobs:
+  test_0.6:
+    <<: [*DEFAULTS, *TEST]
+
+workflows:
+  version: 2
+  test_macos:
+    jobs:
+      - test_0.6
