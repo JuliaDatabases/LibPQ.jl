@@ -28,7 +28,7 @@ test: &TEST
         command: julia -e "Pkg.clone(pwd(), \"$PKG_NAME\"); Pkg.build(\"$PKG_NAME\")"
     - run:
         name: Test package
-        command: julia -e "Pkg.test(\"$PKG_NAME\")"
+        command: env LIBPQJL_DATABASE_USER=$USER julia -e "Pkg.test(\"$PKG_NAME\")"
 
 jobs:
   test_0.6:
