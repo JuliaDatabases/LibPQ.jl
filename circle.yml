@@ -21,8 +21,8 @@ test: &TEST
     - run:
         name: Print PostgreSQL info
         command: |
-          psql -U postgres -tc 'SHOW server_version'
-          psql -U postgres -c '\conninfo'
+          psql -d postgres -tc 'SHOW server_version'
+          psql -d postgres -c '\conninfo'
     - run:
         name: Build package
         command: julia -e "Pkg.clone(pwd()); Pkg.build(\"$PKG_NAME\")"
