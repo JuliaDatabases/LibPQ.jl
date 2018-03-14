@@ -185,10 +185,25 @@ function Connection(str::AbstractString; throw_error::Bool=true, kwargs...)
         end
     end
 
-    return handle_new_connection(
-        Connection(libpq_c.PQconnectdbParams(keywords, values, false); kwargs...);
-        throw_error=throw_error,
-    )
+    # Make the connection
+    newconn = Connection(libpq_c.PQconnectdbParams(keywords, values, false); kwargs...)
+    
+    # If password needed and not entered, prompt the user
+    if libpq_c.PQconnectionNeedsPassword(newconn.conn) == 1
+        push!(keywords, "password")
+        push!(values, Base.getpass("Enter password:"))
+        return handle_new_connection(
+            Connection(libpq_c.PQconnectdbParams(keywords, values, false); kwargs...);
+            throw_error=throw_error,
+        )
+    else
+        return handle_new_connection(
+            newconn;
+            throw_error=throw_error,
+        )
+    end
+    
+    
 end
 
 """
