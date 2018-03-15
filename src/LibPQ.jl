@@ -186,11 +186,13 @@ function Connection(str::AbstractString; throw_error::Bool=true, kwargs...)
     end
 
     # Make the connection
-    newconn = Connection(libpq_c.PQconnectdbParams(keywords, values, false); kwargs...)
+    jl_conn = Connection(libpq_c.PQconnectdbParams(keywords, values, false); kwargs...)
     
     # If password needed and not entered, prompt the user
-    if libpq_c.PQconnectionNeedsPassword(newconn.conn) == 1
+    if libpq_c.PQconnectionNeedsPassword(jl_conn.conn) == 1
         push!(keywords, "password")
+        user = unsafe_string(libpq_c.PQuser(jl_conn.conn))
+        prompt = "Enter password for PostgreSQL user $user:"
         push!(values, Base.getpass("Enter password:"))
         return handle_new_connection(
             Connection(libpq_c.PQconnectdbParams(keywords, values, false); kwargs...);
@@ -198,12 +200,11 @@ function Connection(str::AbstractString; throw_error::Bool=true, kwargs...)
         )
     else
         return handle_new_connection(
-            newconn;
+            jl_conn;
             throw_error=throw_error,
         )
     end
-    
-    
+
 end
 
 """
