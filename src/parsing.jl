@@ -230,6 +230,10 @@ function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timesta
         return ZonedDateTime(typemin(DateTime), tz"UTC")
     end
 
+    # Cut off digits after the third after the decimal point,
+    # since DateTime in Julia currently handles only milliseconds, see Issue #33
+    str = replace(str, r"(\.[\d]{3})\d+", s"\g<1>")
+
     for fmt in TIMESTAMPTZ_FORMATS[1:end-1]
         try
             return parse(ZonedDateTime, str, fmt)
@@ -237,9 +241,6 @@ function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timesta
             continue
         end
     end
-    # Cut off digits after the third after the decimal point,
-    # since DateTime in Julia currently handles only milliseconds, see Issue #33
-    str = replace(str, r"(\.[\d]{3})\d+", s"\g<1>")
     return parse(ZonedDateTime, str, TIMESTAMPTZ_FORMATS[end])
 end
 
