@@ -522,6 +522,8 @@ end
                         ("0::bool", false),
                         ("false", false),
                         ("TIMESTAMP '2004-10-19 10:23:54'", DateTime(2004, 10, 19, 10, 23, 54)),
+                        ("TIMESTAMP '2004-10-19 10:23:54.123'", DateTime(2004, 10, 19, 10, 23, 54,123)),
+                        ("TIMESTAMP '2004-10-19 10:23:54.1234'", DateTime(2004, 10, 19, 10, 23, 54,123)),
                         ("'infinity'::timestamp", typemax(DateTime)),
                         ("'-infinity'::timestamp", typemin(DateTime)),
                         ("'epoch'::timestamp", DateTime(1970, 1, 1, 0, 0, 0)),

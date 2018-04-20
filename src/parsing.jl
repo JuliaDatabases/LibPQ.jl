@@ -217,9 +217,6 @@ const TIMESTAMPTZ_FORMATS = (
     dateformat"y-m-d HH:MM:SS.sz",
     dateformat"y-m-d HH:MM:SS.ssz",
     dateformat"y-m-d HH:MM:SS.sssz",
-    dateformat"y-m-d HH:MM:SS.ssssz",
-    dateformat"y-m-d HH:MM:SS.sssssz",
-    dateformat"y-m-d HH:MM:SS.ssssssz",
 )
 function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timestamptz]})
     str = string_view(pqv)
