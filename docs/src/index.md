@@ -10,6 +10,8 @@
 ### Selection
 
 ```julia
+using LibPQ, DataStreams, NamedTuple
+
 conn = LibPQ.Connection("dbname=postgres")
 result = execute(conn, "SELECT typname FROM pg_type WHERE oid = 16")
 data = Data.stream!(result, NamedTuple)
@@ -29,6 +31,8 @@ close(conn)
 ### Insertion
 
 ```julia
+using LibPQ, DataStreams
+
 conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
 
 result = execute(conn, """
