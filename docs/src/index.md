@@ -10,7 +10,7 @@
 ### Selection
 
 ```julia
-using LibPQ, DataStreams, NamedTuple
+using LibPQ, DataStreams, NamedTuples
 
 conn = LibPQ.Connection("dbname=postgres")
 result = execute(conn, "SELECT typname FROM pg_type WHERE oid = 16")
