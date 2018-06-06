@@ -7,11 +7,13 @@ using DataStreams
 using Decimals
 using Memento
 using Missings
-using NamedTuples
 using OffsetArrays
 using TestSetExtensions
 using TimeZones
 
+@static if !isdefined(Base, :NamedTuple)
+    using NamedTuples
+end
 
 Memento.config("critical")
 
