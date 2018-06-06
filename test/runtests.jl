@@ -1,7 +1,5 @@
 using LibPQ
-using Compat: Test
-
-import Compat: @__MODULE__
+using Compat.Test
 using Compat.Dates
 using DataStreams
 using Decimals
@@ -10,6 +8,7 @@ using Missings
 using OffsetArrays
 using TestSetExtensions
 using TimeZones
+using Compat: occursin, copyto!
 
 @static if !isdefined(Base, :NamedTuple)
     using NamedTuples
@@ -57,7 +56,7 @@ end
 end
 
 @testset "Online" begin
-    const DATABASE_USER = get(ENV, "LIBPQJL_DATABASE_USER", "postgres")
+    DATABASE_USER = get(ENV, "LIBPQJL_DATABASE_USER", "postgres")
 
     @testset "Example SELECT" begin
         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=false)
@@ -67,8 +66,8 @@ end
         @test conn.closed == false
 
         text_display = sprint(show, conn)
-        @test contains(text_display, "dbname = postgres")
-        @test contains(text_display, "user = $DATABASE_USER")
+        @test occursin("dbname = postgres", text_display)
+        @test occursin("user = $DATABASE_USER", text_display)
 
         result = execute(
             conn,
@@ -125,7 +124,7 @@ end
         @test conn.closed == true
 
         text_display_closed = sprint(show, conn)
-        @test contains(text_display_closed, "closed")
+        @test occursin("closed", text_display_closed)
     end
 
     @testset "Example INSERT and DELETE" begin
@@ -468,7 +467,8 @@ end
 
                 data = Data.stream!(result, NamedTuple)
 
-                @test map(eltype, values(data)) == map(T -> Union{T, Missing}, [LibPQ.Oid, String, Int16, Bool, LibPQ.PQChar])
+                @test map(eltype, collect(values(data))) ==
+                    map(T -> Union{T, Missing}, [LibPQ.Oid, String, Int16, Bool, LibPQ.PQChar])
                 @test data[:oid] == LibPQ.Oid[LibPQ.PQ_SYSTEM_TYPES[t] for t in (:bool, :int8, :text)]
                 @test data[:typname] == ["bool", "int8", "text"]
                 @test data[:typlen] == [1, 8, -1]
@@ -543,13 +543,13 @@ end
                         ("'{{{1,2,3},{4,5,6}}}'::float8[]", reshape(Float64[1 2 3; 4 5 6], 1, 2, 3)),
                         ("'{{{1,2,3},{4,5,6}}}'::oid[]", reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3)),
                         ("'{{{1,2,3},{4,5,6}}}'::numeric[]", reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3)),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copy!(OffsetArray(Int16, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copy!(OffsetArray(Int32, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copy!(OffsetArray(Int64, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copy!(OffsetArray(Float32, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copy!(OffsetArray(Float64, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copy!(OffsetArray(LibPQ.Oid, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copy!(OffsetArray(Decimal, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copyto!(OffsetArray{Int16}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copyto!(OffsetArray{Int32}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copyto!(OffsetArray{Int64}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copyto!(OffsetArray{Float32}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copyto!(OffsetArray{Float64}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copyto!(OffsetArray{LibPQ.Oid}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copyto!(OffsetArray{Decimal}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                     ]
 
                     for (test_str, data) in test_data

@@ -101,11 +101,11 @@ Data.weakrefstrings(::Type{<:Statement}) = false
 Data.streamtypes(::Type{<:Statement}) = [Data.Row]
 
 function Data.streamto!(sink::Statement, ::Type{Data.Row}, row, row_num, col_num)
-    parameters = Vector{Parameter}(length(row))
+    parameters = Vector{Parameter}(undef, length(row))
 
     # this should change to be whatever custom pgtype conversion function we invent
-    map!(parameters, values(row)) do val
-        if ismissing(val)
+    @inbounds for (i, val) in enumerate(values(row))
+        parameters[i] = if ismissing(val)
             missing
         elseif val isa AbstractString
             convert(String, val)

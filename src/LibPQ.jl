@@ -14,7 +14,9 @@ using Memento
 using Missings
 using OffsetArrays
 using TimeZones
-using Compat: @__MODULE__, AbstractDict
+using Compat: Compat, @__MODULE__, AbstractDict, Cvoid, axes, @compat, lastindex, replace,
+              something, undef
+import Compat.Distributed: clear!
 
 const Parameter = Union{String, Missing}
 const LOGGER = getlogger(@__MODULE__)
@@ -39,6 +41,8 @@ include(joinpath(@__DIR__, "utils.jl"))
 
 module libpq_c
     export Oid
+
+    using Compat: Cvoid
 
     include(joinpath(@__DIR__, "..", "deps", "deps.jl"))
 
@@ -72,7 +76,7 @@ LibPQ.jl.
 const LIBPQ_CONVERSIONS = PQConversions()
 
 ### CONNECTIONS BEGIN
-show_option(str::String) = string(replace(str, [' ', '\\'], s -> "\\$s"))
+show_option(str::String) = string(replace(str, [' ', '\\'] => s -> "\\$s"))
 show_option(bool::Bool) = ifelse(bool, 't', 'f')
 show_option(num::Real) = num
 
@@ -886,7 +890,7 @@ Given a vector of parameters, returns a vector of pointers to either the string 
 original or `C_NULL` if the element is `missing`.
 """
 function parameter_pointers(parameters::AbstractVector{<:Parameter})
-    pointers = Vector{Ptr{UInt8}}(length(parameters))
+    pointers = Vector{Ptr{UInt8}}(undef, length(parameters))
 
     map!(pointers, parameters) do parameter
         ismissing(parameter) ? C_NULL : pointer(parameter)

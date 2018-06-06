@@ -118,7 +118,7 @@ end
 
 mutable struct _opaque_pthread_t
     __sig::Clong
-    __cleanup_stack::Ptr{Void}
+    __cleanup_stack::Ptr{Cvoid}
     __opaque::NTuple{8176, UInt8}
 end
 
@@ -142,10 +142,10 @@ const user_ulong_t = u_int64_t
 const user_time_t = Int64
 const user_off_t = Int64
 const syscall_arg_t = u_int64_t
-const va_list = Ptr{Void}
+const va_list = Ptr{Cvoid}
 const size_t = Culong
 const fpos_t = int64_t
-const FILE = Void
+const FILE = Cvoid
 const off_t = int64_t
 const ssize_t = Clong
 const Oid = UInt32
@@ -214,25 +214,25 @@ InvalidOid() = Oid(0)
     PQPING_NO_ATTEMPT,
 )
 
-const PGconn = Void
+const PGconn = Cvoid
 
-const PGresult = Void
+const PGresult = Cvoid
 
 mutable struct pg_cancel
 end
 
-const PGcancel = Void
+const PGcancel = Cvoid
 
 mutable struct pgNotify
     relname::Cstring
     be_pid::Cint
     extra::Cstring
-    next::Ptr{Void}
+    next::Ptr{Cvoid}
 end
 
-const PGnotify = Void
-const PQnoticeReceiver = Ptr{Void}
-const PQnoticeProcessor = Ptr{Void}
+const PGnotify = Cvoid
+const PQnoticeReceiver = Ptr{Cvoid}
+const PQnoticeProcessor = Ptr{Cvoid}
 const pqbool = UInt8
 
 mutable struct _PQprintOpt
@@ -248,7 +248,7 @@ mutable struct _PQprintOpt
     fieldName::Ptr{Cstring}
 end
 
-const PQprintOpt = Void
+const PQprintOpt = Cvoid
 
 struct PQconninfoOption
     keyword::Cstring
@@ -260,7 +260,7 @@ struct PQconninfoOption
     dispsize::Cint
 end
 
-const PQArgBlock = Void
+const PQArgBlock = Cvoid
 
 mutable struct pgresAttDesc
     name::Cstring
@@ -272,8 +272,8 @@ mutable struct pgresAttDesc
     atttypmod::Cint
 end
 
-const PGresAttDesc = Void
-const pgthreadlock_t = Ptr{Void}
+const PGresAttDesc = Cvoid
+const pgthreadlock_t = Ptr{Cvoid}
 
 ####################################### END COMMON #########################################
 
@@ -305,7 +305,7 @@ function PQsetdbLogin(pghost, pgport, pgoptions, pgtty, dbName, login, pwd)
 end
 
 function PQfinish(conn)
-    ccall((:PQfinish, LIBPQ_HANDLE), Void, (Ptr{PGconn},), conn)
+    ccall((:PQfinish, LIBPQ_HANDLE), Cvoid, (Ptr{PGconn},), conn)
 end
 
 function PQconndefaults()
@@ -321,7 +321,7 @@ function PQconninfo(conn)
 end
 
 function PQconninfoFree(connOptions)
-    ccall((:PQconninfoFree, LIBPQ_HANDLE), Void, (Ptr{PQconninfoOption},), connOptions)
+    ccall((:PQconninfoFree, LIBPQ_HANDLE), Cvoid, (Ptr{PQconninfoOption},), connOptions)
 end
 
 function PQresetStart(conn)
@@ -333,7 +333,7 @@ function PQresetPoll(conn)
 end
 
 function PQreset(conn)
-    ccall((:PQreset, LIBPQ_HANDLE), Void, (Ptr{PGconn},), conn)
+    ccall((:PQreset, LIBPQ_HANDLE), Cvoid, (Ptr{PGconn},), conn)
 end
 
 function PQgetCancel(conn)
@@ -341,7 +341,7 @@ function PQgetCancel(conn)
 end
 
 function PQfreeCancel(cancel)
-    ccall((:PQfreeCancel, LIBPQ_HANDLE), Void, (Ptr{PGcancel},), cancel)
+    ccall((:PQfreeCancel, LIBPQ_HANDLE), Cvoid, (Ptr{PGcancel},), cancel)
 end
 
 function PQcancel(cancel, errbuf, errbufsize::Cint)
@@ -433,7 +433,7 @@ function PQsslInUse(conn)
 end
 
 function PQsslStruct(conn, struct_name)
-    ccall((:PQsslStruct, LIBPQ_HANDLE), Ptr{Void}, (Ptr{PGconn}, Cstring), conn, struct_name)
+    ccall((:PQsslStruct, LIBPQ_HANDLE), Ptr{Cvoid}, (Ptr{PGconn}, Cstring), conn, struct_name)
 end
 
 function PQsslAttribute(conn, attribute_name)
@@ -445,15 +445,15 @@ function PQsslAttributeNames(conn)
 end
 
 function PQgetssl(conn)
-    ccall((:PQgetssl, LIBPQ_HANDLE), Ptr{Void}, (Ptr{PGconn},), conn)
+    ccall((:PQgetssl, LIBPQ_HANDLE), Ptr{Cvoid}, (Ptr{PGconn},), conn)
 end
 
 function PQinitSSL(do_init::Cint)
-    ccall((:PQinitSSL, LIBPQ_HANDLE), Void, (Cint,), do_init)
+    ccall((:PQinitSSL, LIBPQ_HANDLE), Cvoid, (Cint,), do_init)
 end
 
 function PQinitOpenSSL(do_ssl::Cint, do_crypto::Cint)
-    ccall((:PQinitOpenSSL, LIBPQ_HANDLE), Void, (Cint, Cint), do_ssl, do_crypto)
+    ccall((:PQinitOpenSSL, LIBPQ_HANDLE), Cvoid, (Cint, Cint), do_ssl, do_crypto)
 end
 
 function PQsetErrorVerbosity(conn, verbosity::PGVerbosity)
@@ -465,19 +465,19 @@ function PQsetErrorContextVisibility(conn, show_context::PGContextVisibility)
 end
 
 function PQtrace(conn, debug_port)
-    ccall((:PQtrace, LIBPQ_HANDLE), Void, (Ptr{PGconn}, Ptr{FILE}), conn, debug_port)
+    ccall((:PQtrace, LIBPQ_HANDLE), Cvoid, (Ptr{PGconn}, Ptr{FILE}), conn, debug_port)
 end
 
 function PQuntrace(conn)
-    ccall((:PQuntrace, LIBPQ_HANDLE), Void, (Ptr{PGconn},), conn)
+    ccall((:PQuntrace, LIBPQ_HANDLE), Cvoid, (Ptr{PGconn},), conn)
 end
 
 function PQsetNoticeReceiver(conn, proc::PQnoticeReceiver, arg)
-    ccall((:PQsetNoticeReceiver, LIBPQ_HANDLE), PQnoticeReceiver, (Ptr{PGconn}, PQnoticeReceiver, Ptr{Void}), conn, proc, arg)
+    ccall((:PQsetNoticeReceiver, LIBPQ_HANDLE), PQnoticeReceiver, (Ptr{PGconn}, PQnoticeReceiver, Ptr{Cvoid}), conn, proc, arg)
 end
 
 function PQsetNoticeProcessor(conn, proc::PQnoticeProcessor, arg)
-    ccall((:PQsetNoticeProcessor, LIBPQ_HANDLE), PQnoticeProcessor, (Ptr{PGconn}, PQnoticeProcessor, Ptr{Void}), conn, proc, arg)
+    ccall((:PQsetNoticeProcessor, LIBPQ_HANDLE), PQnoticeProcessor, (Ptr{PGconn}, PQnoticeProcessor, Ptr{Cvoid}), conn, proc, arg)
 end
 
 function PQregisterThreadLock(newhandler::pgthreadlock_t)
@@ -713,11 +713,11 @@ function PQsendDescribePortal(conn, portal)
 end
 
 function PQclear(res)
-    ccall((:PQclear, LIBPQ_HANDLE), Void, (Ptr{PGresult},), res)
+    ccall((:PQclear, LIBPQ_HANDLE), Cvoid, (Ptr{PGresult},), res)
 end
 
 function PQfreemem(ptr)
-    ccall((:PQfreemem, LIBPQ_HANDLE), Void, (Ptr{Void},), ptr)
+    ccall((:PQfreemem, LIBPQ_HANDLE), Cvoid, (Ptr{Cvoid},), ptr)
 end
 
 function PQmakeEmptyPGresult(conn, status::ExecStatusType)
@@ -733,7 +733,7 @@ function PQsetResultAttrs(res, numAttributes::Cint, attDescs)
 end
 
 function PQresultAlloc(res, nBytes::Csize_t)
-    ccall((:PQresultAlloc, LIBPQ_HANDLE), Ptr{Void}, (Ptr{PGresult}, Csize_t), res, nBytes)
+    ccall((:PQresultAlloc, LIBPQ_HANDLE), Ptr{Cvoid}, (Ptr{PGresult}, Csize_t), res, nBytes)
 end
 
 function PQsetvalue(res, tup_num::Cint, field_num::Cint, value, len::Cint)
@@ -769,15 +769,15 @@ function PQescapeBytea(from, from_length::Csize_t, to_length)
 end
 
 function PQprint(fout, res, ps)
-    ccall((:PQprint, LIBPQ_HANDLE), Void, (Ptr{FILE}, Ptr{PGresult}, Ptr{PQprintOpt}), fout, res, ps)
+    ccall((:PQprint, LIBPQ_HANDLE), Cvoid, (Ptr{FILE}, Ptr{PGresult}, Ptr{PQprintOpt}), fout, res, ps)
 end
 
 function PQdisplayTuples(res, fp, fillAlign::Cint, fieldSep, printHeader::Cint, quiet::Cint)
-    ccall((:PQdisplayTuples, LIBPQ_HANDLE), Void, (Ptr{PGresult}, Ptr{FILE}, Cint, Cstring, Cint, Cint), res, fp, fillAlign, fieldSep, printHeader, quiet)
+    ccall((:PQdisplayTuples, LIBPQ_HANDLE), Cvoid, (Ptr{PGresult}, Ptr{FILE}, Cint, Cstring, Cint, Cint), res, fp, fillAlign, fieldSep, printHeader, quiet)
 end
 
 function PQprintTuples(res, fout, printAttName::Cint, terseOutput::Cint, width::Cint)
-    ccall((:PQprintTuples, LIBPQ_HANDLE), Void, (Ptr{PGresult}, Ptr{FILE}, Cint, Cint, Cint), res, fout, printAttName, terseOutput, width)
+    ccall((:PQprintTuples, LIBPQ_HANDLE), Cvoid, (Ptr{PGresult}, Ptr{FILE}, Cint, Cint, Cint), res, fout, printAttName, terseOutput, width)
 end
 
 function lo_open(conn, lobjId::Oid, mode::Cint)
