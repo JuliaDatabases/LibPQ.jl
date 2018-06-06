@@ -1,8 +1,6 @@
 version: 2
 
 defaults: &DEFAULTS
-  environment:
-    PKG_NAME: LibPQ
   macos:
     xcode: "9.0"
 
@@ -11,7 +9,17 @@ test: &TEST
     - checkout
     - run:
         name: Install Julia
-        command: brew cask install julia
+        command: |
+          curl -s -L --retry 7 -o julia.dmg \
+            "https://julialang-s3.julialang.org/bin/mac/x64/$JULIA_VER/julia-$JULIA_VER-latest-mac64.dmg"
+          mkdir jlmnt
+          hdiutil mount -readonly -mountpoint jlmnt julia.dmg
+          cp -a jlmnt/*.app/Contents/Resources/julia/* ~/
+          if [ "$JULIA_VER" = "0.6" ]; then
+            ~/bin/julia -e 'versioninfo()'
+          else
+            ~/bin/julia -e 'using InteractiveUtils; versioninfo()'
+          fi
     - run:
         name: Install PostgreSQL
         command: brew install postgresql
@@ -25,13 +33,28 @@ test: &TEST
           psql -d postgres -c '\conninfo'
     - run:
         name: Build package
-        command: julia -e "Pkg.clone(pwd(), \"$PKG_NAME\"); Pkg.build(\"$PKG_NAME\")"
+        command: |
+          # TODO: Update this for Pkg3 once we have a Project file
+          ~/bin/julia -e "Pkg.clone(pwd(), \"$PKG_NAME\"); Pkg.build(\"$PKG_NAME\")"
     - run:
         name: Test package
-        command: env LIBPQJL_DATABASE_USER=$USER julia -e "Pkg.test(\"$PKG_NAME\")"
+        command: |
+          if [ "$JULIA_VER" = "0.6" ]; then
+            env LIBPQJL_DATABASE_USER=$USER ~/bin/julia -e "Pkg.test(\"$PKG_NAME\")"
+          else
+            env LIBPQJL_DATABASE_USER=$USER ~/bin/julia -e "using Pkg; Pkg.test(\"$PKG_NAME\")"
+          fi
 
 jobs:
   test_0.6:
+    environment:
+      PKG_NAME: LibPQ
+      JULIA_VER: 0.6
+    <<: [*DEFAULTS, *TEST]
+  test_0.7:
+    environment:
+      PKG_NAME: LibPQ
+      JULIA_VER: 0.7
     <<: [*DEFAULTS, *TEST]
 
 workflows:
@@ -39,3 +62,4 @@ workflows:
   test_macos:
     jobs:
       - test_0.6
+      - test_0.7
