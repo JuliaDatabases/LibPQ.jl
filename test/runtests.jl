@@ -76,7 +76,7 @@ end
         )
         @test result isa LibPQ.Result
         @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-        @test result.cleared == false
+        @test isopen(result)
         @test LibPQ.num_columns(result) == 1
         @test LibPQ.num_rows(result) == 1
         @test LibPQ.column_name(result, 1) == "typname"
@@ -86,8 +86,8 @@ end
 
         @test data[:typname][1] == "bool"
 
-        clear!(result)
-        @test result.cleared == true
+        close(result)
+        @test !isopen(result)
 
         # the same but with parameters
         result = execute(
@@ -98,7 +98,7 @@ end
         )
         @test result isa LibPQ.Result
         @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-        @test result.cleared == false
+        @test isopen(result)
         @test LibPQ.num_columns(result) == 1
         @test LibPQ.num_rows(result) == 1
         @test LibPQ.column_name(result, 1) == "typname"
@@ -107,8 +107,8 @@ end
 
         @test data[:typname][1] == "bool"
 
-        clear!(result)
-        @test result.cleared == true
+        close(result)
+        @test !isopen(result)
 
         # the same but with fetch
         data = fetch!(NamedTuple, execute(
@@ -137,7 +137,7 @@ end
             );
         """)
         @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
-        clear!(result)
+        close(result)
 
         # get the data from PostgreSQL and let DataStreams construct my NamedTuple
         result = execute(conn, """
@@ -158,7 +158,7 @@ end
         @test data[:yes_nulls][1] == "bar"
         @test data[:yes_nulls][2] === missing
 
-        clear!(result)
+        close(result)
 
         stmt = Data.stream!(
             data,
@@ -186,7 +186,7 @@ end
         @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
         @test table_data[:yes_nulls][2] === missing
 
-        clear!(result)
+        close(result)
 
         result = execute(
             conn,
@@ -197,7 +197,7 @@ end
         @test num_rows(result) == 0
         @test num_affected_rows(result) == 1
 
-        clear!(result)
+        close(result)
 
         result = execute(
             conn,
@@ -208,7 +208,7 @@ end
         @test table_data_after_delete[:no_nulls] == ["baz"]
         @test table_data_after_delete[:yes_nulls][1] === missing
 
-        clear!(result)
+        close(result)
 
         result = execute(
             conn,
@@ -220,7 +220,7 @@ end
         @test num_rows(result) == 0
         @test num_affected_rows(result) == 2
 
-        clear!(result)
+        close(result)
 
         close(conn)
     end
@@ -321,7 +321,7 @@ end
 
             @test data[1][1] === missing
 
-            clear!(result)
+            close(result)
 
             result = execute(conn, """
                 SELECT no_nulls, yes_nulls FROM (
@@ -341,7 +341,7 @@ end
             @test data[:yes_nulls][1] == "bar"
             @test data[:yes_nulls][2] === missing
 
-            clear!(result)
+            close(result)
 
             # NULL first this time, to check for errors that might come up with lazy
             # initialization of the output data vectors
@@ -364,7 +364,7 @@ end
             @test data[:yes_nulls][1] === missing
             @test data[:yes_nulls][2] == "bar"
 
-            clear!(result)
+            close(result)
             close(conn)
         end
 
@@ -380,7 +380,7 @@ end
 
             @test data[1][1] === missing
 
-            clear!(result)
+            close(result)
 
             result = execute(conn, "SELECT NULL"; not_null=true, throw_error=true)
             @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
@@ -389,7 +389,7 @@ end
 
             @test_throws ErrorException Data.stream!(result, NamedTuple)
 
-            clear!(result)
+            close(result)
 
             result = execute(conn, "SELECT NULL"; not_null=[true], throw_error=true)
             @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
@@ -398,7 +398,7 @@ end
 
             @test_throws ErrorException Data.stream!(result, NamedTuple)
 
-            clear!(result)
+            close(result)
 
             result = execute(conn, """
                 SELECT no_nulls, yes_nulls FROM (
@@ -421,7 +421,7 @@ end
             @test data[:yes_nulls][2] === missing
             @test data[:yes_nulls] isa Vector{Union{String, Missing}}
 
-            clear!(result)
+            close(result)
 
             result = execute(conn, """
                 SELECT no_nulls, yes_nulls FROM (
@@ -444,7 +444,7 @@ end
             @test data[:yes_nulls][2] === missing
             @test data[:yes_nulls] isa Vector{Union{String, Missing}}
 
-            clear!(result)
+            close(result)
         end
 
         @testset "Type Conversions" begin
@@ -475,7 +475,7 @@ end
                 @test data[:typbyval] == [true, true, false]
                 @test data[:typcategory] == ['B', 'N', 'S']
 
-                clear!(result)
+                close(result)
                 close(conn)
             end
 
@@ -566,7 +566,7 @@ end
                             @test parsed == data
                             @test typeof(parsed) == typeof(data)
                         finally
-                            clear!(result)
+                            close(result)
                         end
                     end
 
@@ -607,7 +607,7 @@ end
                             @test parsed == data
                             @test typeof(parsed) == typeof(data)
                         finally
-                            clear!(result)
+                            close(result)
                         end
                     end
 
@@ -626,8 +626,8 @@ end
                 # https://www.postgresql.org/docs/10/static/libpq-exec.html#LIBPQ-EXEC-SELECT-INFO
                 @test LibPQ.num_rows(result) == 0
                 @test LibPQ.num_columns(result) == 0
-                clear!(result)
-                @test result.cleared == true
+                close(result)
+                @test !isopen(result)
 
                 @test_throws ErrorException execute(conn, "SELORCT NUUL;"; throw_error=true)
 
@@ -644,8 +644,8 @@ end
                 # https://www.postgresql.org/docs/10/static/libpq-exec.html#LIBPQ-EXEC-SELECT-INFO
                 @test LibPQ.num_rows(result) == 0
                 @test LibPQ.num_columns(result) == 0
-                clear!(result)
-                @test result.cleared == true
+                close(result)
+                @test !isopen(result)
 
                 @test_throws ErrorException execute(
                     conn,
@@ -667,7 +667,7 @@ end
                 "SELECT typname FROM pg_type WHERE oid = \$1",
                 [16],
             )
-            clear!(result)
+            close(result)
             @test_throws ErrorException fetch!(NamedTuple, result)
 
             close(conn)
@@ -692,7 +692,7 @@ end
             @test LibPQ.column_types(result) == [LibPQ.Oid, String]
             @test LibPQ.num_rows(result) > 0
 
-            clear!(result)
+            close(result)
 
             close(conn)
         end
@@ -717,7 +717,7 @@ end
             @test data[:oid][1] == 16
             @test data[:typname][1] == "bool"
 
-            clear!(result)
+            close(result)
 
             close(conn)
         end

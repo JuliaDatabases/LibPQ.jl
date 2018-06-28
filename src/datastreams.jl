@@ -114,7 +114,7 @@ function Data.streamto!(sink::Statement, ::Type{Data.Row}, row, row_num, col_num
         end
     end
 
-    clear!(execute(sink, parameters; throw_error=true))
+    close(execute(sink, parameters; throw_error=true))
 end
 
 ### SINK END
@@ -131,12 +131,12 @@ Any trailing `args` or `kwargs` are passed to `Data.stream!`.
 `result` is cleared upon completion.
 """
 function fetch!(sink, result::Result, args...; kwargs...)
-    if result.cleared
+    if !isopen(result)
         error(LOGGER, "Cannot fetch a cleared Result")
     end
 
     data = Data.stream!(result, sink, args...; kwargs...)
-    clear!(result)
+    close(result)
     return Data.close!(data)
 end
 
