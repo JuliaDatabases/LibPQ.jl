@@ -14,7 +14,7 @@ using Compat: occursin, copyto!
     using NamedTuples
 end
 
-Memento.config("critical")
+Memento.config!("critical")
 
 const TESTSET_TYPE = VERSION < v"0.7-" ? ExtendedTestSet : Test.DefaultTestSet
 
