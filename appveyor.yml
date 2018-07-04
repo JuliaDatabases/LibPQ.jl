@@ -3,6 +3,8 @@ environment:
   matrix:
   - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x86/0.6/julia-0.6-latest-win32.exe"
   - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x64/0.6/julia-0.6-latest-win64.exe"
+  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x86/0.7/julia-0.7-latest-win32.exe"
+  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x64/0.7/julia-0.7-latest-win64.exe"
 
 services:
   - postgresql
@@ -34,9 +36,14 @@ install:
 
 build_script:
 # Need to convert from shallow to complete for Pkg.clone to work
+# TODO: Update `Pkg.clone` to be Pkg3-compatible once we have a Project file
   - IF EXIST .git\shallow (git fetch --unshallow)
-  - C:\projects\julia\bin\julia -e "versioninfo();
-      Pkg.clone(pwd(), \"LibPQ\"); Pkg.build(\"LibPQ\")"
+  - C:\projects\julia\bin\julia -e "
+        VERSION >= v\"0.7.0-DEV.3630\" && using InteractiveUtils;
+        versioninfo();
+        VERSION >= v\"0.7.0-DEV.3656\" && using Pkg;
+        Pkg.clone(pwd(), \"LibPQ\");
+        Pkg.build(\"LibPQ\")"
 
 test_script:
-- C:\projects\julia\bin\julia -e "Pkg.test(\"LibPQ\")"
+- C:\projects\julia\bin\julia -e "VERSION >= v\"0.7.0-DEV.3656\" && using Pkg; Pkg.test(\"LibPQ\")"

@@ -15,12 +15,10 @@ using LibPQ, DataStreams, NamedTuples
 conn = LibPQ.Connection("dbname=postgres")
 result = execute(conn, "SELECT typname FROM pg_type WHERE oid = 16")
 data = Data.stream!(result, NamedTuple)
-clear!(result)
 
 # the same but with parameters
 result = execute(conn, "SELECT typname FROM pg_type WHERE oid = \$1", ["16"])
 data = Data.stream!(result, NamedTuple)
-clear!(result)
 
 # the same but using `fetch!` to handle streaming and clearing
 data = fetch!(NamedTuple, execute(conn, "SELECT typname FROM pg_type WHERE oid = \$1", ["16"]))
@@ -41,7 +39,6 @@ result = execute(conn, """
         yes_nulls   varchar(10)
     );
 """)
-clear!(result)
 
 Data.stream!(
     data,

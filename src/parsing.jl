@@ -95,7 +95,7 @@ Base.String(pqv::PQValue) = unsafe_string(pqv)
 Base.parse(::Type{String}, pqv::PQValue) = unsafe_string(pqv)
 Base.convert(::Type{String}, pqv::PQValue) = String(pqv)
 Base.length(pqv::PQValue) = length(string_view(pqv))
-Base.endof(pqv::PQValue) = endof(string_view(pqv))
+Compat.lastindex(pqv::PQValue) = lastindex(string_view(pqv))
 
 # Fallback, because Base requires string iteration state to be indices into the string.
 # In an ideal world, PQValue would be an AbstractString and this particular method would
@@ -182,9 +182,9 @@ const BOOL_FALSE = r"^\s*(f|false|n|no|off|0)\s*$"i
 function Base.parse(::Type{Bool}, pqv::PQValue{PQ_SYSTEM_TYPES[:bool]})
     str = string_view(pqv)
 
-    if ismatch(BOOL_TRUE, str)
+    if occursin(BOOL_TRUE, str)
         return true
-    elseif ismatch(BOOL_FALSE, str)
+    elseif occursin(BOOL_FALSE, str)
         return false
     else
         error("\"$str\" is not a valid boolean")
@@ -252,7 +252,11 @@ end
 ## arrays
 # numeric arrays never have double quotes and always use ',' as a separator
 function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
-    eq_ind = searchindex(str, '=')
+    # TODO: Once support for Julia 0.6 is dropped, we can change this to simply
+    # eq_ind = findfirst(isequal('='), str)
+    # then change the check below to eq_ind !== nothing. The use of something is
+    # to ensure compatibility with 0.6, where findfirst always returns an Int.
+    eq_ind = something(findfirst(isequal('='), str), 0)
 
     if eq_ind > 0
         offset_str = str[1:eq_ind-1]
@@ -263,12 +267,12 @@ function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
             return parse(Int, lower):parse(Int, upper)
         end
 
-        arr = OffsetArray(T, ranges...)
+        arr = OffsetArray{T}(ranges...)
     else
-        arr = Array{T}(array_size(str)...)
+        arr = Array{T}(undef, array_size(str)...)
     end
 
-    idx_iter = imap(reverse, product(reverse(indices(arr))...))
+    idx_iter = imap(reverse, product(reverse(axes(arr))...))
     el_iter = eachmatch(r"[^\}\{,]+", str[eq_ind+1:end])
     for (idx, num_match) in zip(idx_iter, el_iter)
         arr[idx...] = parse(T, num_match.match)
@@ -278,13 +282,13 @@ function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
 end
 
 function array_size(str)
-    ndims = findfirst(c -> c != '{', str) - 1
+    ndims = something(findfirst(c -> c != '{', str), 0) - 1
     dims = zeros(Int, ndims)
 
     curr_dim = ndims
     curr_pos = ndims
     open_braces = ndims
-    last_ind = endof(str)
+    last_ind = lastindex(str)
     el_count = 0
     while curr_dim > 0 && curr_pos < last_ind
         curr_pos = nextind(str, curr_pos)

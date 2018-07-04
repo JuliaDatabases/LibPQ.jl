@@ -14,7 +14,9 @@ using Memento
 using Missings
 using OffsetArrays
 using TimeZones
-using Compat: @__MODULE__, AbstractDict
+using Compat: Compat, @__MODULE__, AbstractDict, Cvoid, axes, @compat, lastindex, replace,
+              something, undef
+import Compat.Distributed: clear!
 
 const Parameter = Union{String, Missing}
 const LOGGER = getlogger(@__MODULE__)
@@ -39,6 +41,8 @@ include(joinpath(@__DIR__, "utils.jl"))
 
 module libpq_c
     export Oid
+
+    using Compat: Cvoid
 
     include(joinpath(@__DIR__, "..", "deps", "deps.jl"))
 
@@ -72,7 +76,7 @@ LibPQ.jl.
 const LIBPQ_CONVERSIONS = PQConversions()
 
 ### CONNECTIONS BEGIN
-show_option(str::String) = string(replace(str, [' ', '\\'], s -> "\\$s"))
+show_option(str::String) = string(replace(str, [' ', '\\'] => s -> "\\$s"))
 show_option(bool::Bool) = ifelse(bool, 't', 'f')
 show_option(num::Real) = num
 
@@ -616,9 +620,6 @@ mutable struct Result <: Data.Source
     "A pointer to a libpq PGresult object (C_NULL if cleared)"
     result::Ptr{libpq_c.PGresult}
 
-    "True if the PGresult object has been cleaned up"
-    cleared::Bool
-
     "PostgreSQL Oids for each column in the result"
     column_oids::Vector{Oid}
 
@@ -634,14 +635,13 @@ mutable struct Result <: Data.Source
     # TODO: attach encoding per https://wiki.postgresql.org/wiki/Driver_development#Result_object_and_client_encoding
     function Result(
         result::Ptr{libpq_c.PGresult},
-        jl_conn::Connection,
-        cleared=false;
+        jl_conn::Connection;
         column_types::AbstractDict=ColumnTypeMap(),
         type_map::AbstractDict=PQTypeMap(),
         conversions::AbstractDict=PQConversions(),
         not_null=false,
     )
-        jl_result = new(result, cleared)
+        jl_result = new(result)
 
         column_type_map = ColumnTypeMap()
         for (k, v) in column_types
@@ -705,6 +705,10 @@ mutable struct Result <: Data.Source
             ))
         end
 
+        # NOTE: The @compat annotation is necessary for 0.6 support, where the function
+        # argument to `finalizer` comes last instead of first.
+        @compat finalizer(close, jl_result)
+
         return jl_result
     end
 end
@@ -717,7 +721,7 @@ Show a PostgreSQL result and whether it has been cleared.
 function Base.show(io::IO, jl_result::Result)
     print(io, "PostgreSQL result")
 
-    if jl_result.cleared
+    if !isopen(jl_result)
         print(io, " (cleared)")
     end
 end
@@ -745,20 +749,26 @@ function error_message(jl_result::Result)
 end
 
 """
-    clear!(jl_result::Result)
+    close(jl_result::Result)
 
 Clean up the memory used by the `PGresult` object.
 The `Result` will no longer be usable.
 """
-function Base.clear!(jl_result::Result)
-    if !jl_result.cleared
-        libpq_c.PQclear(jl_result.result)
+function Base.close(jl_result::Result)
+    ptr, jl_result.result = jl_result.result, C_NULL
+    if ptr != C_NULL
+        libpq_c.PQclear(ptr)
     end
-
-    jl_result.cleared = true
-    jl_result.result = C_NULL
     return nothing
 end
+
+"""
+    isopen(jl_result::Result)
+
+Determine whether the given `Result` has been `close`d, i.e. whether the memory
+associated with the underlying `PGresult` object has been cleared.
+"""
+Base.isopen(jl_result::Result) = jl_result.result != C_NULL
 
 """
     handle_result(jl_result::Result; throw_error::Bool=true) -> Result
@@ -777,7 +787,7 @@ function handle_result(jl_result::Result; throw_error::Bool=true)
 
     if result_status in (libpq_c.PGRES_BAD_RESPONSE, libpq_c.PGRES_FATAL_ERROR)
         if throw_error
-            libpq_c.PQclear(jl_result.result)
+            close(jl_result)
             error(LOGGER, err_msg)
         else
             warn(LOGGER, err_msg)
@@ -886,7 +896,7 @@ Given a vector of parameters, returns a vector of pointers to either the string 
 original or `C_NULL` if the element is `missing`.
 """
 function parameter_pointers(parameters::AbstractVector{<:Parameter})
-    pointers = Vector{Ptr{UInt8}}(length(parameters))
+    pointers = Vector{Ptr{UInt8}}(undef, length(parameters))
 
     map!(pointers, parameters) do parameter
         ismissing(parameter) ? C_NULL : pointer(parameter)
@@ -1053,7 +1063,7 @@ function prepare(jl_conn::Connection, query::AbstractString)
         throw_error=true,
     )
 
-    clear!(jl_result)
+    close(jl_result)
 
     description = handle_result(
         Result(libpq_c.PQdescribePrepared(
@@ -1169,5 +1179,7 @@ end
 
 include("parsing.jl")
 include("datastreams.jl")
+
+Base.@deprecate clear!(jl_result::Result) close(jl_result)
 
 end

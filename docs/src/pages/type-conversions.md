@@ -7,8 +7,8 @@ Luckily, it should be easy to *use* for whichever case you need.
 ```@meta
 DocTestSetup = quote
     using LibPQ
-    using NamedTuples
     using DataFrames
+    isdefined(Base, :NamedTuple) || using NamedTuples
 
     DATABASE_USER = get(ENV, "LIBPQJL_DATABASE_USER", "postgres")
     conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")

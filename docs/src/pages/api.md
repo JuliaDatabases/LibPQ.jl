@@ -26,7 +26,8 @@ Base.show(::IO, ::LibPQ.Connection)
 ```@docs
 LibPQ.Result
 status(::LibPQ.Result)
-clear!(::LibPQ.Result)
+Base.close(::LibPQ.Result)
+Base.isopen(::LibPQ.Result)
 num_rows(::LibPQ.Result)
 num_columns(::LibPQ.Result)
 Base.show(::IO, ::LibPQ.Result)

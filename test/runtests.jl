@@ -1,19 +1,20 @@
 using LibPQ
-using Compat: Test
-
-import Compat: @__MODULE__
+using Compat.Test
 using Compat.Dates
 using DataStreams
 using Decimals
 using Memento
 using Missings
-using NamedTuples
 using OffsetArrays
 using TestSetExtensions
 using TimeZones
+using Compat: occursin, copyto!
 
+@static if !isdefined(Base, :NamedTuple)
+    using NamedTuples
+end
 
-Memento.config("critical")
+Memento.config!("critical")
 
 const TESTSET_TYPE = VERSION < v"0.7-" ? ExtendedTestSet : Test.DefaultTestSet
 
@@ -55,7 +56,7 @@ end
 end
 
 @testset "Online" begin
-    const DATABASE_USER = get(ENV, "LIBPQJL_DATABASE_USER", "postgres")
+    DATABASE_USER = get(ENV, "LIBPQJL_DATABASE_USER", "postgres")
 
     @testset "Example SELECT" begin
         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=false)
@@ -65,8 +66,8 @@ end
         @test conn.closed == false
 
         text_display = sprint(show, conn)
-        @test contains(text_display, "dbname = postgres")
-        @test contains(text_display, "user = $DATABASE_USER")
+        @test occursin("dbname = postgres", text_display)
+        @test occursin("user = $DATABASE_USER", text_display)
 
         result = execute(
             conn,
@@ -75,7 +76,7 @@ end
         )
         @test result isa LibPQ.Result
         @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-        @test result.cleared == false
+        @test isopen(result)
         @test LibPQ.num_columns(result) == 1
         @test LibPQ.num_rows(result) == 1
         @test LibPQ.column_name(result, 1) == "typname"
@@ -85,8 +86,8 @@ end
 
         @test data[:typname][1] == "bool"
 
-        clear!(result)
-        @test result.cleared == true
+        close(result)
+        @test !isopen(result)
 
         # the same but with parameters
         result = execute(
@@ -97,7 +98,7 @@ end
         )
         @test result isa LibPQ.Result
         @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-        @test result.cleared == false
+        @test isopen(result)
         @test LibPQ.num_columns(result) == 1
         @test LibPQ.num_rows(result) == 1
         @test LibPQ.column_name(result, 1) == "typname"
@@ -106,8 +107,8 @@ end
 
         @test data[:typname][1] == "bool"
 
-        clear!(result)
-        @test result.cleared == true
+        close(result)
+        @test !isopen(result)
 
         # the same but with fetch
         data = fetch!(NamedTuple, execute(
@@ -123,7 +124,7 @@ end
         @test conn.closed == true
 
         text_display_closed = sprint(show, conn)
-        @test contains(text_display_closed, "closed")
+        @test occursin("closed", text_display_closed)
     end
 
     @testset "Example INSERT and DELETE" begin
@@ -136,7 +137,7 @@ end
             );
         """)
         @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
-        clear!(result)
+        close(result)
 
         # get the data from PostgreSQL and let DataStreams construct my NamedTuple
         result = execute(conn, """
@@ -157,7 +158,7 @@ end
         @test data[:yes_nulls][1] == "bar"
         @test data[:yes_nulls][2] === missing
 
-        clear!(result)
+        close(result)
 
         stmt = Data.stream!(
             data,
@@ -185,7 +186,7 @@ end
         @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
         @test table_data[:yes_nulls][2] === missing
 
-        clear!(result)
+        close(result)
 
         result = execute(
             conn,
@@ -196,7 +197,7 @@ end
         @test num_rows(result) == 0
         @test num_affected_rows(result) == 1
 
-        clear!(result)
+        close(result)
 
         result = execute(
             conn,
@@ -207,7 +208,7 @@ end
         @test table_data_after_delete[:no_nulls] == ["baz"]
         @test table_data_after_delete[:yes_nulls][1] === missing
 
-        clear!(result)
+        close(result)
 
         result = execute(
             conn,
@@ -219,7 +220,7 @@ end
         @test num_rows(result) == 0
         @test num_affected_rows(result) == 2
 
-        clear!(result)
+        close(result)
 
         close(conn)
     end
@@ -320,7 +321,7 @@ end
 
             @test data[1][1] === missing
 
-            clear!(result)
+            close(result)
 
             result = execute(conn, """
                 SELECT no_nulls, yes_nulls FROM (
@@ -340,7 +341,7 @@ end
             @test data[:yes_nulls][1] == "bar"
             @test data[:yes_nulls][2] === missing
 
-            clear!(result)
+            close(result)
 
             # NULL first this time, to check for errors that might come up with lazy
             # initialization of the output data vectors
@@ -363,7 +364,7 @@ end
             @test data[:yes_nulls][1] === missing
             @test data[:yes_nulls][2] == "bar"
 
-            clear!(result)
+            close(result)
             close(conn)
         end
 
@@ -379,7 +380,7 @@ end
 
             @test data[1][1] === missing
 
-            clear!(result)
+            close(result)
 
             result = execute(conn, "SELECT NULL"; not_null=true, throw_error=true)
             @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
@@ -388,7 +389,7 @@ end
 
             @test_throws ErrorException Data.stream!(result, NamedTuple)
 
-            clear!(result)
+            close(result)
 
             result = execute(conn, "SELECT NULL"; not_null=[true], throw_error=true)
             @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
@@ -397,7 +398,7 @@ end
 
             @test_throws ErrorException Data.stream!(result, NamedTuple)
 
-            clear!(result)
+            close(result)
 
             result = execute(conn, """
                 SELECT no_nulls, yes_nulls FROM (
@@ -420,7 +421,7 @@ end
             @test data[:yes_nulls][2] === missing
             @test data[:yes_nulls] isa Vector{Union{String, Missing}}
 
-            clear!(result)
+            close(result)
 
             result = execute(conn, """
                 SELECT no_nulls, yes_nulls FROM (
@@ -443,7 +444,7 @@ end
             @test data[:yes_nulls][2] === missing
             @test data[:yes_nulls] isa Vector{Union{String, Missing}}
 
-            clear!(result)
+            close(result)
         end
 
         @testset "Type Conversions" begin
@@ -466,14 +467,15 @@ end
 
                 data = Data.stream!(result, NamedTuple)
 
-                @test map(eltype, values(data)) == map(T -> Union{T, Missing}, [LibPQ.Oid, String, Int16, Bool, LibPQ.PQChar])
+                @test map(eltype, collect(values(data))) ==
+                    map(T -> Union{T, Missing}, [LibPQ.Oid, String, Int16, Bool, LibPQ.PQChar])
                 @test data[:oid] == LibPQ.Oid[LibPQ.PQ_SYSTEM_TYPES[t] for t in (:bool, :int8, :text)]
                 @test data[:typname] == ["bool", "int8", "text"]
                 @test data[:typlen] == [1, 8, -1]
                 @test data[:typbyval] == [true, true, false]
                 @test data[:typcategory] == ['B', 'N', 'S']
 
-                clear!(result)
+                close(result)
                 close(conn)
             end
 
@@ -541,13 +543,13 @@ end
                         ("'{{{1,2,3},{4,5,6}}}'::float8[]", reshape(Float64[1 2 3; 4 5 6], 1, 2, 3)),
                         ("'{{{1,2,3},{4,5,6}}}'::oid[]", reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3)),
                         ("'{{{1,2,3},{4,5,6}}}'::numeric[]", reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3)),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copy!(OffsetArray(Int16, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copy!(OffsetArray(Int32, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copy!(OffsetArray(Int64, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copy!(OffsetArray(Float32, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copy!(OffsetArray(Float64, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copy!(OffsetArray(LibPQ.Oid, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copy!(OffsetArray(Decimal, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copyto!(OffsetArray{Int16}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copyto!(OffsetArray{Int32}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copyto!(OffsetArray{Int64}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copyto!(OffsetArray{Float32}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copyto!(OffsetArray{Float64}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copyto!(OffsetArray{LibPQ.Oid}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copyto!(OffsetArray{Decimal}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                     ]
 
                     for (test_str, data) in test_data
@@ -564,7 +566,7 @@ end
                             @test parsed == data
                             @test typeof(parsed) == typeof(data)
                         finally
-                            clear!(result)
+                            close(result)
                         end
                     end
 
@@ -605,7 +607,7 @@ end
                             @test parsed == data
                             @test typeof(parsed) == typeof(data)
                         finally
-                            clear!(result)
+                            close(result)
                         end
                     end
 
@@ -624,8 +626,8 @@ end
                 # https://www.postgresql.org/docs/10/static/libpq-exec.html#LIBPQ-EXEC-SELECT-INFO
                 @test LibPQ.num_rows(result) == 0
                 @test LibPQ.num_columns(result) == 0
-                clear!(result)
-                @test result.cleared == true
+                close(result)
+                @test !isopen(result)
 
                 @test_throws ErrorException execute(conn, "SELORCT NUUL;"; throw_error=true)
 
@@ -642,8 +644,8 @@ end
                 # https://www.postgresql.org/docs/10/static/libpq-exec.html#LIBPQ-EXEC-SELECT-INFO
                 @test LibPQ.num_rows(result) == 0
                 @test LibPQ.num_columns(result) == 0
-                clear!(result)
-                @test result.cleared == true
+                close(result)
+                @test !isopen(result)
 
                 @test_throws ErrorException execute(
                     conn,
@@ -665,7 +667,7 @@ end
                 "SELECT typname FROM pg_type WHERE oid = \$1",
                 [16],
             )
-            clear!(result)
+            close(result)
             @test_throws ErrorException fetch!(NamedTuple, result)
 
             close(conn)
@@ -690,7 +692,7 @@ end
             @test LibPQ.column_types(result) == [LibPQ.Oid, String]
             @test LibPQ.num_rows(result) > 0
 
-            clear!(result)
+            close(result)
 
             close(conn)
         end
@@ -715,7 +717,7 @@ end
             @test data[:oid][1] == 16
             @test data[:typname][1] == "bool"
 
-            clear!(result)
+            close(result)
 
             close(conn)
         end
