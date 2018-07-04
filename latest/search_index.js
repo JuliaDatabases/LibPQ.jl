@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Selection",
     "category": "section",
-    "text": "using LibPQ, DataStreams, NamedTuples\n\nconn = LibPQ.Connection(\"dbname=postgres\")\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = 16\")\ndata = Data.stream!(result, NamedTuple)\nclear!(result)\n\n# the same but with parameters\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"])\ndata = Data.stream!(result, NamedTuple)\nclear!(result)\n\n# the same but using `fetch!` to handle streaming and clearing\ndata = fetch!(NamedTuple, execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"]))\n\nclose(conn)"
+    "text": "using LibPQ, DataStreams, NamedTuples\n\nconn = LibPQ.Connection(\"dbname=postgres\")\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = 16\")\ndata = Data.stream!(result, NamedTuple)\n\n# the same but with parameters\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"])\ndata = Data.stream!(result, NamedTuple)\n\n# the same but using `fetch!` to handle streaming and clearing\ndata = fetch!(NamedTuple, execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"]))\n\nclose(conn)"
 },
 
 {
@@ -37,7 +37,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Insertion",
     "category": "section",
-    "text": "using LibPQ, DataStreams\n\nconn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\n\nresult = execute(conn, \"\"\"\n    CREATE TEMPORARY TABLE libpqjl_test (\n        no_nulls    varchar(10) PRIMARY KEY,\n        yes_nulls   varchar(10)\n    );\n\"\"\")\nclear!(result)\n\nData.stream!(\n    data,\n    LibPQ.Statement,\n    conn,\n    \"INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\$1, \\$2);\",\n)\n\nclose(conn)"
+    "text": "using LibPQ, DataStreams\n\nconn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\n\nresult = execute(conn, \"\"\"\n    CREATE TEMPORARY TABLE libpqjl_test (\n        no_nulls    varchar(10) PRIMARY KEY,\n        yes_nulls   varchar(10)\n    );\n\"\"\")\n\nData.stream!(\n    data,\n    LibPQ.Statement,\n    conn,\n    \"INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\$1, \\$2);\",\n)\n\nclose(conn)"
 },
 
 {
@@ -53,7 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Type Conversions",
     "title": "Type Conversions",
     "category": "section",
-    "text": "The implementation of type conversions across the LibPQ.jl interface is sufficiently complicated that it warrants its own section in the documentation. Luckily, it should be easy to use for whichever case you need.DocTestSetup = quote\n    using LibPQ\n    using NamedTuples\n    using DataFrames\n\n    DATABASE_USER = get(ENV, \"LIBPQJL_DATABASE_USER\", \"postgres\")\n    conn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\nend"
+    "text": "The implementation of type conversions across the LibPQ.jl interface is sufficiently complicated that it warrants its own section in the documentation. Luckily, it should be easy to use for whichever case you need.DocTestSetup = quote\n    using LibPQ\n    using DataFrames\n    isdefined(Base, :NamedTuple) || using NamedTuples\n\n    DATABASE_USER = get(ENV, \"LIBPQJL_DATABASE_USER\", \"postgres\")\n    conn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\nend"
 },
 
 {
@@ -237,7 +237,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.Result",
     "category": "type",
-    "text": "type Result <: DataStreams.Data.Source\n\nA result from a PostgreSQL database query\n\nFields:\n\nresult\nA pointer to a libpq PGresult object (C_NULL if cleared)\ncleared\nTrue if the PGresult object has been cleaned up\ncolumn_oids\nPostgreSQL Oids for each column in the result\ncolumn_types\nJulia types for each column in the result\nnot_null\nWhether to expect NULL for each column (whether output data can have missing)\ncolumn_funcs\nConversions from PostgreSQL data to Julia types for each column in the result\n\n\n\n"
+    "text": "type Result <: DataStreams.Data.Source\n\nA result from a PostgreSQL database query\n\nFields:\n\nresult\nA pointer to a libpq PGresult object (C_NULL if cleared)\ncolumn_oids\nPostgreSQL Oids for each column in the result\ncolumn_types\nJulia types for each column in the result\nnot_null\nWhether to expect NULL for each column (whether output data can have missing)\ncolumn_funcs\nConversions from PostgreSQL data to Julia types for each column in the result\n\n\n\n"
 },
 
 {
@@ -249,11 +249,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.Distributed.clear!-Tuple{LibPQ.Result}",
+    "location": "pages/api.html#Base.close-Tuple{LibPQ.Result}",
     "page": "API",
-    "title": "Base.Distributed.clear!",
+    "title": "Base.close",
     "category": "method",
-    "text": "clear!(jl_result::Result)\n\nClean up the memory used by the PGresult object. The Result will no longer be usable.\n\n\n\n"
+    "text": "close(jl_result::Result)\n\nClean up the memory used by the PGresult object. The Result will no longer be usable.\n\n\n\n"
+},
+
+{
+    "location": "pages/api.html#Base.isopen-Tuple{LibPQ.Result}",
+    "page": "API",
+    "title": "Base.isopen",
+    "category": "method",
+    "text": "isopen(jl_result::Result)\n\nDetermine whether the given Result has been closed, i.e. whether the memory associated with the underlying PGresult object has been cleared.\n\n\n\n"
 },
 
 {
@@ -285,7 +293,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "Results",
     "category": "section",
-    "text": "LibPQ.Result\nstatus(::LibPQ.Result)\nclear!(::LibPQ.Result)\nnum_rows(::LibPQ.Result)\nnum_columns(::LibPQ.Result)\nBase.show(::IO, ::LibPQ.Result)"
+    "text": "LibPQ.Result\nstatus(::LibPQ.Result)\nBase.close(::LibPQ.Result)\nBase.isopen(::LibPQ.Result)\nnum_rows(::LibPQ.Result)\nnum_columns(::LibPQ.Result)\nBase.show(::IO, ::LibPQ.Result)"
 },
 
 {

@@ -4,12 +4,10 @@
 conn = LibPQ.Connection(&quot;dbname=postgres&quot;)
 result = execute(conn, &quot;SELECT typname FROM pg_type WHERE oid = 16&quot;)
 data = Data.stream!(result, NamedTuple)
-clear!(result)
 
 # the same but with parameters
 result = execute(conn, &quot;SELECT typname FROM pg_type WHERE oid = \$1&quot;, [&quot;16&quot;])
 data = Data.stream!(result, NamedTuple)
-clear!(result)
 
 # the same but using `fetch!` to handle streaming and clearing
 data = fetch!(NamedTuple, execute(conn, &quot;SELECT typname FROM pg_type WHERE oid = \$1&quot;, [&quot;16&quot;]))
@@ -24,7 +22,6 @@ result = execute(conn, &quot;&quot;&quot;
         yes_nulls   varchar(10)
     );
 &quot;&quot;&quot;)
-clear!(result)
 
 Data.stream!(
     data,
