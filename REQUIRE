@@ -1,6 +1,6 @@
 julia 0.6
 BinaryProvider 0.2.5
-Compat 0.41
+Compat 0.70.0
 DataStreams 0.3.1
 DocStringExtensions
 Decimals 0.2.1

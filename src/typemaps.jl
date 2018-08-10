@@ -186,9 +186,14 @@ function Base.setindex!(tmap::PQTypeMap, val::Type, typ)
     setindex!(tmap.type_map, val, oid(typ))
 end
 
-Base.start(tmap::PQTypeMap) = start(tmap.type_map)
-Base.next(tmap::PQTypeMap, state) = next(tmap.type_map, state)
-Base.done(tmap::PQTypeMap, state) = done(tmap.type_map, state)
+if VERSION >= v"0.7.0-DEV.5125"
+    Base.iterate(tmap::PQTypeMap) = iterate(tmap.type_map)
+    Base.iterate(tmap::PQTypeMap, i) = iterate(tmap.type_map, i)
+else
+    Base.start(tmap::PQTypeMap) = start(tmap.type_map)
+    Base.next(tmap::PQTypeMap, state) = next(tmap.type_map, state)
+    Base.done(tmap::PQTypeMap, state) = done(tmap.type_map, state)
+end
 
 Base.length(tmap::PQTypeMap) = length(tmap.type_mapp)
 Base.keys(tmap::PQTypeMap) = keys(tmap.type_map)
@@ -243,9 +248,14 @@ function Base.setindex!(
     setindex!(cmap.func_map, val, (oid(oid_typ[1]), oid_typ[2]))
 end
 
-Base.start(cmap::PQConversions) = start(cmap.func_map)
-Base.next(cmap::PQConversions, state) = next(cmap.func_map, state)
-Base.done(cmap::PQConversions, state) = done(cmap.func_map, state)
+if VERSION >= v"0.7.0-DEV.5125"
+    Base.iterate(cmap::PQConversions) = iterate(cmap.func_map)
+    Base.iterate(cmap::PQConversions, i) = iterate(cmap.func_map, i)
+else
+    Base.start(cmap::PQConversions) = start(cmap.func_map)
+    Base.next(cmap::PQConversions, state) = next(cmap.func_map, state)
+    Base.done(cmap::PQConversions, state) = done(cmap.func_map, state)
+end
 
 Base.length(cmap::PQConversions) = length(cmap.func_map)
 Base.keys(cmap::PQConversions) = keys(cmap.func_map)

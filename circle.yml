@@ -56,6 +56,11 @@ jobs:
       PKG_NAME: LibPQ
       JULIA_VER: 0.7
     <<: [*DEFAULTS, *TEST]
+  test_1.0:
+    environment:
+      PKG_NAME: LibPQ
+      JULIA_VER: 1.0
+    <<: [*DEFAULTS, *TEST]
 
 workflows:
   version: 2
@@ -63,3 +68,4 @@ workflows:
     jobs:
       - test_0.6
       - test_0.7
+      - test_1.0
