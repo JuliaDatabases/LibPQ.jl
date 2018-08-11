@@ -1,3 +1,5 @@
+VERSION < v"0.7.0-beta2.199" && __precompile__()
+
 module LibPQ
 
 export status, reset!, execute, clear, fetch!, prepare,
