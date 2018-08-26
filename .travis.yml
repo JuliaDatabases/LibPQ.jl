@@ -43,5 +43,5 @@ notifications:
 #      "
 after_success:
   - julia -e 'import Pkg, LibPQ; cd(joinpath(dirname(pathof(LibPQ)),"..")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
-  - julia -e 'import Pkg; Pkg.add("Documenter")'
+  - julia -e 'import Pkg; Pkg.add("Documenter"); Pkg.add("DataFrames");'
   - julia -e 'import LibPQ; cd(joinpath(dirname(pathof(LibPQ)),"..")); include(joinpath("docs", "make.jl"))'
