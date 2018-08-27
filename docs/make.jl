@@ -17,7 +17,7 @@ makedocs(;
 deploydocs(;
     repo="github.com/invenia/LibPQ.jl",
     target="build",
-    julia="0.6",
+    julia="1.0",
     deps=nothing,
     make=nothing,
 )
