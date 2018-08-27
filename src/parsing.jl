@@ -112,20 +112,34 @@ Base.parse(::Type{T}, pqv::PQValue) where {T} = parse(T, string_view(pqv))
 # allow parsing as a Symbol anything which works as a String
 Base.parse(::Type{Symbol}, pqv::PQValue) = Symbol(string_view(pqv))
 
-function Base.start(pqv::PQValue)
-    sv = string_view(pqv)
-    return (sv, start(sv))
-end
+if VERSION >= v"0.7.0-DEV.5125"
+    function Base.iterate(pqv::PQValue)
+        sv = string_view(pqv)
+        iterate(pqv, (sv, ()))
+    end
+    function Base.iterate(pqv::PQValue, state)
+        sv, i = state
+        iter = iterate(sv, i...)
+        iter === nothing && return nothing
+        c, new_sv_state = iter
+        return (c, (sv, (new_sv_state,)))
+    end
+else
+    function Base.start(pqv::PQValue)
+        sv = string_view(pqv)
+        return (sv, start(sv))
+    end
 
-function Base.next(pqv::PQValue, state)
-    sv, sv_state = state
-    c, new_sv_state = next(sv, sv_state)
-    return c, (sv, new_sv_state)
-end
+    function Base.next(pqv::PQValue, state)
+        sv, sv_state = state
+        c, new_sv_state = next(sv, sv_state)
+        return c, (sv, new_sv_state)
+    end
 
-function Base.done(pqv::PQValue, state)
-    sv, sv_state = state
-    return done(sv, sv_state)
+    function Base.done(pqv::PQValue, state)
+        sv, sv_state = state
+        return done(sv, sv_state)
+    end
 end
 
 ## integers
@@ -206,7 +220,7 @@ function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timestamp]})
 
     # Cut off digits after the third after the decimal point,
     # since DateTime in Julia currently handles only milliseconds, see Issue #33
-    str = replace(str, r"(\.[\d]{3})\d+", s"\g<1>")
+    str = replace(str, r"(\.[\d]{3})\d+" => s"\g<1>")
     return parse(DateTime, str, TIMESTAMP_FORMAT)
 end
 
@@ -236,7 +250,7 @@ function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timesta
     end
     # Cut off digits after the third after the decimal point,
     # since DateTime in Julia currently handles only milliseconds, see Issue #33
-    str = replace(str, r"(\.[\d]{3})\d+", s"\g<1>")
+    str = replace(str, r"(\.[\d]{3})\d+" => s"\g<1>")
     return parse(ZonedDateTime, str, TIMESTAMPTZ_FORMATS[end])
 end
 
@@ -260,14 +274,14 @@ function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
 
     if eq_ind > 0
         offset_str = str[1:eq_ind-1]
-        range_strs = split(str[1:eq_ind-1], ['[',']']; keep=false)
+        range_strs = split(str[1:eq_ind-1], ['[',']']; keepempty=false)
 
         ranges = map(range_strs) do range_str
             lower, upper = split(range_str, ':'; limit=2)
             return parse(Int, lower):parse(Int, upper)
         end
 
-        arr = OffsetArray{T}(ranges...)
+        arr = OffsetArray{T}(undef, ranges...)
     else
         arr = Array{T}(undef, array_size(str)...)
     end

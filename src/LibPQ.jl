@@ -1,3 +1,5 @@
+VERSION < v"0.7.0-beta2.199" && __precompile__()
+
 module LibPQ
 
 export status, reset!, execute, clear, fetch!, prepare,
@@ -10,12 +12,12 @@ using DataStreams
 using Base.Iterators: zip, product
 using IterTools: imap
 using LayerDicts
-using Memento
+using Memento: Memento, getlogger, warn, info, error
 using Missings
 using OffsetArrays
 using TimeZones
 using Compat: Compat, @__MODULE__, AbstractDict, Cvoid, axes, @compat, lastindex, replace,
-              something, undef
+              something, undef, occursin, split
 import Compat.Distributed: clear!
 
 const Parameter = Union{String, Missing}

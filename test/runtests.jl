@@ -6,9 +6,11 @@ using Decimals
 using Memento
 using Missings
 using OffsetArrays
-using TestSetExtensions
+if VERSION < v"0.7-"
+    using TestSetExtensions
+end
 using TimeZones
-using Compat: occursin, copyto!
+using Compat: occursin, copyto!, undef
 
 @static if !isdefined(Base, :NamedTuple)
     using NamedTuples
@@ -543,13 +545,13 @@ end
                         ("'{{{1,2,3},{4,5,6}}}'::float8[]", reshape(Float64[1 2 3; 4 5 6], 1, 2, 3)),
                         ("'{{{1,2,3},{4,5,6}}}'::oid[]", reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3)),
                         ("'{{{1,2,3},{4,5,6}}}'::numeric[]", reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3)),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copyto!(OffsetArray{Int16}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copyto!(OffsetArray{Int32}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copyto!(OffsetArray{Int64}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copyto!(OffsetArray{Float32}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copyto!(OffsetArray{Float64}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copyto!(OffsetArray{LibPQ.Oid}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copyto!(OffsetArray{Decimal}(1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copyto!(OffsetArray{Int16}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copyto!(OffsetArray{Int32}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copyto!(OffsetArray{Int64}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copyto!(OffsetArray{Float32}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copyto!(OffsetArray{Float64}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copyto!(OffsetArray{LibPQ.Oid}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copyto!(OffsetArray{Decimal}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                     ]
 
                     for (test_str, data) in test_data
