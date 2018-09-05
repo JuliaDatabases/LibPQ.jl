@@ -799,7 +799,7 @@ function handle_result(jl_result::Result; throw_error::Bool=true)
             warn(LOGGER, err_msg)
         end
 
-        info(LOGGER, unsafe_string(libpq_c.PQcmdStatus(jl_result.result)))
+        debug(LOGGER, unsafe_string(libpq_c.PQcmdStatus(jl_result.result)))
     end
 
     return jl_result
