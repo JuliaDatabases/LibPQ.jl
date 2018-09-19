@@ -12,7 +12,7 @@ using DataStreams
 using Base.Iterators: zip, product
 using IterTools: imap
 using LayerDicts
-using Memento: Memento, getlogger, warn, info, error
+using Memento: Memento, getlogger, warn, info, error, debug
 using Missings
 using OffsetArrays
 using TimeZones
