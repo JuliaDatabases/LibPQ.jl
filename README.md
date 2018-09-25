@@ -57,46 +57,6 @@ This package may not:
 
 While I may never get to any of these, I welcome tested, documented contributions!
 
-## Requirements
-
-To use this package you must have `libpq` installed somewhere accessible from Julia such that you can run `dlopen(:libpq)`.
-`Pkg.build("LibPQ")` should handle this, but in case it doesn't, here are instructions for several package managers:
-
-### macOS (Homebrew)
-
-```sh
-brew install libpq
-```
-
-### Ubuntu/Debian (Apt)
-
-```sh
-apt install libpq5
-```
-
-### CentOS (Yum)
-
-```sh
-yum install postgresql-libs
-```
-
-### Amazon Linux (Yum)
-
-```sh
-yum install postgresql94-libs  # or another version
-```
-
-### Arch Linux (Pacman)
-
-```sh
-pacman -S postgresql-libs
-```
-
-### Windows
-
-Install PostgreSQL from [here](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads) or build it yourself.
-Then find `libpq.dll` and make sure it's available for Julia to load.
-
 ## Licenses
 
 ### `libpq` Source and PostgreSQL Documentation
