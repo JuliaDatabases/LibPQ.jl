@@ -49,3 +49,23 @@ Data.stream!(
 
 close(conn)
 ```
+
+#### A Note on Bulk Insertion
+
+When inserting a large number of rows, wrapping your insert queries in a transaction will greatly increase performance.
+See the PostgreSQL documentation [14.4.1. Disable Autocommit](https://www.postgresql.org/docs/10/static/populate.html#DISABLE-AUTOCOMMIT) for more information.
+
+Concretely, this means surrounding your query like this:
+
+```julia
+execute(conn, "BEGIN;")
+
+Data.stream!(
+    data,
+    LibPQ.Statement,
+    conn,
+    "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
+)
+
+execute(conn, "COMMIT;")
+```

@@ -30,6 +30,7 @@ Base.close(::LibPQ.Result)
 Base.isopen(::LibPQ.Result)
 num_rows(::LibPQ.Result)
 num_columns(::LibPQ.Result)
+num_affected_rows(::LibPQ.Result)
 Base.show(::IO, ::LibPQ.Result)
 ```
 
