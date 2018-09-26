@@ -6,9 +6,6 @@ using Decimals
 using Memento
 using Missings
 using OffsetArrays
-if VERSION < v"0.7-"
-    using TestSetExtensions
-end
 using TimeZones
 using Compat: occursin, copyto!, undef
 
@@ -18,9 +15,7 @@ end
 
 Memento.config!("critical")
 
-const TESTSET_TYPE = VERSION < v"0.7-" ? ExtendedTestSet : Test.DefaultTestSet
-
-@testset TESTSET_TYPE "LibPQ" begin
+@testset "LibPQ" begin
 
 @testset "ConninfoDisplay" begin
     @test parse(LibPQ.ConninfoDisplay, "") == LibPQ.Normal
