@@ -30,4 +30,13 @@ Data.stream!(
     &quot;INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);&quot;,
 )
 
-close(conn)</code></pre><footer><hr/><a class="next" href="pages/type-conversions.html"><span class="direction">Next</span><span class="title">Type Conversions</span></a></footer></article></body></html>
+close(conn)</code></pre><h4><a class="nav-anchor" id="A-Note-on-Bulk-Insertion-1" href="#A-Note-on-Bulk-Insertion-1">A Note on Bulk Insertion</a></h4><p>When inserting a large number of rows, wrapping your insert queries in a transaction will greatly increase performance. See the PostgreSQL documentation <a href="https://www.postgresql.org/docs/10/static/populate.html#DISABLE-AUTOCOMMIT">14.4.1. Disable Autocommit</a> for more information.</p><p>Concretely, this means surrounding your query like this:</p><pre><code class="language-julia">execute(conn, &quot;BEGIN;&quot;)
+
+Data.stream!(
+    data,
+    LibPQ.Statement,
+    conn,
+    &quot;INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);&quot;,
+)
+
+execute(conn, &quot;COMMIT;&quot;)</code></pre><footer><hr/><a class="next" href="pages/type-conversions.html"><span class="direction">Next</span><span class="title">Type Conversions</span></a></footer></article></body></html>

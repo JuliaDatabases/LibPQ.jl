@@ -41,6 +41,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "index.html#A-Note-on-Bulk-Insertion-1",
+    "page": "Home",
+    "title": "A Note on Bulk Insertion",
+    "category": "section",
+    "text": "When inserting a large number of rows, wrapping your insert queries in a transaction will greatly increase performance. See the PostgreSQL documentation 14.4.1. Disable Autocommit for more information.Concretely, this means surrounding your query like this:execute(conn, \"BEGIN;\")\n\nData.stream!(\n    data,\n    LibPQ.Statement,\n    conn,\n    \"INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\$1, \\$2);\",\n)\n\nexecute(conn, \"COMMIT;\")"
+},
+
+{
     "location": "pages/type-conversions.html#",
     "page": "Type Conversions",
     "title": "Type Conversions",
@@ -281,6 +289,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "pages/api.html#LibPQ.num_affected_rows-Tuple{LibPQ.Result}",
+    "page": "API",
+    "title": "LibPQ.num_affected_rows",
+    "category": "method",
+    "text": "num_affected_rows(jl_result::Result) -> Int\n\nReturn the number of rows affected by the command returning the result. This is useful for counting the rows affected by operations such as INSERT, UPDATE and DELETE that do not return rows but affect them. This will be 0 if the query does not affect any row.\n\n\n\n\n\n"
+},
+
+{
     "location": "pages/api.html#Base.show-Tuple{IO,LibPQ.Result}",
     "page": "API",
     "title": "Base.show",
@@ -293,7 +309,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "Results",
     "category": "section",
-    "text": "LibPQ.Result\nstatus(::LibPQ.Result)\nBase.close(::LibPQ.Result)\nBase.isopen(::LibPQ.Result)\nnum_rows(::LibPQ.Result)\nnum_columns(::LibPQ.Result)\nBase.show(::IO, ::LibPQ.Result)"
+    "text": "LibPQ.Result\nstatus(::LibPQ.Result)\nBase.close(::LibPQ.Result)\nBase.isopen(::LibPQ.Result)\nnum_rows(::LibPQ.Result)\nnum_columns(::LibPQ.Result)\nnum_affected_rows(::LibPQ.Result)\nBase.show(::IO, ::LibPQ.Result)"
 },
 
 {
