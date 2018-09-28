@@ -1,8 +1,10 @@
 using LibPQ
 using Compat.Test
 using Compat.Dates
+using DataFrames
 using DataStreams
 using Decimals
+using IterTools: imap
 using Memento
 using Missings
 using OffsetArrays
@@ -217,6 +219,50 @@ end
         @test num_rows(result) == 0
         @test num_affected_rows(result) == 2
 
+        close(result)
+
+        close(conn)
+    end
+
+    @testset "Example COPY FROM" begin
+        conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+
+        result = execute(conn, """
+            CREATE TEMPORARY TABLE libpqjl_test (
+                no_nulls    varchar(10) PRIMARY KEY,
+                yes_nulls   varchar(10)
+            );
+        """)
+        @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
+        close(result)
+
+        no_nulls = map(string, 'a':'z')
+        yes_nulls = Union{String, Missing}[isodd(Int(c)) ? string(c) : missing for c in 'a':'z']
+        data = DataFrame(no_nulls=no_nulls, yes_nulls=yes_nulls)
+
+        row_strings = imap(eachrow(data)) do row
+            if ismissing(row[:yes_nulls])
+                "$(row[:no_nulls]),\n"
+            else
+                "$(row[:no_nulls]),$(row[:yes_nulls])\n"
+            end
+        end
+
+        copyin = LibPQ.CopyIn("COPY libpqjl_test FROM STDIN (FORMAT CSV);", row_strings)
+
+        result = execute(conn, copyin)
+        @test isopen(result)
+        @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
+        @test isempty(LibPQ.error_message(result))
+        close(result)
+
+        result = execute(
+            conn,
+            "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls ASC;";
+            throw_error=true
+        )
+        table_data = Data.close!(Data.stream!(result, DataFrame))
+        @test isequal(table_data, data)
         close(result)
 
         close(conn)

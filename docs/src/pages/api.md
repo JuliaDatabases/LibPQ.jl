@@ -43,6 +43,13 @@ num_params(::LibPQ.Statement)
 Base.show(::IO, ::LibPQ.Statement)
 ```
 
+### Copy
+
+```@docs
+LibPQ.CopyIn
+execute(::LibPQ.Connection, ::LibPQ.CopyIn)
+```
+
 ### DataStreams Integration
 
 ```@docs

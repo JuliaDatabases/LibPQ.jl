@@ -536,7 +536,7 @@ function PQnotifies(conn)
     ccall((:PQnotifies, LIBPQ_HANDLE), Ptr{PGnotify}, (Ptr{PGconn},), conn)
 end
 
-function PQputCopyData(conn, buffer, nbytes::Cint)
+function PQputCopyData(conn, buffer, nbytes)
     ccall((:PQputCopyData, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cint), conn, buffer, nbytes)
 end
 
