@@ -161,7 +161,9 @@ _DEFAULT_TYPE_MAP[:numeric] = Decimal
 
 ## character
 # bpchar is char(n)
-Base.parse(::Type{String}, pqv::PQValue{PQ_SYSTEM_TYPES[:bpchar]}) = rstrip(pqv, ' ')
+function Base.parse(::Type{String}, pqv::PQValue{PQ_SYSTEM_TYPES[:bpchar]})
+    return String(rstrip(string_view(pqv), ' '))
+end
 # char is "char"
 _DEFAULT_TYPE_MAP[:char] = PQChar
 Base.parse(::Type{PQChar}, pqv::PQValue{PQ_SYSTEM_TYPES[:char]}) = PQChar(first(pqv))
