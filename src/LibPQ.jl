@@ -193,7 +193,7 @@ function Connection(str::AbstractString; throw_error::Bool=true, kwargs...)
 
     # Make the connection
     jl_conn = Connection(libpq_c.PQconnectdbParams(keywords, values, false); kwargs...)
-    
+
     # If password needed and not entered, prompt the user
     if libpq_c.PQconnectionNeedsPassword(jl_conn.conn) == 1
         push!(keywords, "password")
@@ -1180,6 +1180,7 @@ end
 ### PREPARE END
 
 include("parsing.jl")
+include("copy.jl")
 include("datastreams.jl")
 
 Base.@deprecate clear!(jl_result::Result) close(jl_result)

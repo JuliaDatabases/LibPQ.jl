@@ -69,3 +69,26 @@ Data.stream!(
 
 execute(conn, "COMMIT;")
 ```
+
+### `COPY`
+
+An alternative to repeated `INSERT` queries is the PostgreSQL `COPY` query.
+`LibPQ.CopyIn` makes it easier to stream data to the server using a `COPY FROM STDIN` query.
+
+```julia
+using LibPQ, DataFrames
+
+conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+
+row_strings = imap(eachrow(df)) do row
+    if ismissing(row[:yes_nulls])
+        "$(row[:no_nulls]),\n"
+    else
+        "$(row[:no_nulls]),$(row[:yes_nulls])\n"
+    end
+end
+
+copyin = LibPQ.CopyIn("COPY libpqjl_test FROM STDIN (FORMAT CSV);", row_strings)
+
+close(conn)
+```
