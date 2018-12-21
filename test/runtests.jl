@@ -110,25 +110,53 @@ end
         @test !isopen(result)
 
         # the same but with tuple parameters
+
+        qstr = "SELECT \$1::double precision as foo, typname FROM pg_type WHERE oid = \$2"
+        stmt = prepare(conn, qstr)
+
         result = execute(
             conn,
-            "SELECT typname FROM pg_type WHERE oid = \$1",
-            (16,);
+            qstr,
+            (1.0, 16);
             throw_error=false,
         )
         @test result isa LibPQ.Result
         @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
         @test isopen(result)
-        @test LibPQ.num_columns(result) == 1
+        @test LibPQ.num_columns(result) == 2
         @test LibPQ.num_rows(result) == 1
-        @test LibPQ.column_name(result, 1) == "typname"
+        @test LibPQ.column_name(result, 1) == "foo"
+        @test LibPQ.column_name(result, 2) == "typname"
 
         data = Data.stream!(result, NamedTuple)
 
+        @test data[:foo][1] == 1.0
         @test data[:typname][1] == "bool"
 
         close(result)
         @test !isopen(result)
+
+        result = execute(
+            stmt,
+            (1.0, 16);
+            throw_error=false,
+        )
+        @test result isa LibPQ.Result
+        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+        @test isopen(result)
+        @test LibPQ.num_columns(result) == 2
+        @test LibPQ.num_rows(result) == 1
+        @test LibPQ.column_name(result, 1) == "foo"
+        @test LibPQ.column_name(result, 2) == "typname"
+
+        data = Data.stream!(result, NamedTuple)
+
+        @test data[:foo][1] == 1.0
+        @test data[:typname][1] == "bool"
+
+        close(result)
+        @test !isopen(result)
+
 
         # the same but with fetch
         data = fetch!(NamedTuple, execute(
