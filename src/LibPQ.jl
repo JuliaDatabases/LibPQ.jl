@@ -879,8 +879,6 @@ function string_parameters end
 string_parameters(parameters::AbstractVector{<:Parameter}) = parameters
 
 # Tuples of parameters
-string_parameters(parameters::Tuple{Vararg{Parameter}}) = collect(parameters)
-
 string_parameters(parameters::Tuple) = string_parameters(collect(parameters))
 
 # vector which can't contain missing
