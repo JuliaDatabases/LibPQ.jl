@@ -109,6 +109,27 @@ end
         close(result)
         @test !isopen(result)
 
+        # the same but with tuple parameters
+        result = execute(
+            conn,
+            "SELECT typname FROM pg_type WHERE oid = \$1",
+            (16,);
+            throw_error=false,
+        )
+        @test result isa LibPQ.Result
+        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+        @test isopen(result)
+        @test LibPQ.num_columns(result) == 1
+        @test LibPQ.num_rows(result) == 1
+        @test LibPQ.column_name(result, 1) == "typname"
+
+        data = Data.stream!(result, NamedTuple)
+
+        @test data[:typname][1] == "bool"
+
+        close(result)
+        @test !isopen(result)
+
         # the same but with fetch
         data = fetch!(NamedTuple, execute(
             conn,
