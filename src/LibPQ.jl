@@ -808,7 +808,7 @@ end
 """
     execute(
         {jl_conn::Connection, query::AbstractString | stmt::Statement},
-        [parameters::AbstractVector,]
+        [parameters::Union{AbstractVector, Tuple},]
         throw_error::Bool=true,
         column_types::AbstractDict=ColumnTypeMap(),
         type_map::AbstractDict=LibPQ.PQTypeMap(),
@@ -847,7 +847,7 @@ end
 function execute(
     jl_conn::Connection,
     query::AbstractString,
-    parameters::AbstractVector;
+    parameters::Union{AbstractVector, Tuple};
     throw_error::Bool=true,
     kwargs...
 )
@@ -877,6 +877,9 @@ Convert parameters to strings which can be passed to libpq, propagating `missing
 function string_parameters end
 
 string_parameters(parameters::AbstractVector{<:Parameter}) = parameters
+
+# Tuples of parameters
+string_parameters(parameters::Tuple) = string_parameters(collect(parameters))
 
 # vector which can't contain missing
 string_parameters(parameters::AbstractVector) = map(string, parameters)
@@ -1137,7 +1140,7 @@ end
 
 function execute(
     stmt::Statement,
-    parameters::AbstractVector;
+    parameters::Union{AbstractVector, Tuple};
     throw_error::Bool=true,
     kwargs...
 )
