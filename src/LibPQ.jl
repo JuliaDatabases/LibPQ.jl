@@ -199,7 +199,9 @@ function Connection(str::AbstractString; throw_error::Bool=true, kwargs...)
         push!(keywords, "password")
         user = unsafe_string(libpq_c.PQuser(jl_conn.conn))
         prompt = "Enter password for PostgreSQL user $user:"
-        push!(values, Base.getpass(prompt))
+        pass = Base.getpass(prompt)
+        push!(values, read(pass, String))
+        Base.shred!(pass)
         return handle_new_connection(
             Connection(libpq_c.PQconnectdbParams(keywords, values, false); kwargs...);
             throw_error=throw_error,

@@ -7,5 +7,5 @@ pool:
   vmImage: 'xcode9-macos10.13'
 
 steps:
-- script: brew install postgresql
+- script: brew update || true; brew install postgresql
   displayName: 'Install PostgreSQL'
