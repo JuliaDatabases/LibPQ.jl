@@ -10,7 +10,7 @@ test: &TEST
     - run:
         name: Install Julia
         command: |
-          curl -s -L --retry 7 -o julia.dmg \
+          curl -s -S -L --retry 7 -o julia.dmg \
             "https://julialang-s3.julialang.org/bin/mac/x64/$JULIA_VER/julia-$JULIA_VER-latest-mac64.dmg"
           mkdir jlmnt
           hdiutil mount -readonly -mountpoint jlmnt julia.dmg
