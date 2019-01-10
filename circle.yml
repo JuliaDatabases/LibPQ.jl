@@ -22,7 +22,9 @@ test: &TEST
           fi
     - run:
         name: Install PostgreSQL
-        command: brew install postgresql
+        command: |
+          brew update || true
+          brew install postgresql
     - run:
         name: Start PostgreSQL
         command: brew services start postgresql
