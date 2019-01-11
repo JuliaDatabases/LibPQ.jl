@@ -1,8 +1,6 @@
 environment:
   PGPASSWORD: Password12!
   matrix:
-  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x86/0.6/julia-0.6-latest-win32.exe"
-  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x64/0.6/julia-0.6-latest-win64.exe"
   - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x86/0.7/julia-0.7-latest-win32.exe"
   - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x64/0.7/julia-0.7-latest-win64.exe"
   - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x86/1.0/julia-1.0.0-win32.exe"
@@ -41,11 +39,8 @@ build_script:
 # TODO: Update `Pkg.clone` to be Pkg3-compatible once we have a Project file
   - IF EXIST .git\shallow (git fetch --unshallow)
   - C:\projects\julia\bin\julia -e "
-        VERSION >= v\"0.7.0-DEV.3630\" && using InteractiveUtils;
-        versioninfo();
-        VERSION >= v\"0.7.0-DEV.3656\" && using Pkg;
-        Pkg.clone(pwd(), \"LibPQ\");
-        Pkg.build(\"LibPQ\")"
+        using InteractiveUtils; versioninfo();
+        using Pkg; Pkg.clone(pwd(), \"LibPQ\"); Pkg.build(\"LibPQ\")"
 
 test_script:
-- C:\projects\julia\bin\julia -e "VERSION >= v\"0.7.0-DEV.3656\" && using Pkg; Pkg.test(\"LibPQ\")"
+- C:\projects\julia\bin\julia -e "using Pkg; Pkg.test(\"LibPQ\")"

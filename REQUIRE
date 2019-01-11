@@ -1,12 +1,12 @@
-julia 0.6
-BinaryProvider 0.2.5
-Compat 0.70.0
-DataStreams 0.3.1
+julia 0.7
+BinaryProvider 0.4
+Compat 1.1
+DataStreams 0.4
 DocStringExtensions
-Decimals 0.2.1
-IterTools
+Decimals 0.3.1
+IterTools 1
 LayerDicts 0.1.2
-Missings 0.2.1
+Missings 0.3
 Memento 0.10.0
-OffsetArrays
-TimeZones
+OffsetArrays 0.9.1
+TimeZones 0.8
