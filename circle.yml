@@ -15,11 +15,7 @@ test: &TEST
           mkdir jlmnt
           hdiutil mount -readonly -mountpoint jlmnt julia.dmg
           cp -a jlmnt/*.app/Contents/Resources/julia/* ~/
-          if [ "$JULIA_VER" = "0.6" ]; then
-            ~/bin/julia -e 'versioninfo()'
-          else
-            ~/bin/julia -e 'using InteractiveUtils; versioninfo()'
-          fi
+          ~/bin/julia -e 'using InteractiveUtils; versioninfo()'
     - run:
         name: Install PostgreSQL
         command: |
@@ -40,19 +36,9 @@ test: &TEST
           ~/bin/julia -e "Pkg.clone(pwd(), \"$PKG_NAME\"); Pkg.build(\"$PKG_NAME\")"
     - run:
         name: Test package
-        command: |
-          if [ "$JULIA_VER" = "0.6" ]; then
-            env LIBPQJL_DATABASE_USER=$USER ~/bin/julia -e "Pkg.test(\"$PKG_NAME\")"
-          else
-            env LIBPQJL_DATABASE_USER=$USER ~/bin/julia -e "using Pkg; Pkg.test(\"$PKG_NAME\")"
-          fi
+        command: env LIBPQJL_DATABASE_USER=$USER ~/bin/julia -e "using Pkg; Pkg.test(\"$PKG_NAME\")"
 
 jobs:
-  test_0.6:
-    environment:
-      PKG_NAME: LibPQ
-      JULIA_VER: 0.6
-    <<: [*DEFAULTS, *TEST]
   test_0.7:
     environment:
       PKG_NAME: LibPQ
@@ -68,6 +54,5 @@ workflows:
   version: 2
   test_macos:
     jobs:
-      - test_0.6
       - test_0.7
       - test_1.0

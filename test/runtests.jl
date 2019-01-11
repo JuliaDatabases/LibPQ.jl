@@ -2,6 +2,7 @@ using LibPQ
 using Compat.Test
 using Compat.Dates
 using DataFrames
+using DataFrames: eachrow
 using DataStreams
 using Decimals
 using IterTools: imap
@@ -10,10 +11,6 @@ using Missings
 using OffsetArrays
 using TimeZones
 using Compat: occursin, copyto!, undef
-
-@static if !isdefined(Base, :NamedTuple)
-    using NamedTuples
-end
 
 Memento.config!("critical")
 

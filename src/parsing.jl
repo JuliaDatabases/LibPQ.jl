@@ -112,34 +112,16 @@ Base.parse(::Type{T}, pqv::PQValue) where {T} = parse(T, string_view(pqv))
 # allow parsing as a Symbol anything which works as a String
 Base.parse(::Type{Symbol}, pqv::PQValue) = Symbol(string_view(pqv))
 
-if VERSION >= v"0.7.0-DEV.5125"
-    function Base.iterate(pqv::PQValue)
-        sv = string_view(pqv)
-        iterate(pqv, (sv, ()))
-    end
-    function Base.iterate(pqv::PQValue, state)
-        sv, i = state
-        iter = iterate(sv, i...)
-        iter === nothing && return nothing
-        c, new_sv_state = iter
-        return (c, (sv, (new_sv_state,)))
-    end
-else
-    function Base.start(pqv::PQValue)
-        sv = string_view(pqv)
-        return (sv, start(sv))
-    end
-
-    function Base.next(pqv::PQValue, state)
-        sv, sv_state = state
-        c, new_sv_state = next(sv, sv_state)
-        return c, (sv, new_sv_state)
-    end
-
-    function Base.done(pqv::PQValue, state)
-        sv, sv_state = state
-        return done(sv, sv_state)
-    end
+function Base.iterate(pqv::PQValue)
+    sv = string_view(pqv)
+    iterate(pqv, (sv, ()))
+end
+function Base.iterate(pqv::PQValue, state)
+    sv, i = state
+    iter = iterate(sv, i...)
+    iter === nothing && return nothing
+    c, new_sv_state = iter
+    return (c, (sv, (new_sv_state,)))
 end
 
 ## integers

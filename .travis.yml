@@ -5,7 +5,6 @@ os:
 services:
   - postgresql
 julia:
-  - 0.6
   - 0.7
   - 1.0
   - nightly
@@ -44,15 +43,9 @@ notifications:
 after_success:
   - |
     julia -e '
-      VERSION >= v"0.7.0-DEV.3656" && import Pkg
-      VERSION >= v"0.7.0-DEV.5183" || cd(Pkg.dir("LibPQ"))
-      Pkg.add("Coverage"); using Coverage
-      Codecov.submit(process_folder())'
-  - |
-    julia -e 'VERSION >= v"0.7.0-DEV.3656" && import Pkg
-      Pkg.add("Documenter"); Pkg.add("DataFrames");'
+      using Pkg; Pkg.add("Coverage")
+      using Coverage; Codecov.submit(process_folder())'
   - |
     julia -e '
-      VERSION >= v"0.7.0-DEV.3656" && import Pkg
-      VERSION >= v"0.7.0-DEV.5183" || cd(Pkg.dir("LibPQ"))
-      include(joinpath("docs", "make.jl"))'
+    using Pkg; Pkg.add("Documenter"); Pkg.add("DataFrames")
+    include(joinpath("docs", "make.jl"))'
