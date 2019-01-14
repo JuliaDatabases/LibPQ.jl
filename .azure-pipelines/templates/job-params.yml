@@ -1,0 +1,81 @@
+parameters:
+  name: 'default'
+  displayName: 'default'
+  os: 'linux'
+  vmImage: ''
+  juliaVersion: '1.0'
+  postgresqlVersion: 'pg11'
+  imageName:
+    windows: 'vs2017-win2016'
+    macos: 'macOS-10.13'
+    linux: 'ubuntu-16.04'
+  osarch:
+    windows: ''
+    macos: mac/x64
+    linux: linux/x64
+  ext:
+    windows: ''
+    macos: mac64.dmg
+    linux: linux-x86_64.tar.gz
+  nightlyext:
+    windows: ''
+    macos: mac64.dmg
+    linux: linux64.tar.gz
+  installJulia:
+    windows:
+      - powershell: iex ((new-object net.webclient).DownloadString("https://raw.githubusercontent.com/JuliaCI/Appveyor.jl/version-1/bin/install.ps1"))
+        displayName: Install Julia
+    macos:
+      - bash: |
+          if [ "$JULIA_VERSION" = "nightly" ]; then
+            export JULIA_URL="$JULIA_NIGHTLY_URL"
+          else
+            export JULIA_URL="$JULIA_RELEASE_URL"
+          fi
+          echo "Downloading $JULIA_URL"
+          curl -s -S -L -o julia.dmg "$JULIA_URL"
+          hdiutil mount -readonly julia.dmg
+          cp -a /Volumes/Julia*.app/Contents/Resources/julia ~/
+        displayName: Install Julia
+    linux:
+      - bash: |
+          mkdir ~/julia
+          if [ "$JULIA_VERSION" = "nightly" ]; then
+            export JULIA_URL="$JULIA_NIGHTLY_URL"
+          else
+            export JULIA_URL="$JULIA_RELEASE_URL"
+          fi
+          echo "Downloading and extracting $JULIA_URL"
+          curl -s -S -L --retry 7 "$JULIA_URL" | tar -C ~/julia -x -z --strip-components=1 -f -
+        displayName: Install Julia
+  installPGC:
+    windows:
+      - powershell: iex ((new-object net.webclient).DownloadString('https://s3.amazonaws.com/pgcentral/install.ps1'))
+        displayName: Install PGC
+    macos:
+      - script: python -c "$(curl -fsSL https://s3.amazonaws.com/pgcentral/install.py)"
+        displayName: Install PGC
+    linux:
+      - script: python -c "$(curl -fsSL https://s3.amazonaws.com/pgcentral/install.py)"
+        displayName: Install PGC
+
+jobs:
+  - job: ${{ parameters.name }}
+    displayName: ${{ parameters.displayName }}
+    variables:
+      PLATFORM: x64  # for Windows Julia install script
+      isSilent: "true"
+      JULIA_VERSION: ${{ parameters.juliaVersion }}
+      JULIA_RELEASE_URL: "https://julialang-s3.julialang.org/bin/${{ parameters.osarch[parameters.os] }}/${{ parameters.juliaVersion }}/julia-${{ parameters.juliaVersion }}-latest-${{ parameters.ext[parameters.os] }}"
+      JULIA_NIGHTLY_URL: "https://julialangnightlies-s3.julialang.org/bin/${{ parameters.osarch[parameters.os] }}/julia-latest-${{ parameters.nightlyext[parameters.os] }}"
+    pool:
+      vmImage: ${{ parameters.imageName[parameters.os] }}
+    steps:
+      - ${{ parameters.installPGC[parameters.os] }}
+      - ${{ parameters.installJulia[parameters.os] }}
+      - script: bigsql/pgc install ${{ parameters.postgresqlVersion }}
+      - script: bigsql/pgc start ${{ parameters.postgresqlVersion }}
+      - script: julia --color=yes --project=. -e 'using Pkg; Pkg.build()'
+      - script: julia --color=yes --project=. -e 'using Pkg; Pkg.test(coverage=true)'
+      - script: bigsql/pgc stop ${{ parameters.postgresqlVersion }}
+      - script: julia --color=yes -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'

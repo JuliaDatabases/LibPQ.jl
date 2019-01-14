@@ -1,11 +1,63 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
-pool:
-  vmImage: 'xcode9-macos10.13'
-
-steps:
-- script: brew update || true; brew install postgresql
-  displayName: 'Install PostgreSQL'
+jobs:
+  # Linux, default Julia version, various PostgreSQL versions
+  - template: .azure-pipelines/templates/job-params.yml
+    parameters:
+      name: 'postgresql11_linux'
+      displayName: 'PostgreSQL 11, Linux'
+      os: linux
+      postgresqlVersion: 'pg11'
+  - template: .azure-pipelines/templates/job-params.yml
+    parameters:
+      name: 'postgresql10_linux'
+      displayName: 'PostgreSQL 10, Linux'
+      os: linux
+      postgresqlVersion: 'pg10'
+  # Windows, default Julia version, various PostgreSQL versions
+  - template: .azure-pipelines/templates/job-params.yml
+    parameters:
+      name: 'postgresql9p6_windows'
+      displayName: 'PostgreSQL 9.6, Windows'
+      os: windows
+      postgresqlVersion: 'pg96'
+  - template: .azure-pipelines/templates/job-params.yml
+    parameters:
+      name: 'postgresql9p5_windows'
+      displayName: 'PostgreSQL 9.5, Windows'
+      os: windows
+      postgresqlVersion: 'pg95'
+  - template: .azure-pipelines/templates/job-params.yml
+    parameters:
+      name: 'postgresql9p4_windows'
+      displayName: 'PostgreSQL 9.4, Windows'
+      os: windows
+      postgresqlVersion: 'pg94'
+  # Various operating systems, default Julia version, default PostgreSQL version,
+  - template: .azure-pipelines/templates/job-params.yml
+    parameters:
+      name: 'macos'
+      displayName: 'PostgreSQL (current), macOS'
+      os: macos
+  - template: .azure-pipelines/templates/job-params.yml
+    parameters:
+      name: 'windows'
+      displayName: 'PostgreSQL (current), Windows'
+      os: windows
+  # Various operating systems, various Julia versions, default PostgreSQL version
+  - template: .azure-pipelines/templates/job-params.yml
+    parameters:
+      name: 'linux_julia0p7'
+      displayName: 'PostgreSQL (current), Linux, Julia 0.7'
+      os: linux
+      juliaVersion: '0.7'
+  - template: .azure-pipelines/templates/job-params.yml
+    parameters:
+      name: 'macos_julia0p7'
+      displayName: 'PostgreSQL (current), macOS, Julia 0.7'
+      os: macos
+      juliaVersion: '0.7'
+  - template: .azure-pipelines/templates/job-params.yml
+    parameters:
+      name: 'windows_julia0p7'
+      displayName: 'PostgreSQL (current), Windows, Julia 0.7'
+      os: windows
+      juliaVersion: '0.7'
