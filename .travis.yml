@@ -2,44 +2,33 @@
 language: julia
 os:
   - linux
-services:
-  - postgresql
+  - osx
 julia:
   - 0.7
   - 1.0
+  - 1.1
   - nightly
 env:
-  - POSTGRESQL_VERSION=9.4 PGHOST="/var/run/postgresql"
-  - POSTGRESQL_VERSION=9.6 PGHOST="/var/run/postgresql"
+  global:
+    - PGPORT=5440
+    - PGC_POSTGRESQL_VERSION=pg11
 before_install:
-  - sudo service postgresql stop && sudo service postgresql start $POSTGRESQL_VERSION
-  - psql -U postgres -tc 'SHOW server_version'
-  - psql -U postgres -c '\conninfo'
+  - export isSilent=true
+  - python -c "$(curl -fsSL https://s3.amazonaws.com/pgcentral/install.py)"
+  - bigsql/pgc install $PGC_POSTGRESQL_VERSION
+  - bigsql/pgc init $PGC_POSTGRESQL_VERSION --port $PGPORT
 matrix:
   allow_failures:
     - julia: nightly
   fast_finish: true
 notifications:
   email: false
-#script:
-#  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-#  - |
-#      julia -e "
-#        if VERSION >= v\"0.7.0-DEV.3656\"
-#            using Pkg
-#        end
-#        if VERSION >= v\"0.7.0-DEV.5183\"
-#            if any(f->endswith(f, \"Project.toml\"), readdir(pwd()))
-#                Pkg.instantiate()
-#            else
-#                Pkg.develop(pwd())
-#            end
-#        else
-#            Pkg.clone(pwd(), \"LibPQ\")
-#        end
-#        Pkg.build(\"LibPQ\")
-#        Pkg.test(\"LibPQ\"; coverage=true)
-#      "
+before_script:
+  - bigsql/pgc start $PGC_POSTGRESQL_VERSION
+  - source bigsql/$PGC_POSTGRESQL_VERSION/$PGC_POSTGRESQL_VERSION.env
+  - bigsql/pgc status
+  - psql -U postgres -tc 'SHOW server_version'
+  - psql -U postgres -c '\conninfo'
 after_success:
   - |
     julia -e '
@@ -49,3 +38,5 @@ after_success:
     julia -e '
     using Pkg; Pkg.add("Documenter"); Pkg.add("DataFrames")
     include(joinpath("docs", "make.jl"))'
+after_script:
+  - bigsql/pgc stop $PGC_POSTGRESQL_VERSION
