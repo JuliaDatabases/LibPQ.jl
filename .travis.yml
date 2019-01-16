@@ -2,50 +2,34 @@
 language: julia
 os:
   - linux
-services:
-  - postgresql
 julia:
-  - 0.7
   - 1.0
-  - nightly
 env:
-  - POSTGRESQL_VERSION=9.4 PGHOST="/var/run/postgresql"
-  - POSTGRESQL_VERSION=9.6 PGHOST="/var/run/postgresql"
+  matrix:
+    - POSTGRESQL_VERSION=11
+    - POSTGRESQL_VERSION=10
+    - POSTGRESQL_VERSION=9.6
+    - POSTGRESQL_VERSION=9.5
+    - POSTGRESQL_VERSION=9.4
+  global:
+    - PGHOST=localhost
+    - PGPORT=5440
 before_install:
-  - sudo service postgresql stop && sudo service postgresql start $POSTGRESQL_VERSION
-  - psql -U postgres -tc 'SHOW server_version'
-  - psql -U postgres -c '\conninfo'
+  - docker run --name libpqjl-postgresql -p $PGPORT:5432 -d postgres:$POSTGRESQL_VERSION-alpine
 matrix:
   allow_failures:
     - julia: nightly
   fast_finish: true
+  include:
+    - julia: 0.7
+    - julia: 1.1
+    - julia: nightly
+    - os: osx
 notifications:
   email: false
-#script:
-#  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-#  - |
-#      julia -e "
-#        if VERSION >= v\"0.7.0-DEV.3656\"
-#            using Pkg
-#        end
-#        if VERSION >= v\"0.7.0-DEV.5183\"
-#            if any(f->endswith(f, \"Project.toml\"), readdir(pwd()))
-#                Pkg.instantiate()
-#            else
-#                Pkg.develop(pwd())
-#            end
-#        else
-#            Pkg.clone(pwd(), \"LibPQ\")
-#        end
-#        Pkg.build(\"LibPQ\")
-#        Pkg.test(\"LibPQ\"; coverage=true)
-#      "
+# before_script:
+#   - psql -U postgres -tc 'SHOW server_version'
+#   - psql -U postgres -c '\conninfo'
 after_success:
-  - |
-    julia -e '
-      using Pkg; Pkg.add("Coverage")
-      using Coverage; Codecov.submit(process_folder())'
-  - |
-    julia -e '
-    using Pkg; Pkg.add("Documenter"); Pkg.add("DataFrames")
-    include(joinpath("docs", "make.jl"))'
+  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
+  - julia -e 'using Pkg; Pkg.add("Documenter"); Pkg.add("DataFrames"); include(joinpath("docs", "make.jl"))'
