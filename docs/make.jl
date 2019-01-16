@@ -2,7 +2,7 @@ using Documenter, LibPQ
 
 makedocs(;
     modules=[LibPQ],
-    format=:html,
+    format=Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true"),
     pages=[
         "Home" => "index.md",
         "Type Conversions" => "pages/type-conversions.md",
@@ -10,14 +10,11 @@ makedocs(;
     ],
     repo="https://github.com/invenia/LibPQ.jl/blob/{commit}{path}#L{line}",
     sitename="LibPQ.jl",
+    checkdocs=:exports,
+    linkcheck=true,
     authors="Eric Davies",
-    assets=[],
 )
 
 deploydocs(;
     repo="github.com/invenia/LibPQ.jl",
-    target="build",
-    julia="1.0",
-    deps=nothing,
-    make=nothing,
 )
