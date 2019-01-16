@@ -25,6 +25,10 @@ matrix:
     - julia: 1.1
     - julia: nightly
     - os: osx
+      env:
+        - PGPORT=5432 LIBPQJL_DATABASE_USER=travis
+      before_install:
+        - brew services start postgresql
     - stage: "Documentation"
       julia: 1.0
       os: linux
