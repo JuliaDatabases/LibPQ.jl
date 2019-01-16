@@ -2,41 +2,34 @@
 language: julia
 os:
   - linux
-  - osx
 julia:
-  - 0.7
   - 1.0
-  - 1.1
-  - nightly
 env:
+  matrix:
+    - POSTGRESQL_VERSION=11
+    - POSTGRESQL_VERSION=10
+    - POSTGRESQL_VERSION=9.6
+    - POSTGRESQL_VERSION=9.5
+    - POSTGRESQL_VERSION=9.4
   global:
+    - PGHOST=localhost
     - PGPORT=5440
-    - PGC_POSTGRESQL_VERSION=pg11
 before_install:
-  - export isSilent=true
-  - python -c "$(curl -fsSL https://s3.amazonaws.com/pgcentral/install.py)"
-  - bigsql/pgc install $PGC_POSTGRESQL_VERSION
-  - bigsql/pgc init $PGC_POSTGRESQL_VERSION --port $PGPORT
+  - docker run --name libpqjl-postgresql -p $PGPORT:5432 -d postgres:$POSTGRESQL_VERSION-alpine
 matrix:
   allow_failures:
     - julia: nightly
   fast_finish: true
+  include:
+    - julia: 0.7
+    - julia: 1.1
+    - julia: nightly
+    - os: osx
 notifications:
   email: false
-before_script:
-  - bigsql/pgc start $PGC_POSTGRESQL_VERSION
-  - source bigsql/$PGC_POSTGRESQL_VERSION/$PGC_POSTGRESQL_VERSION.env
-  - bigsql/pgc status
-  - psql -U postgres -tc 'SHOW server_version'
-  - psql -U postgres -c '\conninfo'
+# before_script:
+#   - psql -U postgres -tc 'SHOW server_version'
+#   - psql -U postgres -c '\conninfo'
 after_success:
-  - |
-    julia -e '
-      using Pkg; Pkg.add("Coverage")
-      using Coverage; Codecov.submit(process_folder())'
-  - |
-    julia -e '
-    using Pkg; Pkg.add("Documenter"); Pkg.add("DataFrames")
-    include(joinpath("docs", "make.jl"))'
-after_script:
-  - bigsql/pgc stop $PGC_POSTGRESQL_VERSION
+  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
+  - julia -e 'using Pkg; Pkg.add("Documenter"); Pkg.add("DataFrames"); include(joinpath("docs", "make.jl"))'
