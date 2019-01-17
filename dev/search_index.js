@@ -1,7 +1,7 @@
 var documenterSearchIndex = {"docs": [
 
 {
-    "location": "index.html#",
+    "location": "#",
     "page": "Home",
     "title": "Home",
     "category": "page",
@@ -9,7 +9,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#LibPQ-1",
+    "location": "#LibPQ-1",
     "page": "Home",
     "title": "LibPQ",
     "category": "section",
@@ -17,7 +17,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#Examples-1",
+    "location": "#Examples-1",
     "page": "Home",
     "title": "Examples",
     "category": "section",
@@ -25,7 +25,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#Selection-1",
+    "location": "#Selection-1",
     "page": "Home",
     "title": "Selection",
     "category": "section",
@@ -33,7 +33,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#Insertion-1",
+    "location": "#Insertion-1",
     "page": "Home",
     "title": "Insertion",
     "category": "section",
@@ -41,7 +41,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#A-Note-on-Bulk-Insertion-1",
+    "location": "#A-Note-on-Bulk-Insertion-1",
     "page": "Home",
     "title": "A Note on Bulk Insertion",
     "category": "section",
@@ -49,7 +49,15 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/type-conversions.html#",
+    "location": "#COPY-1",
+    "page": "Home",
+    "title": "COPY",
+    "category": "section",
+    "text": "An alternative to repeated INSERT queries is the PostgreSQL COPY query. LibPQ.CopyIn makes it easier to stream data to the server using a COPY FROM STDIN query.using LibPQ, DataFrames\n\nconn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\n\nrow_strings = imap(eachrow(df)) do row\n    if ismissing(row[:yes_nulls])\n        \"$(row[:no_nulls]),\\n\"\n    else\n        \"$(row[:no_nulls]),$(row[:yes_nulls])\\n\"\n    end\nend\n\ncopyin = LibPQ.CopyIn(\"COPY libpqjl_test FROM STDIN (FORMAT CSV);\", row_strings)\n\nclose(conn)"
+},
+
+{
+    "location": "pages/type-conversions/#",
     "page": "Type Conversions",
     "title": "Type Conversions",
     "category": "page",
@@ -57,7 +65,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/type-conversions.html#typeconv-1",
+    "location": "pages/type-conversions/#typeconv-1",
     "page": "Type Conversions",
     "title": "Type Conversions",
     "category": "section",
@@ -65,7 +73,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/type-conversions.html#From-Julia-to-PostgreSQL-1",
+    "location": "pages/type-conversions/#From-Julia-to-PostgreSQL-1",
     "page": "Type Conversions",
     "title": "From Julia to PostgreSQL",
     "category": "section",
@@ -73,7 +81,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/type-conversions.html#From-PostgreSQL-to-Julia-1",
+    "location": "pages/type-conversions/#From-PostgreSQL-to-Julia-1",
     "page": "Type Conversions",
     "title": "From PostgreSQL to Julia",
     "category": "section",
@@ -81,7 +89,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/type-conversions.html#NULL-1",
+    "location": "pages/type-conversions/#NULL-1",
     "page": "Type Conversions",
     "title": "NULL",
     "category": "section",
@@ -89,7 +97,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/type-conversions.html#Overrides-1",
+    "location": "pages/type-conversions/#Overrides-1",
     "page": "Type Conversions",
     "title": "Overrides",
     "category": "section",
@@ -97,7 +105,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/type-conversions.html#Query-level-1",
+    "location": "pages/type-conversions/#Query-level-1",
     "page": "Type Conversions",
     "title": "Query-level",
     "category": "section",
@@ -105,7 +113,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/type-conversions.html#Connection-level-1",
+    "location": "pages/type-conversions/#Connection-level-1",
     "page": "Type Conversions",
     "title": "Connection-level",
     "category": "section",
@@ -113,7 +121,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/type-conversions.html#Global-1",
+    "location": "pages/type-conversions/#Global-1",
     "page": "Type Conversions",
     "title": "Global",
     "category": "section",
@@ -121,7 +129,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/type-conversions.html#Implementation-1",
+    "location": "pages/type-conversions/#Implementation-1",
     "page": "Type Conversions",
     "title": "Implementation",
     "category": "section",
@@ -129,7 +137,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/type-conversions.html#Flow-1",
+    "location": "pages/type-conversions/#Flow-1",
     "page": "Type Conversions",
     "title": "Flow",
     "category": "section",
@@ -137,7 +145,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/type-conversions.html#canon-1",
+    "location": "pages/type-conversions/#canon-1",
     "page": "Type Conversions",
     "title": "Canonical PostgreSQL Type Names",
     "category": "section",
@@ -145,7 +153,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#",
+    "location": "pages/api/#",
     "page": "API",
     "title": "API",
     "category": "page",
@@ -153,7 +161,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ-API-1",
+    "location": "pages/api/#LibPQ-API-1",
     "page": "API",
     "title": "LibPQ API",
     "category": "section",
@@ -161,7 +169,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Public-1",
+    "location": "pages/api/#Public-1",
     "page": "API",
     "title": "Public",
     "category": "section",
@@ -169,7 +177,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.Connection",
+    "location": "pages/api/#LibPQ.Connection",
     "page": "API",
     "title": "LibPQ.Connection",
     "category": "type",
@@ -177,15 +185,15 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.execute",
+    "location": "pages/api/#LibPQ.execute",
     "page": "API",
     "title": "LibPQ.execute",
     "category": "function",
-    "text": "execute(\n    {jl_conn::Connection, query::AbstractString | stmt::Statement},\n    [parameters::AbstractVector,]\n    throw_error::Bool=true,\n    column_types::AbstractDict=ColumnTypeMap(),\n    type_map::AbstractDict=LibPQ.PQTypeMap(),\n    conversions::AbstractDict=LibPQ.PQConversions(),\n) -> Result\n\nRun a query on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\nThe query may be passed as Connection and AbstractString (SQL) arguments, or as a Statement.\n\nexecute optionally takes a parameters vector which passes query parameters as strings to PostgreSQL.\n\ncolumn_types accepts type overrides for columns in the result which take priority over those in type_map. For information on the column_types, type_map, and conversions arguments, see Type Conversions.\n\n\n\n\n\n"
+    "text": "execute(\n    {jl_conn::Connection, query::AbstractString | stmt::Statement},\n    [parameters::Union{AbstractVector, Tuple},]\n    throw_error::Bool=true,\n    column_types::AbstractDict=ColumnTypeMap(),\n    type_map::AbstractDict=LibPQ.PQTypeMap(),\n    conversions::AbstractDict=LibPQ.PQConversions(),\n) -> Result\n\nRun a query on the PostgreSQL database and return a Result. If throw_error is true, throw an error and clear the result if the query results in a fatal error or unreadable response.\n\nThe query may be passed as Connection and AbstractString (SQL) arguments, or as a Statement.\n\nexecute optionally takes a parameters vector which passes query parameters as strings to PostgreSQL.\n\ncolumn_types accepts type overrides for columns in the result which take priority over those in type_map. For information on the column_types, type_map, and conversions arguments, see Type Conversions.\n\n\n\n\n\n"
 },
 
 {
-    "location": "pages/api.html#LibPQ.prepare",
+    "location": "pages/api/#LibPQ.prepare",
     "page": "API",
     "title": "LibPQ.prepare",
     "category": "function",
@@ -193,7 +201,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.status-Tuple{LibPQ.Connection}",
+    "location": "pages/api/#LibPQ.status-Tuple{LibPQ.Connection}",
     "page": "API",
     "title": "LibPQ.status",
     "category": "method",
@@ -201,7 +209,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.close-Tuple{LibPQ.Connection}",
+    "location": "pages/api/#Base.close-Tuple{LibPQ.Connection}",
     "page": "API",
     "title": "Base.close",
     "category": "method",
@@ -209,7 +217,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.isopen-Tuple{LibPQ.Connection}",
+    "location": "pages/api/#Base.isopen-Tuple{LibPQ.Connection}",
     "page": "API",
     "title": "Base.isopen",
     "category": "method",
@@ -217,7 +225,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.reset!-Tuple{LibPQ.Connection}",
+    "location": "pages/api/#LibPQ.reset!-Tuple{LibPQ.Connection}",
     "page": "API",
     "title": "LibPQ.reset!",
     "category": "method",
@@ -225,7 +233,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.show-Tuple{IO,LibPQ.Connection}",
+    "location": "pages/api/#Base.show-Tuple{IO,LibPQ.Connection}",
     "page": "API",
     "title": "Base.show",
     "category": "method",
@@ -233,7 +241,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Connections-1",
+    "location": "pages/api/#Connections-1",
     "page": "API",
     "title": "Connections",
     "category": "section",
@@ -241,7 +249,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.Result",
+    "location": "pages/api/#LibPQ.Result",
     "page": "API",
     "title": "LibPQ.Result",
     "category": "type",
@@ -249,7 +257,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.status-Tuple{LibPQ.Result}",
+    "location": "pages/api/#LibPQ.status-Tuple{LibPQ.Result}",
     "page": "API",
     "title": "LibPQ.status",
     "category": "method",
@@ -257,7 +265,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.close-Tuple{LibPQ.Result}",
+    "location": "pages/api/#Base.close-Tuple{LibPQ.Result}",
     "page": "API",
     "title": "Base.close",
     "category": "method",
@@ -265,7 +273,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.isopen-Tuple{LibPQ.Result}",
+    "location": "pages/api/#Base.isopen-Tuple{LibPQ.Result}",
     "page": "API",
     "title": "Base.isopen",
     "category": "method",
@@ -273,7 +281,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.num_rows-Tuple{LibPQ.Result}",
+    "location": "pages/api/#LibPQ.num_rows-Tuple{LibPQ.Result}",
     "page": "API",
     "title": "LibPQ.num_rows",
     "category": "method",
@@ -281,7 +289,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.num_columns-Tuple{LibPQ.Result}",
+    "location": "pages/api/#LibPQ.num_columns-Tuple{LibPQ.Result}",
     "page": "API",
     "title": "LibPQ.num_columns",
     "category": "method",
@@ -289,7 +297,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.num_affected_rows-Tuple{LibPQ.Result}",
+    "location": "pages/api/#LibPQ.num_affected_rows-Tuple{LibPQ.Result}",
     "page": "API",
     "title": "LibPQ.num_affected_rows",
     "category": "method",
@@ -297,7 +305,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.show-Tuple{IO,LibPQ.Result}",
+    "location": "pages/api/#Base.show-Tuple{IO,LibPQ.Result}",
     "page": "API",
     "title": "Base.show",
     "category": "method",
@@ -305,7 +313,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Results-1",
+    "location": "pages/api/#Results-1",
     "page": "API",
     "title": "Results",
     "category": "section",
@@ -313,7 +321,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.Statement",
+    "location": "pages/api/#LibPQ.Statement",
     "page": "API",
     "title": "LibPQ.Statement",
     "category": "type",
@@ -321,7 +329,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.num_columns-Tuple{LibPQ.Statement}",
+    "location": "pages/api/#LibPQ.num_columns-Tuple{LibPQ.Statement}",
     "page": "API",
     "title": "LibPQ.num_columns",
     "category": "method",
@@ -329,7 +337,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.num_params-Tuple{LibPQ.Statement}",
+    "location": "pages/api/#LibPQ.num_params-Tuple{LibPQ.Statement}",
     "page": "API",
     "title": "LibPQ.num_params",
     "category": "method",
@@ -337,7 +345,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.show-Tuple{IO,LibPQ.Statement}",
+    "location": "pages/api/#Base.show-Tuple{IO,LibPQ.Statement}",
     "page": "API",
     "title": "Base.show",
     "category": "method",
@@ -345,7 +353,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Statements-1",
+    "location": "pages/api/#Statements-1",
     "page": "API",
     "title": "Statements",
     "category": "section",
@@ -353,7 +361,31 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.Statement-Tuple{DataStreams.Data.Schema,Type{DataStreams.Data.Row},Bool,LibPQ.Connection,AbstractString}",
+    "location": "pages/api/#LibPQ.CopyIn",
+    "page": "API",
+    "title": "LibPQ.CopyIn",
+    "category": "type",
+    "text": "struct CopyIn\n\nCopyIn(query, data_itr) -> CopyIn\n\nCreate a CopyIn query instance which can be executed to send data to PostgreSQL via a COPY <table_name> FROM STDIN query.\n\nquery must be a COPY FROM STDIN query as described in the PostgreSQL documentation. COPY FROM queries which use a file or PROGRAM source can instead use the standard execute query interface.\n\ndata_itr is an iterable containing chunks of data to send to PostgreSQL. The data can be divided up into arbitrary buffers as it will be reconstituted on the server. The iterated items must be AbstractStrings or Array{UInt8}s.\n\nFields:\n\nquery\ndata_itr\n\n\n\n\n\n"
+},
+
+{
+    "location": "pages/api/#LibPQ.execute-Tuple{LibPQ.Connection,LibPQ.CopyIn}",
+    "page": "API",
+    "title": "LibPQ.execute",
+    "category": "method",
+    "text": "execute(jl_conn::Connection, copyin::CopyIn, args...;\n    throw_error::Bool=true, kwargs...\n) -> Result\n\nRuns execute on copyin\'s query, then sends copyin\'s data to the server.\n\nAll other arguments are passed through to the execute call for the initial query.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pages/api/#Copy-1",
+    "page": "API",
+    "title": "Copy",
+    "category": "section",
+    "text": "LibPQ.CopyIn\nexecute(::LibPQ.Connection, ::LibPQ.CopyIn)"
+},
+
+{
+    "location": "pages/api/#LibPQ.Statement-Tuple{DataStreams.Data.Schema,Type{DataStreams.Data.Row},Bool,LibPQ.Connection,AbstractString}",
     "page": "API",
     "title": "LibPQ.Statement",
     "category": "method",
@@ -361,7 +393,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.fetch!",
+    "location": "pages/api/#LibPQ.fetch!",
     "page": "API",
     "title": "LibPQ.fetch!",
     "category": "function",
@@ -369,7 +401,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#DataStreams-Integration-1",
+    "location": "pages/api/#DataStreams-Integration-1",
     "page": "API",
     "title": "DataStreams Integration",
     "category": "section",
@@ -377,7 +409,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Internals-1",
+    "location": "pages/api/#Internals-1",
     "page": "API",
     "title": "Internals",
     "category": "section",
@@ -385,7 +417,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.handle_new_connection",
+    "location": "pages/api/#LibPQ.handle_new_connection",
     "page": "API",
     "title": "LibPQ.handle_new_connection",
     "category": "function",
@@ -393,7 +425,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.server_version",
+    "location": "pages/api/#LibPQ.server_version",
     "page": "API",
     "title": "LibPQ.server_version",
     "category": "function",
@@ -401,7 +433,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.encoding",
+    "location": "pages/api/#LibPQ.encoding",
     "page": "API",
     "title": "LibPQ.encoding",
     "category": "function",
@@ -409,7 +441,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.set_encoding!",
+    "location": "pages/api/#LibPQ.set_encoding!",
     "page": "API",
     "title": "LibPQ.set_encoding!",
     "category": "function",
@@ -417,7 +449,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.reset_encoding!",
+    "location": "pages/api/#LibPQ.reset_encoding!",
     "page": "API",
     "title": "LibPQ.reset_encoding!",
     "category": "function",
@@ -425,7 +457,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.transaction_status",
+    "location": "pages/api/#LibPQ.transaction_status",
     "page": "API",
     "title": "LibPQ.transaction_status",
     "category": "function",
@@ -433,7 +465,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.unique_id",
+    "location": "pages/api/#LibPQ.unique_id",
     "page": "API",
     "title": "LibPQ.unique_id",
     "category": "function",
@@ -441,7 +473,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.error_message-Tuple{LibPQ.Connection}",
+    "location": "pages/api/#LibPQ.error_message-Tuple{LibPQ.Connection}",
     "page": "API",
     "title": "LibPQ.error_message",
     "category": "method",
@@ -449,7 +481,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Connections-2",
+    "location": "pages/api/#Connections-2",
     "page": "API",
     "title": "Connections",
     "category": "section",
@@ -457,7 +489,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.ConnectionOption",
+    "location": "pages/api/#LibPQ.ConnectionOption",
     "page": "API",
     "title": "LibPQ.ConnectionOption",
     "category": "type",
@@ -465,7 +497,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.conninfo",
+    "location": "pages/api/#LibPQ.conninfo",
     "page": "API",
     "title": "LibPQ.conninfo",
     "category": "function",
@@ -473,7 +505,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.ConninfoDisplay",
+    "location": "pages/api/#LibPQ.ConninfoDisplay",
     "page": "API",
     "title": "LibPQ.ConninfoDisplay",
     "category": "type",
@@ -481,7 +513,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.parse-Tuple{Type{LibPQ.ConninfoDisplay},AbstractString}",
+    "location": "pages/api/#Base.parse-Tuple{Type{LibPQ.ConninfoDisplay},AbstractString}",
     "page": "API",
     "title": "Base.parse",
     "category": "method",
@@ -489,7 +521,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Connection-Info-1",
+    "location": "pages/api/#Connection-Info-1",
     "page": "API",
     "title": "Connection Info",
     "category": "section",
@@ -497,7 +529,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.handle_result",
+    "location": "pages/api/#LibPQ.handle_result",
     "page": "API",
     "title": "LibPQ.handle_result",
     "category": "function",
@@ -505,7 +537,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.column_name",
+    "location": "pages/api/#LibPQ.column_name",
     "page": "API",
     "title": "LibPQ.column_name",
     "category": "function",
@@ -513,7 +545,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.column_names",
+    "location": "pages/api/#LibPQ.column_names",
     "page": "API",
     "title": "LibPQ.column_names",
     "category": "function",
@@ -521,7 +553,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.column_number",
+    "location": "pages/api/#LibPQ.column_number",
     "page": "API",
     "title": "LibPQ.column_number",
     "category": "function",
@@ -529,7 +561,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.column_oids",
+    "location": "pages/api/#LibPQ.column_oids",
     "page": "API",
     "title": "LibPQ.column_oids",
     "category": "function",
@@ -537,7 +569,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.column_types",
+    "location": "pages/api/#LibPQ.column_types",
     "page": "API",
     "title": "LibPQ.column_types",
     "category": "function",
@@ -545,7 +577,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.num_params-Tuple{LibPQ.Result}",
+    "location": "pages/api/#LibPQ.num_params-Tuple{LibPQ.Result}",
     "page": "API",
     "title": "LibPQ.num_params",
     "category": "method",
@@ -553,7 +585,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.error_message-Tuple{LibPQ.Result}",
+    "location": "pages/api/#LibPQ.error_message-Tuple{LibPQ.Result}",
     "page": "API",
     "title": "LibPQ.error_message",
     "category": "method",
@@ -561,7 +593,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Results-and-Statements-1",
+    "location": "pages/api/#Results-and-Statements-1",
     "page": "API",
     "title": "Results and Statements",
     "category": "section",
@@ -569,7 +601,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.oid",
+    "location": "pages/api/#LibPQ.oid",
     "page": "API",
     "title": "LibPQ.oid",
     "category": "function",
@@ -577,7 +609,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.PQChar",
+    "location": "pages/api/#LibPQ.PQChar",
     "page": "API",
     "title": "LibPQ.PQChar",
     "category": "type",
@@ -585,7 +617,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.PQ_SYSTEM_TYPES",
+    "location": "pages/api/#LibPQ.PQ_SYSTEM_TYPES",
     "page": "API",
     "title": "LibPQ.PQ_SYSTEM_TYPES",
     "category": "constant",
@@ -593,7 +625,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.PQTypeMap",
+    "location": "pages/api/#LibPQ.PQTypeMap",
     "page": "API",
     "title": "LibPQ.PQTypeMap",
     "category": "type",
@@ -601,7 +633,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.getindex-Tuple{LibPQ.PQTypeMap,Any}",
+    "location": "pages/api/#Base.getindex-Tuple{LibPQ.PQTypeMap,Any}",
     "page": "API",
     "title": "Base.getindex",
     "category": "method",
@@ -609,7 +641,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.setindex!-Tuple{LibPQ.PQTypeMap,Type,Any}",
+    "location": "pages/api/#Base.setindex!-Tuple{LibPQ.PQTypeMap,Type,Any}",
     "page": "API",
     "title": "Base.setindex!",
     "category": "method",
@@ -617,7 +649,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ._DEFAULT_TYPE_MAP",
+    "location": "pages/api/#LibPQ._DEFAULT_TYPE_MAP",
     "page": "API",
     "title": "LibPQ._DEFAULT_TYPE_MAP",
     "category": "constant",
@@ -625,7 +657,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.LIBPQ_TYPE_MAP",
+    "location": "pages/api/#LibPQ.LIBPQ_TYPE_MAP",
     "page": "API",
     "title": "LibPQ.LIBPQ_TYPE_MAP",
     "category": "constant",
@@ -633,7 +665,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.PQConversions",
+    "location": "pages/api/#LibPQ.PQConversions",
     "page": "API",
     "title": "LibPQ.PQConversions",
     "category": "type",
@@ -641,7 +673,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.getindex-Tuple{LibPQ.PQConversions,Tuple{Any,Type}}",
+    "location": "pages/api/#Base.getindex-Tuple{LibPQ.PQConversions,Tuple{Any,Type}}",
     "page": "API",
     "title": "Base.getindex",
     "category": "method",
@@ -649,7 +681,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.setindex!-Tuple{LibPQ.PQConversions,Union{Function, Type},Tuple{Any,Type}}",
+    "location": "pages/api/#Base.setindex!-Tuple{LibPQ.PQConversions,Union{Function, Type},Tuple{Any,Type}}",
     "page": "API",
     "title": "Base.setindex!",
     "category": "method",
@@ -657,7 +689,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ._DEFAULT_CONVERSIONS",
+    "location": "pages/api/#LibPQ._DEFAULT_CONVERSIONS",
     "page": "API",
     "title": "LibPQ._DEFAULT_CONVERSIONS",
     "category": "constant",
@@ -665,7 +697,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.LIBPQ_CONVERSIONS",
+    "location": "pages/api/#LibPQ.LIBPQ_CONVERSIONS",
     "page": "API",
     "title": "LibPQ.LIBPQ_CONVERSIONS",
     "category": "constant",
@@ -673,7 +705,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ._FALLBACK_CONVERSION",
+    "location": "pages/api/#LibPQ._FALLBACK_CONVERSION",
     "page": "API",
     "title": "LibPQ._FALLBACK_CONVERSION",
     "category": "constant",
@@ -681,7 +713,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Type-Conversions-1",
+    "location": "pages/api/#Type-Conversions-1",
     "page": "API",
     "title": "Type Conversions",
     "category": "section",
@@ -689,7 +721,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.PQValue",
+    "location": "pages/api/#LibPQ.PQValue",
     "page": "API",
     "title": "LibPQ.PQValue",
     "category": "type",
@@ -697,7 +729,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.data_pointer",
+    "location": "pages/api/#LibPQ.data_pointer",
     "page": "API",
     "title": "LibPQ.data_pointer",
     "category": "function",
@@ -705,7 +737,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.num_bytes",
+    "location": "pages/api/#LibPQ.num_bytes",
     "page": "API",
     "title": "LibPQ.num_bytes",
     "category": "function",
@@ -713,7 +745,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.unsafe_string-Tuple{LibPQ.PQValue}",
+    "location": "pages/api/#Base.unsafe_string-Tuple{LibPQ.PQValue}",
     "page": "API",
     "title": "Base.unsafe_string",
     "category": "method",
@@ -721,7 +753,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.string_view",
+    "location": "pages/api/#LibPQ.string_view",
     "page": "API",
     "title": "LibPQ.string_view",
     "category": "function",
@@ -729,7 +761,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.bytes_view",
+    "location": "pages/api/#LibPQ.bytes_view",
     "page": "API",
     "title": "LibPQ.bytes_view",
     "category": "function",
@@ -737,7 +769,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Base.parse-Tuple{Type{Any},LibPQ.PQValue}",
+    "location": "pages/api/#Base.parse-Tuple{Type{Any},LibPQ.PQValue}",
     "page": "API",
     "title": "Base.parse",
     "category": "method",
@@ -745,7 +777,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Parsing-1",
+    "location": "pages/api/#Parsing-1",
     "page": "API",
     "title": "Parsing",
     "category": "section",
@@ -753,7 +785,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.@pqv_str",
+    "location": "pages/api/#LibPQ.@pqv_str",
     "page": "API",
     "title": "LibPQ.@pqv_str",
     "category": "macro",
@@ -761,7 +793,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.string_parameters",
+    "location": "pages/api/#LibPQ.string_parameters",
     "page": "API",
     "title": "LibPQ.string_parameters",
     "category": "function",
@@ -769,7 +801,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.parameter_pointers",
+    "location": "pages/api/#LibPQ.parameter_pointers",
     "page": "API",
     "title": "LibPQ.parameter_pointers",
     "category": "function",
@@ -777,7 +809,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#LibPQ.unsafe_string_or_null",
+    "location": "pages/api/#LibPQ.unsafe_string_or_null",
     "page": "API",
     "title": "LibPQ.unsafe_string_or_null",
     "category": "function",
@@ -785,7 +817,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "pages/api.html#Miscellaneous-1",
+    "location": "pages/api/#Miscellaneous-1",
     "page": "API",
     "title": "Miscellaneous",
     "category": "section",
