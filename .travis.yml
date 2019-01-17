@@ -25,6 +25,17 @@ matrix:
     - julia: 1.1
     - julia: nightly
     - os: osx
+      env:
+        - PGPORT=5432 LIBPQJL_DATABASE_USER=travis
+      before_install:
+        - brew services start postgresql
+    - stage: "Documentation"
+      julia: 1.0
+      os: linux
+      script:
+        - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); Pkg.build()'
+        - julia --project=docs/ docs/make.jl
+      after_success: skip
 notifications:
   email: false
 # before_script:
@@ -32,4 +43,3 @@ notifications:
 #   - psql -U postgres -c '\conninfo'
 after_success:
   - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
-  - julia -e 'using Pkg; Pkg.add("Documenter"); Pkg.add("DataFrames"); include(joinpath("docs", "make.jl"))'
