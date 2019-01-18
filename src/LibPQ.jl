@@ -126,6 +126,8 @@ mutable struct Connection
     end
 end
 
+Base.broadcastable(c::Connection) = Ref(c)
+
 """
     handle_new_connection(jl_conn::Connection; throw_error=true) -> Connection
 
