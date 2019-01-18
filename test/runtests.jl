@@ -454,6 +454,31 @@ end
             @test data[:yes_nulls][2] == "bar"
 
             close(result)
+
+             # Verify that Connection is treated as a scalar during broadcast
+            commands = [
+                """
+                SELECT no_nulls, yes_nulls FROM (
+                    VALUES ('foo', 'bar'), ('baz', NULL)
+                ) AS temp (no_nulls, yes_nulls)
+                ORDER BY no_nulls ASC;
+                """,
+                """
+                SELECT no_nulls, yes_nulls FROM (
+                    VALUES ('foo', 'bar'), ('baz', NULL)
+                ) AS temp (no_nulls, yes_nulls)
+                ORDER BY no_nulls DESC;
+                """,
+            ]
+            results = execute.(conn, commands; throw_error=true)
+            for result in results
+                @test result isa LibPQ.Result
+                @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+                @test LibPQ.num_rows(result) == 2
+                @test LibPQ.num_columns(result) == 2
+                close(result)
+            end
+
             close(conn)
         end
 
