@@ -7,6 +7,7 @@ using Compat.Dates
 using DocStringExtensions
 using Decimals
 using DataStreams
+using Tables
 using Base.Iterators: zip, product
 using IterTools: imap
 using LayerDicts
@@ -1187,6 +1188,7 @@ end
 include("parsing.jl")
 include("copy.jl")
 include("datastreams.jl")
+include("tables.jl")
 
 Base.@deprecate clear!(jl_result::Result) close(jl_result)
 
