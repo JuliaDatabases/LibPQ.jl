@@ -53,7 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "COPY",
     "category": "section",
-    "text": "An alternative to repeated INSERT queries is the PostgreSQL COPY query. LibPQ.CopyIn makes it easier to stream data to the server using a COPY FROM STDIN query.using LibPQ, DataFrames\n\nconn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\n\nrow_strings = imap(eachrow(df)) do row\n    if ismissing(row[:yes_nulls])\n        \"$(row[:no_nulls]),\\n\"\n    else\n        \"$(row[:no_nulls]),$(row[:yes_nulls])\\n\"\n    end\nend\n\ncopyin = LibPQ.CopyIn(\"COPY libpqjl_test FROM STDIN (FORMAT CSV);\", row_strings)\n\nclose(conn)"
+    "text": "An alternative to repeated INSERT queries is the PostgreSQL COPY query. LibPQ.CopyIn makes it easier to stream data to the server using a COPY FROM STDIN query.using LibPQ, DataFrames\n\nconn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\n\nrow_strings = imap(eachrow(df)) do row\n    if ismissing(row[:yes_nulls])\n        \"$(row[:no_nulls]),\\n\"\n    else\n        \"$(row[:no_nulls]),$(row[:yes_nulls])\\n\"\n    end\nend\n\ncopyin = LibPQ.CopyIn(\"COPY libpqjl_test FROM STDIN (FORMAT CSV);\", row_strings)\n\nexecute(conn, copyin)\n\nclose(conn)"
 },
 
 {

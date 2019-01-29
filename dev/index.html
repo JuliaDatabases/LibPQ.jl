@@ -53,4 +53,6 @@ end
 
 copyin = LibPQ.CopyIn(&quot;COPY libpqjl_test FROM STDIN (FORMAT CSV);&quot;, row_strings)
 
+execute(conn, copyin)
+
 close(conn)</code></pre><footer><hr/><a class="next" href="pages/type-conversions/"><span class="direction">Next</span><span class="title">Type Conversions</span></a></footer></article></body></html>
