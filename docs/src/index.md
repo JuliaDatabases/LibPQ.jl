@@ -10,7 +10,7 @@
 ### Selection
 
 ```julia
-using LibPQ, DataStreams, NamedTuples
+using LibPQ, DataStreams
 
 conn = LibPQ.Connection("dbname=postgres")
 result = execute(conn, "SELECT typname FROM pg_type WHERE oid = 16")
@@ -41,7 +41,7 @@ result = execute(conn, """
 """)
 
 Data.stream!(
-    data,
+    (no_nulls = ["foo", "baz"], yes_nulls = ["bar", missing]),
     LibPQ.Statement,
     conn,
     "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
@@ -61,7 +61,7 @@ Concretely, this means surrounding your query like this:
 execute(conn, "BEGIN;")
 
 Data.stream!(
-    data,
+    (no_nulls = ["foo", "baz"], yes_nulls = ["bar", missing]),
     LibPQ.Statement,
     conn,
     "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
