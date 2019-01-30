@@ -1,7 +1,7 @@
 # LibPQ
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://invenia.github.io/LibPQ.jl/stable)
-[![Latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://invenia.github.io/LibPQ.jl/latest)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://invenia.github.io/LibPQ.jl/stable/)
+[![Latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://invenia.github.io/LibPQ.jl/latest/)
 [![Build Status](https://travis-ci.org/invenia/LibPQ.jl.svg?branch=master)](https://travis-ci.org/invenia/LibPQ.jl)
 [![CodeCov](https://codecov.io/gh/invenia/LibPQ.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/invenia/LibPQ.jl)
 
@@ -53,7 +53,7 @@ close(conn)
 #### A Note on Bulk Insertion
 
 When inserting a large number of rows, wrapping your insert queries in a transaction will greatly increase performance.
-See the PostgreSQL documentation [14.4.1. Disable Autocommit](https://www.postgresql.org/docs/10/static/populate.html#DISABLE-AUTOCOMMIT) for more information.
+See the PostgreSQL documentation [14.4.1. Disable Autocommit](https://www.postgresql.org/docs/10/populate.html#DISABLE-AUTOCOMMIT) for more information.
 
 Concretely, this means surrounding your query like this:
 

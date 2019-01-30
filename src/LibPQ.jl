@@ -143,7 +143,7 @@ Base.broadcastable(c::Connection) = Ref(c)
     handle_new_connection(jl_conn::Connection; throw_error=true) -> Connection
 
 Check status and handle errors for newly-created connections.
-Also set the client encoding ([23.3. Character Set Support](https://www.postgresql.org/docs/10/static/multibyte.html))
+Also set the client encoding ([23.3. Character Set Support](https://www.postgresql.org/docs/10/multibyte.html))
 to `jl_conn.encoding`.
 
 If `throw_error` is `true`, an error will be thrown if the connection's status is
@@ -179,7 +179,7 @@ end
     ) -> Connection
 
 Create a `Connection` from a connection string as specified in the PostgreSQL
-documentation ([33.1.1. Connection Strings](https://www.postgresql.org/docs/10/static/libpq-connect.html#LIBPQ-CONNSTRING)).
+documentation ([33.1.1. Connection Strings](https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-CONNSTRING)).
 
 For information on the `type_map` and `conversions` arguments, see [Type Conversions](@ref typeconv).
 
@@ -262,7 +262,7 @@ end
 
 Get the PostgreSQL version of the server.
 
-See [33.2. Connection Status Functions](https://www.postgresql.org/docs/10/static/libpq-status.html#LIBPQ-PQSERVERVERSION)
+See [33.2. Connection Status Functions](https://www.postgresql.org/docs/10/libpq-status.html#LIBPQ-PQSERVERVERSION)
 for information on the integer returned by `PQserverVersion` that is parsed by this
 function.
 
@@ -347,7 +347,7 @@ end
     encoding(jl_conn::Connection) -> String
 
 Return the client encoding name for the current connection (see
-[Table 23.1. PostgreSQL Character Sets](https://www.postgresql.org/docs/10/static/multibyte.html#CHARSET-TABLE)
+[Table 23.1. PostgreSQL Character Sets](https://www.postgresql.org/docs/10/multibyte.html#CHARSET-TABLE)
 for possible values).
 
 Currently all Julia connections are set to use `UTF8` as this makes conversion to and from
@@ -369,7 +369,7 @@ end
     set_encoding!(jl_conn::Connection, encoding::String)
 
 Set the client encoding for the current connection (see
-[Table 23.1. PostgreSQL Character Sets](https://www.postgresql.org/docs/10/static/multibyte.html#CHARSET-TABLE)
+[Table 23.1. PostgreSQL Character Sets](https://www.postgresql.org/docs/10/multibyte.html#CHARSET-TABLE)
 for possible values).
 
 Currently all Julia connections are set to use `UTF8` as this makes conversion to and from
@@ -428,7 +428,7 @@ status(jl_conn::Connection) = libpq_c.PQstatus(jl_conn.conn)
     transaction_status(jl_conn::Connection) -> libpq_c.PGTransactionStatusType
 
 Return the PostgreSQL database server's current in-transaction status for the connection.
-See [](https://www.postgresql.org/docs/10/static/libpq-status.html#LIBPQ-PQTRANSACTIONSTATUS)
+See [](https://www.postgresql.org/docs/10/libpq-status.html#LIBPQ-PQTRANSACTIONSTATUS)
 for information on the meaning of the possible return values.
 """
 transaction_status(jl_conn::Connection) = libpq_c.PQtransactionStatus(jl_conn.conn)
@@ -437,7 +437,7 @@ transaction_status(jl_conn::Connection) = libpq_c.PQtransactionStatus(jl_conn.co
     close(jl_conn::Connection)
 
 Close the PostgreSQL database connection and free the memory used by the `PGconn` object.
-This function calls [`PQfinish`](https://www.postgresql.org/docs/10/static/libpq-connect.html#LIBPQ-PQFINISH),
+This function calls [`PQfinish`](https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-PQFINISH),
 but only if `jl_conn.closed` is `false`, to avoid a double-free.
 """
 function Base.close(jl_conn::Connection)
@@ -1080,7 +1080,7 @@ The statement is given an generated unique name using [`unique_id`](@ref).
 !!! note
 
     Currently the statement is not explicitly deallocated, but it is deallocated at the end
-    of session per the [PostgreSQL documentation on DEALLOCATE](https://www.postgresql.org/docs/10/static/sql-deallocate.html).
+    of session per the [PostgreSQL documentation on DEALLOCATE](https://www.postgresql.org/docs/10/sql-deallocate.html).
 """
 function prepare(jl_conn::Connection, query::AbstractString)
     uid = unique_id(jl_conn, "stmt")
