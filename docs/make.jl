@@ -7,6 +7,7 @@ makedocs(;
         "Home" => "index.md",
         "Type Conversions" => "pages/type-conversions.md",
         "API" => "pages/api.md",
+        "FAQ" => "pages/faq.md",
     ],
     repo="https://github.com/invenia/LibPQ.jl/blob/{commit}{path}#L{line}",
     sitename="LibPQ.jl",

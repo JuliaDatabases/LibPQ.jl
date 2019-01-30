@@ -88,13 +88,23 @@ const CONNECTION_OPTION_DEFAULTS = Dict{String, String}(
     "TimeZone" => "UTC",
 )
 
-const CONNECTION_PARAMETER_DEFAULTS = Dict{String, String}(
-    "client_encoding" => "UTF8",
-    "application_name" => "LibPQ.jl",
-    "options" => join(
-        ("-c $k=$(show_option(v))" for (k, v) in CONNECTION_OPTION_DEFAULTS),
-        " ",
-    ),
+function _connection_parameter_dict(;
+    client_encoding::String="UTF8",
+    application_name::String="LibPQ.jl",
+    connection_options::Dict{String, String}=Dict{String, String}(),
+)
+    Dict{String, String}(
+        "client_encoding" => "UTF8",
+        "application_name" => "LibPQ.jl",
+        "options" => join(
+            ("-c $k=$(show_option(v))" for (k, v) in connection_options),
+            " ",
+        ),
+    )
+end
+
+const CONNECTION_PARAMETER_DEFAULTS = _connection_parameter_dict(
+    connection_options=CONNECTION_OPTION_DEFAULTS
 )
 
 "A connection to a PostgreSQL database."
@@ -165,6 +175,7 @@ end
         throw_error::Bool=true,
         type_map::AbstractDict=LibPQ.PQTypeMap(),
         conversions::AbstractDict=LibPQ.PQConversions(),
+        options::Dict{String, String}=$(CONNECTION_OPTION_DEFAULTS),
     ) -> Connection
 
 Create a `Connection` from a connection string as specified in the PostgreSQL
@@ -172,15 +183,29 @@ documentation ([33.1.1. Connection Strings](https://www.postgresql.org/docs/10/s
 
 For information on the `type_map` and `conversions` arguments, see [Type Conversions](@ref typeconv).
 
+For a list of available options for the `options` argument, see [Server Configuration](https://www.postgresql.org/docs/10/runtime-config.html).
+
 See [`handle_new_connection`](@ref) for information on the `throw_error` argument.
 """
-function Connection(str::AbstractString; throw_error::Bool=true, kwargs...)
+function Connection(
+    str::AbstractString;
+    throw_error::Bool=true,
+    options::Dict{String, String}=CONNECTION_OPTION_DEFAULTS,
+    kwargs...
+)
+    if options === CONNECTION_OPTION_DEFAULTS
+        # avoid allocating another dict in the common case
+        connection_parameters = CONNECTION_PARAMETER_DEFAULTS
+    else
+        connection_parameters = _connection_parameter_dict(connection_options=options)
+    end
+
     ci_array = conninfo(str)
 
     keywords = String[]
     values = String[]
 
-    for (k, v) in CONNECTION_PARAMETER_DEFAULTS
+    for (k, v) in connection_parameters
         push!(keywords, k)
         push!(values, v)
     end

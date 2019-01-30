@@ -364,6 +364,24 @@ end
             close(conn)
         end
 
+        @testset "Options" begin
+            conn = LibPQ.Connection(
+                "dbname=postgres user=$DATABASE_USER";
+                options=Dict("IntervalStyle" => "postgres_verbose"),
+                throw_error=true,
+            )
+
+            conn_info = LibPQ.conninfo(conn)
+            options = first(filter(conn_info) do conn_opt
+                conn_opt.keyword == "options"
+            end)
+            @test occursin("IntervalStyle=postgres_verbose", options.val)
+
+            results = fetch!(NamedTuple, execute(conn, "SELECT '1 12:59:10'::interval;"))
+            @test results[1][1] == "@ 1 day 12 hours 59 mins 10 secs"
+            close(conn)
+        end
+
         @testset "Bad Connection" begin
             @testset "throw_error=false" begin
                 conn = LibPQ.Connection("dbname=123fake"; throw_error=false)
