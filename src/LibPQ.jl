@@ -3,7 +3,7 @@ module LibPQ
 export status, reset!, execute, clear, fetch!, prepare,
     num_columns, num_rows, num_params, num_affected_rows
 
-using Compat.Dates
+using Dates
 using DocStringExtensions
 using Decimals
 using DataStreams
@@ -12,12 +12,9 @@ using Base.Iterators: zip, product
 using IterTools: imap
 using LayerDicts
 using Memento: Memento, getlogger, warn, info, error, debug
-using Missings
 using OffsetArrays
 using TimeZones
-using Compat: Compat, @__MODULE__, AbstractDict, Cvoid, axes, @compat, lastindex, replace,
-              something, undef, occursin, split
-import Compat.Distributed: clear!
+import Distributed: clear!
 
 const Parameter = Union{String, Missing}
 const LOGGER = getlogger(@__MODULE__)
@@ -42,8 +39,6 @@ include(joinpath(@__DIR__, "utils.jl"))
 
 module libpq_c
     export Oid
-
-    using Compat: Cvoid
 
     include(joinpath(@__DIR__, "..", "deps", "deps.jl"))
 
@@ -735,9 +730,7 @@ mutable struct Result <: Data.Source
             ))
         end
 
-        # NOTE: The @compat annotation is necessary for 0.6 support, where the function
-        # argument to `finalizer` comes last instead of first.
-        @compat finalizer(close, jl_result)
+        finalizer(close, jl_result)
 
         return jl_result
     end

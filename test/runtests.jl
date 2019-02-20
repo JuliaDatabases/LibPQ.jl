@@ -1,16 +1,14 @@
 using LibPQ
-using Compat.Test
-using Compat.Dates
+using Test
+using Dates
 using DataFrames
 using DataFrames: eachrow
 using DataStreams
 using Decimals
 using IterTools: imap
 using Memento
-using Missings
 using OffsetArrays
 using TimeZones
-using Compat: occursin, copyto!, undef
 
 Memento.config!("critical")
 

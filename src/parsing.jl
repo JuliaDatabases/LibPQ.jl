@@ -95,7 +95,7 @@ Base.String(pqv::PQValue) = unsafe_string(pqv)
 Base.parse(::Type{String}, pqv::PQValue) = unsafe_string(pqv)
 Base.convert(::Type{String}, pqv::PQValue) = String(pqv)
 Base.length(pqv::PQValue) = length(string_view(pqv))
-Compat.lastindex(pqv::PQValue) = lastindex(string_view(pqv))
+Base.lastindex(pqv::PQValue) = lastindex(string_view(pqv))
 
 # Fallback, because Base requires string iteration state to be indices into the string.
 # In an ideal world, PQValue would be an AbstractString and this particular method would
@@ -250,13 +250,9 @@ end
 ## arrays
 # numeric arrays never have double quotes and always use ',' as a separator
 function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
-    # TODO: Once support for Julia 0.6 is dropped, we can change this to simply
-    # eq_ind = findfirst(isequal('='), str)
-    # then change the check below to eq_ind !== nothing. The use of something is
-    # to ensure compatibility with 0.6, where findfirst always returns an Int.
-    eq_ind = something(findfirst(isequal('='), str), 0)
+    eq_ind = findfirst(isequal('='), str)
 
-    if eq_ind > 0
+    if eq_ind !== nothing
         offset_str = str[1:eq_ind-1]
         range_strs = split(str[1:eq_ind-1], ['[',']']; keepempty=false)
 
@@ -266,12 +262,13 @@ function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
         end
 
         arr = OffsetArray{T}(undef, ranges...)
+        el_iter = eachmatch(r"[^\}\{,]+", str[eq_ind+1:end])
     else
         arr = Array{T}(undef, array_size(str)...)
+        el_iter = eachmatch(r"[^\}\{,]+", str)
     end
 
     idx_iter = imap(reverse, product(reverse(axes(arr))...))
-    el_iter = eachmatch(r"[^\}\{,]+", str[eq_ind+1:end])
     for (idx, num_match) in zip(idx_iter, el_iter)
         arr[idx...] = parse(T, num_match.match)
     end
