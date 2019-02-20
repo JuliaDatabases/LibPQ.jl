@@ -32,7 +32,8 @@ function Base.getproperty(pqrow::Row, name::Symbol)
         return missing
     else
         oid = jl_result.column_oids[col]
-        return jl_result.column_funcs[col](PQValue{oid}(jl_result, row, col))  # ::_non_null_type(T) except https://github.com/JuliaData/Missings.jl/issues/80
+        T = jl_result.column_types[col]
+        return jl_result.column_funcs[col](PQValue{oid}(jl_result, row, col))::T
     end
 end
 
