@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Selection",
     "category": "section",
-    "text": "using LibPQ, DataStreams, NamedTuples\n\nconn = LibPQ.Connection(\"dbname=postgres\")\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = 16\")\ndata = Data.stream!(result, NamedTuple)\n\n# the same but with parameters\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"])\ndata = Data.stream!(result, NamedTuple)\n\n# the same but using `fetch!` to handle streaming and clearing\ndata = fetch!(NamedTuple, execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"]))\n\nclose(conn)"
+    "text": "using LibPQ, DataStreams\n\nconn = LibPQ.Connection(\"dbname=postgres\")\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = 16\")\ndata = Data.stream!(result, NamedTuple)\n\n# the same but with parameters\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"])\ndata = Data.stream!(result, NamedTuple)\n\n# the same but using `fetch!` to handle streaming and clearing\ndata = fetch!(NamedTuple, execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"]))\n\nclose(conn)"
 },
 
 {
@@ -37,7 +37,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Insertion",
     "category": "section",
-    "text": "using LibPQ, DataStreams\n\nconn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\n\nresult = execute(conn, \"\"\"\n    CREATE TEMPORARY TABLE libpqjl_test (\n        no_nulls    varchar(10) PRIMARY KEY,\n        yes_nulls   varchar(10)\n    );\n\"\"\")\n\nData.stream!(\n    data,\n    LibPQ.Statement,\n    conn,\n    \"INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\$1, \\$2);\",\n)\n\nclose(conn)"
+    "text": "using LibPQ, DataStreams\n\nconn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\n\nresult = execute(conn, \"\"\"\n    CREATE TEMPORARY TABLE libpqjl_test (\n        no_nulls    varchar(10) PRIMARY KEY,\n        yes_nulls   varchar(10)\n    );\n\"\"\")\n\nData.stream!(\n    (no_nulls = [\"foo\", \"baz\"], yes_nulls = [\"bar\", missing]),\n    LibPQ.Statement,\n    conn,\n    \"INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\$1, \\$2);\",\n)\n\nclose(conn)"
 },
 
 {
@@ -45,7 +45,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "A Note on Bulk Insertion",
     "category": "section",
-    "text": "When inserting a large number of rows, wrapping your insert queries in a transaction will greatly increase performance. See the PostgreSQL documentation 14.4.1. Disable Autocommit for more information.Concretely, this means surrounding your query like this:execute(conn, \"BEGIN;\")\n\nData.stream!(\n    data,\n    LibPQ.Statement,\n    conn,\n    \"INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\$1, \\$2);\",\n)\n\nexecute(conn, \"COMMIT;\")"
+    "text": "When inserting a large number of rows, wrapping your insert queries in a transaction will greatly increase performance. See the PostgreSQL documentation 14.4.1. Disable Autocommit for more information.Concretely, this means surrounding your query like this:execute(conn, \"BEGIN;\")\n\nData.stream!(\n    (no_nulls = [\"foo\", \"baz\"], yes_nulls = [\"bar\", missing]),\n    LibPQ.Statement,\n    conn,\n    \"INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\$1, \\$2);\",\n)\n\nexecute(conn, \"COMMIT;\")"
 },
 
 {
@@ -69,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Type Conversions",
     "title": "Type Conversions",
     "category": "section",
-    "text": "The implementation of type conversions across the LibPQ.jl interface is sufficiently complicated that it warrants its own section in the documentation. Luckily, it should be easy to use for whichever case you need.DocTestSetup = quote\n    using LibPQ\n    using DataFrames\n    isdefined(Base, :NamedTuple) || using NamedTuples\n\n    DATABASE_USER = get(ENV, \"LIBPQJL_DATABASE_USER\", \"postgres\")\n    conn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\nend"
+    "text": "The implementation of type conversions across the LibPQ.jl interface is sufficiently complicated that it warrants its own section in the documentation. Luckily, it should be easy to use for whichever case you need.DocTestSetup = quote\n    using LibPQ\n    using DataFrames\n\n    DATABASE_USER = get(ENV, \"LIBPQJL_DATABASE_USER\", \"postgres\")\n    conn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\nend"
 },
 
 {
@@ -822,6 +822,30 @@ var documenterSearchIndex = {"docs": [
     "title": "Miscellaneous",
     "category": "section",
     "text": "LibPQ.@pqv_str\nLibPQ.string_parameters\nLibPQ.parameter_pointers\nLibPQ.unsafe_string_or_null"
+},
+
+{
+    "location": "pages/faq/#",
+    "page": "FAQ",
+    "title": "FAQ",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "pages/faq/#Frequently-Asked-Questions-1",
+    "page": "FAQ",
+    "title": "Frequently Asked Questions",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "pages/faq/#Can-I-use-LibPQ.jl-with-Amazon-Redshift?-1",
+    "page": "FAQ",
+    "title": "Can I use LibPQ.jl with Amazon Redshift?",
+    "category": "section",
+    "text": "Yes. However, LibPQ.jl by default sets some client options to make interactions more reliable. Unsupported options must be disabled for Redshift to allow connections. To override all options, pass an empty Dict{String, String}:conn = LibPQ.Connection(\"dbname=myredshift\"; options=Dict{String, String}())"
 },
 
 ]}
