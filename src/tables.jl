@@ -1,20 +1,20 @@
 Tables.istable(::Type{<:Result}) = true
 Tables.rowaccess(::Type{<:Result}) = true
-Tables.rows(r::Result) = r
+Tables.rows(jl_result::Result) = jl_result
 
-Base.eltype(r::Result) = Row
-Base.length(r::Result) = num_rows(r)
+Base.eltype(jl_result::Result) = Row
+Base.length(jl_result::Result) = num_rows(jl_result)
 
-function Tables.schema(r::Result)
-    types = map(r.not_null, column_types(r)) do not_null, col_type
+function Tables.schema(jl_result::Result)
+    types = map(jl_result.not_null, column_types(jl_result)) do not_null, col_type
         not_null ? col_type : Union{col_type, Missing}
     end
-    return Tables.Schema(types, map(Symbol, column_names(r)))
+    return Tables.Schema(map(Symbol, column_names(jl_result)), types)
 end
 
-function Base.iterate(r::Result, (len, row)=(length(r), 1))
+function Base.iterate(jl_result::Result, (len, row)=(length(jl_result), 1))
     row > len && return nothing
-    return Row(result, row), (len, row + 1)
+    return Row(jl_result, row), (len, row + 1)
 end
 
 struct Row

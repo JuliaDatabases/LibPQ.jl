@@ -9,6 +9,7 @@ using IterTools: imap
 using Memento
 using OffsetArrays
 using TimeZones
+using Tables
 
 Memento.config!("critical")
 
@@ -575,6 +576,34 @@ end
             @test data[:yes_nulls] isa Vector{Union{String, Missing}}
 
             close(result)
+        end
+
+        @testset "Tables.jl" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            result = execute(conn, """
+                SELECT no_nulls, yes_nulls FROM (
+                    VALUES ('foo', 'bar'), ('baz', NULL)
+                ) AS temp (no_nulls, yes_nulls)
+                ORDER BY no_nulls DESC;
+                """;
+                not_null=false,
+                throw_error=true,
+            )
+
+            # rows
+            rt = Tables.rows(result)
+            data = collect(rt)
+            @test data[1].no_nulls == "foo"
+            @test data[2].no_nulls == "baz"
+            @test data[1].yes_nulls == "bar"
+            @test data[2].yes_nulls === missing
+
+            ct = Tables.columns(result)
+            no_nulls = collect(ct.no_nulls)
+            @test no_nulls == ["foo", "baz"]
+            yes_nulls = collect(ct.yes_nulls)
+            @test isequal(yes_nulls, ["bar", missing])
         end
 
         @testset "Type Conversions" begin
