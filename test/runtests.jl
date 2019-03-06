@@ -776,6 +776,40 @@ end
             end
         end
 
+        @testset "Parameters" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            result = execute(conn, "SELECT 'foo' = ANY(\$1)", [["bar", "foo"]])
+            @test first(first(Tables.columns(result)))
+            close(result)
+
+            result = execute(conn, "SELECT 'foo' = ANY(\$1)", (["bar", "foo"],))
+            @test first(first(Tables.columns(result)))
+            close(result)
+
+            result = execute(conn, "SELECT 'foo' = ANY(\$1)", [Any["bar", "foo"]])
+            @test first(first(Tables.columns(result)))
+            close(result)
+
+            result = execute(conn, "SELECT 'foo' = ANY(\$1)", Any[Any["bar", "foo"]])
+            @test first(first(Tables.columns(result)))
+            close(result)
+
+            result = execute(conn, "SELECT 'foo' = ANY(\$1)", [["bar", "foobar"]])
+            @test !first(first(Tables.columns(result)))
+            close(result)
+
+            result = execute(conn, "SELECT ARRAY[1, 2] = \$1", [[1, 2]])
+            @test first(first(Tables.columns(result)))
+            close(result)
+
+            result = execute(conn, "SELECT ARRAY[1, 2] = \$1", Any[Any[1, 2]])
+            @test first(first(Tables.columns(result)))
+            close(result)
+
+            close(conn)
+        end
+
         @testset "Query Errors" begin
             @testset "Syntax Errors" begin
                 conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)

@@ -903,17 +903,31 @@ string_parameters(parameters::AbstractVector{<:Parameter}) = parameters
 string_parameters(parameters::Tuple) = string_parameters(collect(parameters))
 
 # vector which can't contain missing
-string_parameters(parameters::AbstractVector) = map(string, parameters)
+string_parameters(parameters::AbstractVector) = map(string_parameter, parameters)
 
 # vector which might contain missings
 function string_parameters(parameters::AbstractVector{>:Missing})
     collect(
         Union{String, Missing},
         imap(parameters) do parameter
-            ismissing(parameter) ? missing : string(parameter)
+            ismissing(parameter) ? missing : string_parameter(parameter)
         end
     )
 end
+
+string_parameter(parameter) = string(parameter)
+
+function string_parameter(parameter::AbstractVector)
+    io = IOBuffer()
+    print(io, "{")
+    join(io, (_array_element(el) for el in parameter), ",")
+    print(io, "}")
+    String(take!(io))
+end
+
+_array_element(el::AbstractString) = "\"$el\""
+_array_element(el::Missing) = "NULL"
+_array_element(el) = string_parameter(el)
 
 """
     parameter_pointers(parameters::AbstractVector{<:Parameter}) -> Vector{Ptr{UInt8}}
