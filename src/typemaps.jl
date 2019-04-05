@@ -189,7 +189,7 @@ end
 Base.iterate(tmap::PQTypeMap) = iterate(tmap.type_map)
 Base.iterate(tmap::PQTypeMap, i) = iterate(tmap.type_map, i)
 
-Base.length(tmap::PQTypeMap) = length(tmap.type_mapp)
+Base.length(tmap::PQTypeMap) = length(tmap.type_map)
 Base.keys(tmap::PQTypeMap) = keys(tmap.type_map)
 
 """
