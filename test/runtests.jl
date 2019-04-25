@@ -695,21 +695,23 @@ end
                         ("'infinity'::timestamptz", ZonedDateTime(typemax(DateTime), tz"UTC")),
                         ("'-infinity'::timestamptz", ZonedDateTime(typemin(DateTime), tz"UTC")),
                         # ("'epoch'::timestamptz", ZonedDateTime(1970, 1, 1, 0, 0, 0, tz"UTC")),
-                        ("'{{{1,2,3},{4,5,6}}}'::int2[]", reshape(Int16[1 2 3; 4 5 6], 1, 2, 3)),
-                        ("'{}'::int2[]", Int16[]),
-                        ("'{{{1,2,3},{4,5,6}}}'::int4[]", reshape(Int32[1 2 3; 4 5 6], 1, 2, 3)),
-                        ("'{{{1,2,3},{4,5,6}}}'::int8[]", reshape(Int64[1 2 3; 4 5 6], 1, 2, 3)),
-                        ("'{{{1,2,3},{4,5,6}}}'::float4[]", reshape(Float32[1 2 3; 4 5 6], 1, 2, 3)),
-                        ("'{{{1,2,3},{4,5,6}}}'::float8[]", reshape(Float64[1 2 3; 4 5 6], 1, 2, 3)),
-                        ("'{{{1,2,3},{4,5,6}}}'::oid[]", reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3)),
-                        ("'{{{1,2,3},{4,5,6}}}'::numeric[]", reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3)),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copyto!(OffsetArray{Int16}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copyto!(OffsetArray{Int32}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copyto!(OffsetArray{Int64}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copyto!(OffsetArray{Float32}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copyto!(OffsetArray{Float64}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copyto!(OffsetArray{LibPQ.Oid}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copyto!(OffsetArray{Decimal}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'{{{1,2,3},{4,5,6}}}'::int2[]", convert(Array{Union{Int16, Missing}, 3}, reshape(Int16[1 2 3; 4 5 6], 1, 2, 3))),
+                        ("'{}'::int2[]", Union{Missing, Int16}[]),
+                        ("'{{{1,2,3},{4,5,6}}}'::int4[]", convert(Array{Union{Int32, Missing}, 3}, reshape(Int32[1 2 3; 4 5 6], 1, 2, 3))),
+                        ("'{{{1,2,3},{4,5,6}}}'::int8[]", convert(Array{Union{Int64, Missing}, 3}, reshape(Int64[1 2 3; 4 5 6], 1, 2, 3))),
+                        ("'{{{NULL,2,3},{4,NULL,6}}}'::int8[]", convert(Array{Union{Int64, Missing}, 3}, reshape(Union{Int64, Missing}[missing 2 3; 4 missing 6], 1, 2, 3))),
+                        ("'{{{1,2,3},{4,5,6}}}'::float4[]", convert(Array{Union{Float32, Missing}, 3}, reshape(Float32[1 2 3; 4 5 6], 1, 2, 3))),
+                        ("'{{{1,2,3},{4,5,6}}}'::float8[]", convert(Array{Union{Float64, Missing}, 3}, reshape(Float64[1 2 3; 4 5 6], 1, 2, 3))),
+                        ("'{{{NULL,2,3},{4,NULL,6}}}'::float8[]", convert(Array{Union{Float64, Missing}, 3}, reshape(Union{Float64, Missing}[missing 2 3; 4 missing 6], 1, 2, 3))),
+                        ("'{{{1,2,3},{4,5,6}}}'::oid[]", convert(Array{Union{LibPQ.Oid, Missing}, 3}, reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3))),
+                        ("'{{{1,2,3},{4,5,6}}}'::numeric[]", convert(Array{Union{Decimal, Missing}, 3}, reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3))),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copyto!(OffsetArray{Union{Missing, Int16}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copyto!(OffsetArray{Union{Missing, Int32}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copyto!(OffsetArray{Union{Missing, Int64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copyto!(OffsetArray{Union{Missing, Float32}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copyto!(OffsetArray{Union{Missing, Float64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copyto!(OffsetArray{Union{Missing, LibPQ.Oid}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copyto!(OffsetArray{Union{Missing, Decimal}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                     ]
 
                     for (test_str, data) in test_data
@@ -723,7 +725,7 @@ end
                             oid = LibPQ.column_oids(result)[1]
                             func = result.column_funcs[1]
                             parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
-                            @test parsed == data
+                            @test isequal(parsed, data)
                             @test typeof(parsed) == typeof(data)
                         finally
                             close(result)
@@ -747,6 +749,7 @@ end
                         ("'foobar'", Symbol, :foobar),
                         ("0::int8", DateTime, DateTime(1970, 1, 1, 0)),
                         ("0::int8", ZonedDateTime, ZonedDateTime(1970, 1, 1, 0, tz"UTC")),
+                        ("'{{{1,2,3},{4,5,6}}}'::int2[]", AbstractArray{Int16}, reshape(Int16[1 2 3; 4 5 6], 1, 2, 3))
                     ]
 
                     for (test_str, typ, data) in test_data
