@@ -324,13 +324,14 @@ for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
     # could be an OffsetArray or Array of any dimensionality
     _DEFAULT_TYPE_MAP[array_oid] = AbstractArray{Union{jl_eltype, Missing}}
 
-    @eval function Base.parse(::Type{AbstractArray{Union{$jl_eltype, Missing}}},
-                              pqv::PQValue{$array_oid})
+    @eval function Base.parse(
+        ::Type{AbstractArray{Union{$jl_eltype, Missing}}},
+        pqv::PQValue{$array_oid}
+    )
         parse_numeric_array(Union{$jl_eltype, Missing}, string_view(pqv))
     end
 
-    @eval function Base.parse(::Type{AbstractArray{$jl_eltype}},
-                              pqv::PQValue{$array_oid})
+    @eval function Base.parse(::Type{AbstractArray{$jl_eltype}}, pqv::PQValue{$array_oid})
         parse_numeric_array($jl_eltype, string_view(pqv))
     end
 end
