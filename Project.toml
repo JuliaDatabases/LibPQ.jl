@@ -1,7 +1,7 @@
 name = "LibPQ"
 uuid = "194296ae-ab2e-5f79-8cd4-7183a0a5a0d1"
 license = "MIT"
-version = "0.7.0"
+version = "0.8.0"
 
 [deps]
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
@@ -20,14 +20,15 @@ TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 
 [compat]
 BinaryProvider = ">=0.4"
-DataStreams = ">=0.4"
+DataFrames = "0.14, 0.15, 0.16, 0.17"
+DataStreams = "0.4"
 Decimals = ">=0.3.1"
 IterTools = "1"
 LayerDicts = "0.1.2"
 Memento = ">=0.10"
 OffsetArrays = ">=0.9.1"
 TimeZones = ">=0.8"
-julia = "0.7, 1.0"
+julia = "1"
 
 [extras]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
