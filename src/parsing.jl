@@ -252,7 +252,7 @@ end
 parse_numeric_element(::Type{T}, str) where T = parse(T, str)
 
 parse_numeric_element(::Type{Union{T, Missing}}, str) where T =
-    str == "NULL" ? missing : parse_numeric_element(T, str)
+    str == "NULL" ? missing : parse(T, str)
 
 function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
     eq_ind = findfirst(isequal('='), str)
