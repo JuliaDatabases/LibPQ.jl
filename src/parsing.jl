@@ -319,20 +319,16 @@ end
 
 for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
     array_oid = PQ_SYSTEM_TYPES[Symbol("_$pq_eltype")]
-    jl_eltype = _DEFAULT_TYPE_MAP[Symbol(pq_eltype)]
+    jl_type = _DEFAULT_TYPE_MAP[Symbol(pq_eltype)]
+    jl_missingtype = Union{jl_type, Missing}
 
     # could be an OffsetArray or Array of any dimensionality
-    _DEFAULT_TYPE_MAP[array_oid] = AbstractArray{Union{jl_eltype, Missing}}
+    _DEFAULT_TYPE_MAP[array_oid] = AbstractArray{jl_missingtype}
 
-    @eval function Base.parse(
-        ::Type{AbstractArray{Union{$jl_eltype, Missing}}},
-        pqv::PQValue{$array_oid}
-    )
-        parse_numeric_array(Union{$jl_eltype, Missing}, string_view(pqv))
-    end
-
-    @eval function Base.parse(::Type{AbstractArray{$jl_eltype}}, pqv::PQValue{$array_oid})
-        parse_numeric_array($jl_eltype, string_view(pqv))
+    for jl_eltype in (jl_type, jl_missingtype)
+        @eval function Base.parse(::Type{AbstractArray{$jl_eltype}}, pqv::PQValue{$array_oid})
+            parse_numeric_array($jl_eltype, string_view(pqv))
+        end
     end
 end
 
