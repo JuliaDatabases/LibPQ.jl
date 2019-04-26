@@ -695,7 +695,7 @@ end
                         ("'infinity'::timestamptz", ZonedDateTime(typemax(DateTime), tz"UTC")),
                         ("'-infinity'::timestamptz", ZonedDateTime(typemin(DateTime), tz"UTC")),
                         # ("'epoch'::timestamptz", ZonedDateTime(1970, 1, 1, 0, 0, 0, tz"UTC")),
-                        ("'{{{1,2,3},{4,5,6}}}'::int2[]", convert(Array{Union{Int16, Missing}, 3}, reshape(Int16[1 2 3; 4 5 6], 1, 2, 3))),
+                        ("'{{{1,2,3},{4,5,6}}}'::int2[]", Array{Union{Int16, Missing}}(reshape(Int16[1 2 3; 4 5 6], 1, 2, 3))),
                         ("'{}'::int2[]", Union{Missing, Int16}[]),
                         ("'{{{1,2,3},{4,5,6}}}'::int4[]", Array{Union{Int32, Missing}}(reshape(Int32[1 2 3; 4 5 6], 1, 2, 3))),
                         ("'{{{1,2,3},{4,5,6}}}'::int8[]", Array{Union{Int64, Missing}}(reshape(Int64[1 2 3; 4 5 6], 1, 2, 3))),
