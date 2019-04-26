@@ -21,7 +21,6 @@ matrix:
     - julia: nightly
   fast_finish: true
   include:
-    - julia: 0.7
     - julia: 1.1
     - julia: nightly
     - os: osx
