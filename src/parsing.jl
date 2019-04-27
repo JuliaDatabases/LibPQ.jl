@@ -249,6 +249,11 @@ end
 
 ## arrays
 # numeric arrays never have double quotes and always use ',' as a separator
+parse_numeric_element(::Type{T}, str) where T = parse(T, str)
+
+parse_numeric_element(::Type{Union{T, Missing}}, str) where T =
+    str == "NULL" ? missing : parse(T, str)
+
 function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
     eq_ind = findfirst(isequal('='), str)
 
@@ -270,7 +275,7 @@ function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
 
     idx_iter = imap(reverse, product(reverse(axes(arr))...))
     for (idx, num_match) in zip(idx_iter, el_iter)
-        arr[idx...] = parse(T, num_match.match)
+        arr[idx...] = parse_numeric_element(T, num_match.match)
     end
 
     return arr
@@ -314,13 +319,16 @@ end
 
 for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
     array_oid = PQ_SYSTEM_TYPES[Symbol("_$pq_eltype")]
-    jl_eltype = _DEFAULT_TYPE_MAP[Symbol(pq_eltype)]
+    jl_type = _DEFAULT_TYPE_MAP[Symbol(pq_eltype)]
+    jl_missingtype = Union{jl_type, Missing}
 
     # could be an OffsetArray or Array of any dimensionality
-    _DEFAULT_TYPE_MAP[array_oid] = AbstractArray{jl_eltype}
+    _DEFAULT_TYPE_MAP[array_oid] = AbstractArray{jl_missingtype}
 
-    @eval function Base.parse(::Type{AbstractArray{$jl_eltype}}, pqv::PQValue{$array_oid})
-        parse_numeric_array($jl_eltype, string_view(pqv))
+    for jl_eltype in (jl_type, jl_missingtype)
+        @eval function Base.parse(::Type{AbstractArray{$jl_eltype}}, pqv::PQValue{$array_oid})
+            parse_numeric_array($jl_eltype, string_view(pqv))
+        end
     end
 end
 
