@@ -37,13 +37,33 @@ function Base.getproperty(pqrow::Row, name::Symbol)
     end
 end
 
-# sink
+"""
+    LibPQ.load!(table, connection::LibPQ.Connection, query) -> LibPQ.Statement
+
+Insert the data from `table` using `query`.
+`query` will be prepared as a [`LibPQ.Statement`](@ref) and then [`execute`](@ref) is run
+on every row of `table`.
+
+For best performance, wrap the call to this function in a PostgreSQL transaction:
+
+```jldoctest; setup = :(execute(conn, "CREATE TEMPORARY TABLE libpqjl_test (no_nulls varchar(10) PRIMARY KEY, yes_nulls varchar(10));"))
+julia> execute(conn, "BEGIN;");
+
+julia> LibPQ.load!(
+           (no_nulls = ["foo", "baz"], yes_nulls = ["bar", missing]),
+           conn,
+           "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\\$1, \\\$2);",
+       );
+
+julia> execute(conn, "COMMIT;");
+```
+"""
 function load!(table::T, connection::Connection, query::AbstractString) where {T}
     rows = Tables.rows(table)
     stmt = prepare(connection, query)
     state = iterate(rows)
     state === nothing && return
-    st, row = state
+    row, st = state
     names = propertynames(row)
     sch = Tables.Schema(names, nothing)
     parameters = Vector{Parameter}(undef, length(names))
@@ -62,5 +82,5 @@ function load!(table::T, connection::Connection, query::AbstractString) where {T
         state === nothing && break
         row, st = state
     end
-    return
+    return stmt
 end

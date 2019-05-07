@@ -10,18 +10,15 @@
 ### Selection
 
 ```julia
-using LibPQ, DataStreams
+using LibPQ, Tables
 
 conn = LibPQ.Connection("dbname=postgres")
 result = execute(conn, "SELECT typname FROM pg_type WHERE oid = 16")
-data = Data.stream!(result, NamedTuple)
+data = columntable(result)
 
 # the same but with parameters
 result = execute(conn, "SELECT typname FROM pg_type WHERE oid = \$1", ["16"])
-data = Data.stream!(result, NamedTuple)
-
-# the same but using `fetch!` to handle streaming and clearing
-data = fetch!(NamedTuple, execute(conn, "SELECT typname FROM pg_type WHERE oid = \$1", ["16"]))
+data = columntable(result)
 
 close(conn)
 ```
@@ -40,9 +37,8 @@ result = execute(conn, """
     );
 """)
 
-Data.stream!(
+LibPQ.load!(
     (no_nulls = ["foo", "baz"], yes_nulls = ["bar", missing]),
-    LibPQ.Statement,
     conn,
     "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
 )
@@ -60,9 +56,8 @@ Concretely, this means surrounding your query like this:
 ```julia
 execute(conn, "BEGIN;")
 
-Data.stream!(
+LibPQ.load!(
     (no_nulls = ["foo", "baz"], yes_nulls = ["bar", missing]),
-    LibPQ.Statement,
     conn,
     "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
 )

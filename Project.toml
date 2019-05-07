@@ -20,8 +20,7 @@ TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 
 [compat]
 BinaryProvider = ">=0.4"
-DataFrames = "0.14, 0.15, 0.16, 0.17"
-DataStreams = "0.4"
+DataFrames = "0.14, 0.15, 0.16, 0.17, 0.18"
 Decimals = ">=0.3.1"
 IterTools = "1"
 LayerDicts = "0.1.2"
