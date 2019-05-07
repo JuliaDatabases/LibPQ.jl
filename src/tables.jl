@@ -39,9 +39,8 @@ end
 
 # sink
 function load!(table::T, connection::Connection, query::AbstractString) where {T}
-    Tables.istable(T) || throw(ArgumentError("$T doesn't support the required Tables.jl interface"))
-    stmt = prepare(connection, query)
     rows = Tables.rows(table)
+    stmt = prepare(connection, query)
     state = iterate(rows)
     state === nothing && return
     st, row = state
