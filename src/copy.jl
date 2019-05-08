@@ -4,7 +4,7 @@
 Create a `CopyIn` query instance which can be executed to send data to PostgreSQL via a
 `COPY <table_name> FROM STDIN` query.
 
-`query` must be a `COPY FROM STDIN` query as described in the [PostgreSQL documentation](https://www.postgresql.org/docs/10/static/sql-copy.html).
+`query` must be a `COPY FROM STDIN` query as described in the [PostgreSQL documentation](https://www.postgresql.org/docs/10/sql-copy.html).
 `COPY FROM` queries which use a file or `PROGRAM` source can instead use the standard
 [`execute`](@ref) query interface.
 
