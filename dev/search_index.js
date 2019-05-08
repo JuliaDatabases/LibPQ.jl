@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Selection",
     "category": "section",
-    "text": "using LibPQ, DataStreams\n\nconn = LibPQ.Connection(\"dbname=postgres\")\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = 16\")\ndata = Data.stream!(result, NamedTuple)\n\n# the same but with parameters\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"])\ndata = Data.stream!(result, NamedTuple)\n\n# the same but using `fetch!` to handle streaming and clearing\ndata = fetch!(NamedTuple, execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"]))\n\nclose(conn)"
+    "text": "using LibPQ, Tables\n\nconn = LibPQ.Connection(\"dbname=postgres\")\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = 16\")\ndata = columntable(result)\n\n# the same but with parameters\nresult = execute(conn, \"SELECT typname FROM pg_type WHERE oid = \\$1\", [\"16\"])\ndata = columntable(result)\n\nclose(conn)"
 },
 
 {
@@ -37,7 +37,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Insertion",
     "category": "section",
-    "text": "using LibPQ, DataStreams\n\nconn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\n\nresult = execute(conn, \"\"\"\n    CREATE TEMPORARY TABLE libpqjl_test (\n        no_nulls    varchar(10) PRIMARY KEY,\n        yes_nulls   varchar(10)\n    );\n\"\"\")\n\nData.stream!(\n    (no_nulls = [\"foo\", \"baz\"], yes_nulls = [\"bar\", missing]),\n    LibPQ.Statement,\n    conn,\n    \"INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\$1, \\$2);\",\n)\n\nclose(conn)"
+    "text": "using LibPQ, DataStreams\n\nconn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\n\nresult = execute(conn, \"\"\"\n    CREATE TEMPORARY TABLE libpqjl_test (\n        no_nulls    varchar(10) PRIMARY KEY,\n        yes_nulls   varchar(10)\n    );\n\"\"\")\n\nLibPQ.load!(\n    (no_nulls = [\"foo\", \"baz\"], yes_nulls = [\"bar\", missing]),\n    conn,\n    \"INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\$1, \\$2);\",\n)\n\nclose(conn)"
 },
 
 {
@@ -45,7 +45,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "A Note on Bulk Insertion",
     "category": "section",
-    "text": "When inserting a large number of rows, wrapping your insert queries in a transaction will greatly increase performance. See the PostgreSQL documentation 14.4.1. Disable Autocommit for more information.Concretely, this means surrounding your query like this:execute(conn, \"BEGIN;\")\n\nData.stream!(\n    (no_nulls = [\"foo\", \"baz\"], yes_nulls = [\"bar\", missing]),\n    LibPQ.Statement,\n    conn,\n    \"INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\$1, \\$2);\",\n)\n\nexecute(conn, \"COMMIT;\")"
+    "text": "When inserting a large number of rows, wrapping your insert queries in a transaction will greatly increase performance. See the PostgreSQL documentation 14.4.1. Disable Autocommit for more information.Concretely, this means surrounding your query like this:execute(conn, \"BEGIN;\")\n\nLibPQ.load!(\n    (no_nulls = [\"foo\", \"baz\"], yes_nulls = [\"bar\", missing]),\n    conn,\n    \"INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\$1, \\$2);\",\n)\n\nexecute(conn, \"COMMIT;\")"
 },
 
 {
@@ -69,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Type Conversions",
     "title": "Type Conversions",
     "category": "section",
-    "text": "The implementation of type conversions across the LibPQ.jl interface is sufficiently complicated that it warrants its own section in the documentation. Luckily, it should be easy to use for whichever case you need.DocTestSetup = quote\n    using LibPQ\n    using DataFrames\n\n    DATABASE_USER = get(ENV, \"LIBPQJL_DATABASE_USER\", \"postgres\")\n    conn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\nend"
+    "text": "The implementation of type conversions across the LibPQ.jl interface is sufficiently complicated that it warrants its own section in the documentation. Luckily, it should be easy to use for whichever case you need.DocTestSetup = quote\n    using LibPQ\n    using DataFrames\n    using Tables\n\n    DATABASE_USER = get(ENV, \"LIBPQJL_DATABASE_USER\", \"postgres\")\n    conn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\nend"
 },
 
 {
@@ -77,7 +77,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Type Conversions",
     "title": "From Julia to PostgreSQL",
     "category": "section",
-    "text": "Currently all types are printed to strings and given to LibPQ as such, with no special treatment. Expect this to change in a future release. For now, you can convert the data to strings yourself before passing to execute. This should only be necessary for data types whose Julia string representation is not valid in PostgreSQL, such as arrays.julia> A = collect(12:15);\n\njulia> nt = fetch!(NamedTuple, execute(conn, \"SELECT \\$1 = ANY(\\$2) AS result\", Any[13, string(\"{\", join(A, \",\"), \"}\")]));\n\njulia> nt[:result][1]\ntrue"
+    "text": "Currently all types are printed to strings and given to LibPQ as such, with no special treatment. Expect this to change in a future release. For now, you can convert the data to strings yourself before passing to execute. This should only be necessary for data types whose Julia string representation is not valid in PostgreSQL, such as arrays.julia> A = collect(12:15);\n\njulia> nt = columntable(execute(conn, \"SELECT \\$1 = ANY(\\$2) AS result\", Any[13, string(\"{\", join(A, \",\"), \"}\")]));\n\njulia> nt[:result][1]\ntrue"
 },
 
 {
@@ -85,7 +85,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Type Conversions",
     "title": "From PostgreSQL to Julia",
     "category": "section",
-    "text": "The default type conversions applied when fetching PostgreSQL data should be sufficient in many cases.julia> df = fetch!(DataFrame, execute(conn, \"SELECT 1::int4, \'foo\'::varchar, \'{1.0, 2.1, 3.3}\'::float8[], false, TIMESTAMP \'2004-10-19 10:23:54\'\"))\n1×5 DataFrames.DataFrame\n│ Row │ int4 │ varchar │ float8          │ bool  │ timestamp           │\n├─────┼──────┼─────────┼─────────────────┼───────┼─────────────────────┤\n│ 1   │ 1    │ foo     │ [1.0, 2.1, 3.3] │ false │ 2004-10-19T10:23:54 │The column types in Julia for the above DataFrame are Int32, String, Vector{Float64}, Bool, and DateTime.Any unknown or unsupported types are parsed as Strings by default."
+    "text": "The default type conversions applied when fetching PostgreSQL data should be sufficient in many cases.julia> df = DataFrame(execute(conn, \"SELECT 1::int4, \'foo\'::varchar, \'{1.0, 2.1, 3.3}\'::float8[], false, TIMESTAMP \'2004-10-19 10:23:54\'\"))\n1×5 DataFrames.DataFrame\n│ Row │ int4 │ varchar │ float8          │ bool  │ timestamp           │\n├─────┼──────┼─────────┼─────────────────┼───────┼─────────────────────┤\n│ 1   │ 1    │ foo     │ [1.0, 2.1, 3.3] │ false │ 2004-10-19T10:23:54 │The column types in Julia for the above DataFrame are Int32, String, Vector{Float64}, Bool, and DateTime.Any unknown or unsupported types are parsed as Strings by default."
 },
 
 {
@@ -165,7 +165,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ API",
     "category": "section",
-    "text": "DocTestSetup = quote\n    using LibPQ\nend"
+    "text": "DocTestSetup = quote\n    using LibPQ\n\n    DATABASE_USER = get(ENV, \"LIBPQJL_DATABASE_USER\", \"postgres\")\n    conn = LibPQ.Connection(\"dbname=postgres user=$DATABASE_USER\")\nend"
 },
 
 {
@@ -253,7 +253,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "LibPQ.Result",
     "category": "type",
-    "text": "mutable struct Result <: DataStreams.Data.Source\n\nA result from a PostgreSQL database query\n\nFields:\n\nresult\nA pointer to a libpq PGresult object (C_NULL if cleared)\ncolumn_oids\nPostgreSQL Oids for each column in the result\ncolumn_types\nJulia types for each column in the result\nnot_null\nWhether to expect NULL for each column (whether output data can have missing)\ncolumn_funcs\nConversions from PostgreSQL data to Julia types for each column in the result\n\n\n\n\n\n"
+    "text": "mutable struct Result\n\nA result from a PostgreSQL database query\n\nFields:\n\nresult\nA pointer to a libpq PGresult object (C_NULL if cleared)\ncolumn_oids\nPostgreSQL Oids for each column in the result\ncolumn_types\nJulia types for each column in the result\nnot_null\nWhether to expect NULL for each column (whether output data can have missing)\ncolumn_funcs\nConversions from PostgreSQL data to Julia types for each column in the result\n\n\n\n\n\n"
 },
 
 {
@@ -353,11 +353,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "pages/api/#LibPQ.load!",
+    "page": "API",
+    "title": "LibPQ.load!",
+    "category": "function",
+    "text": "LibPQ.load!(table, connection::LibPQ.Connection, query) -> LibPQ.Statement\n\nInsert the data from table using query. query will be prepared as a LibPQ.Statement and then execute is run on every row of table.\n\nFor best performance, wrap the call to this function in a PostgreSQL transaction:\n\njulia> execute(conn, \"BEGIN;\");\n\njulia> LibPQ.load!(\n           (no_nulls = [\"foo\", \"baz\"], yes_nulls = [\"bar\", missing]),\n           conn,\n           \"INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\\$1, \\$2);\",\n       );\n\njulia> execute(conn, \"COMMIT;\");\n\n\n\n\n\n"
+},
+
+{
     "location": "pages/api/#Statements-1",
     "page": "API",
     "title": "Statements",
     "category": "section",
-    "text": "LibPQ.Statement\nnum_columns(::LibPQ.Statement)\nnum_params(::LibPQ.Statement)\nBase.show(::IO, ::LibPQ.Statement)"
+    "text": "LibPQ.Statement\nnum_columns(::LibPQ.Statement)\nnum_params(::LibPQ.Statement)\nBase.show(::IO, ::LibPQ.Statement)\nLibPQ.load!"
 },
 
 {
@@ -382,30 +390,6 @@ var documenterSearchIndex = {"docs": [
     "title": "Copy",
     "category": "section",
     "text": "LibPQ.CopyIn\nexecute(::LibPQ.Connection, ::LibPQ.CopyIn)"
-},
-
-{
-    "location": "pages/api/#LibPQ.Statement-Tuple{DataStreams.Data.Schema,Type{DataStreams.Data.Row},Bool,LibPQ.Connection,AbstractString}",
-    "page": "API",
-    "title": "LibPQ.Statement",
-    "category": "method",
-    "text": "Statement(sch::Data.Schema, ::Type{Data.Row}, append, connection::Connection, query::AbstractString) -> Statement\n\nConstruct a Statement for use in streaming with DataStreams. This function is called by Data.stream!(source, Statement, connection, query).\n\n\n\n\n\n"
-},
-
-{
-    "location": "pages/api/#LibPQ.fetch!",
-    "page": "API",
-    "title": "LibPQ.fetch!",
-    "category": "function",
-    "text": "fetch!(sink::Union{T, Type{T}}, result::Result, args...; kwargs...) where {T} -> T\n\nStream data to sink or a new structure of type T using Data.stream!. Any trailing args or kwargs are passed to Data.stream!. result is cleared upon completion.\n\n\n\n\n\n"
-},
-
-{
-    "location": "pages/api/#DataStreams-Integration-1",
-    "page": "API",
-    "title": "DataStreams Integration",
-    "category": "section",
-    "text": "LibPQ.Statement(::LibPQ.DataStreams.Data.Schema, ::Type{LibPQ.DataStreams.Data.Row}, ::Bool, ::LibPQ.Connection, ::AbstractString)\nLibPQ.fetch!"
 },
 
 {
@@ -821,7 +805,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "Miscellaneous",
     "category": "section",
-    "text": "LibPQ.@pqv_str\nLibPQ.string_parameters\nLibPQ.parameter_pointers\nLibPQ.unsafe_string_or_null"
+    "text": "LibPQ.@pqv_str\nLibPQ.string_parameters\nLibPQ.parameter_pointers\nLibPQ.unsafe_string_or_nullDocTestSetup = nothing"
 },
 
 {
