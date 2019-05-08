@@ -53,7 +53,7 @@ Any unknown or unsupported types are parsed as `String`s by default.
 ### `NULL`
 
 The PostgreSQL `NULL` is handled with `missing`.
-By default, data streamed using DataStreams is `Union{T, Missing}`, and columns are
+By default, data streamed using the Tables interface is `Union{T, Missing}`, and columns are
 `Vector{Union{T, Missing}}`.
 While `libpq` does not provide an interface for checking whether a result column contains `NULL`,
 it's possible to assert that columns do not contain `NULL` using the `not_null` keyword argument to

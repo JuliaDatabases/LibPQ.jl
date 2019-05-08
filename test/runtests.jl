@@ -172,7 +172,7 @@ end
         @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
         close(result)
 
-        # get the data from PostgreSQL and let DataStreams construct my NamedTuple
+        # get the data from PostgreSQL and let columntable construct my NamedTuple
         result = execute(conn, """
             SELECT no_nulls, yes_nulls FROM (
                 VALUES ('foo', 'bar'), ('baz', NULL)

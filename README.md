@@ -3,8 +3,8 @@
 LibPQ.jl is a Julia wrapper for the PostgreSQL `libpq` C library.
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://invenia.github.io/LibPQ.jl/stable/)
-[![Latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://invenia.github.io/LibPQ.jl/latest/)
-[![Build Status](https://travis-ci.org/invenia/LibPQ.jl.svg?branch=master)](https://travis-ci.org/invenia/LibPQ.jl)
+[![In Development](https://img.shields.io/badge/docs-dev-blue.svg)](https://invenia.github.io/LibPQ.jl/dev/)
+[![Build Status](https://travis-ci.com/invenia/LibPQ.jl.svg?branch=master)](https://travis-ci.com/invenia/LibPQ.jl)
 [![CodeCov](https://codecov.io/gh/invenia/LibPQ.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/invenia/LibPQ.jl)
 
 ## Features
@@ -19,11 +19,11 @@ LibPQ.jl is a Julia wrapper for the PostgreSQL `libpq` C library.
   * UTF-8 client encoding
 * Queries
   * Create and execute queries with or without parameters
-  * Stream results using [DataStreams](https://github.com/JuliaData/DataStreams.jl)
+  * Stream results using [Tables](https://github.com/JuliaData/Tables.jl)
   * Configurably convert a variety of PostgreSQL types to corresponding Julia types (see the **Type Conversions** section of the docs)
 * Prepared Statements
   * Create and execute prepared statements with or without parameters
-  * Stream table of parameters to execute the same statement multiple times with different data using DataStreams
+  * Stream table of parameters to execute the same statement multiple times with different data
 
 ### Goals
 
@@ -32,7 +32,7 @@ LibPQ.jl is a Julia wrapper for the PostgreSQL `libpq` C library.
 LibPQ.jl aims to wrap `libpq` as documented in the PostgreSQL documentation, including all non-deprecated functionality and handling all documented error conditions.
 Where possible, asynchronous functionality will be wrapped in idiomatic Julia control flow.
 All Oids returned in query results will have type conversions (to String by default) defined, as long as I can find documentation on their structure.
-Some effort will be made to integrate with other packages (e.g., DataStreams, already implemented) to facilitate conversion from query results to a malleable format.
+Some effort will be made to integrate with other packages (e.g., Tables, already implemented) to facilitate conversion from query results to a malleable format.
 
 ### Non-Goals
 
