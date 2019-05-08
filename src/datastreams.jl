@@ -91,6 +91,12 @@ function Statement(
     connection::Connection,
     query::AbstractString,
 )
+    Base.depwarn(string(
+        "The DataStreams package is deprecated. ",
+        "Use the LibPQ.load! function and the Tables interface instead ",
+        "(check the latest LibPQ.jl docs for examples).",
+    ), :Statement)
+
     return prepare(connection, query)
 end
 
@@ -128,6 +134,11 @@ Any trailing `args` or `kwargs` are passed to `Data.stream!`.
 `result` is cleared upon completion.
 """
 function fetch!(sink, result::Result, args...; kwargs...)
+    Base.depwarn(string(
+        "The DataStreams package is deprecated. ",
+        "Use the Tables interface instead (check the latest LibPQ.jl docs for examples).",
+    ), :fetch!)
+
     if !isopen(result)
         error(LOGGER, "Cannot fetch a cleared Result")
     end
