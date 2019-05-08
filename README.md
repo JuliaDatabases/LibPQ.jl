@@ -3,7 +3,7 @@
 LibPQ.jl is a Julia wrapper for the PostgreSQL `libpq` C library.
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://invenia.github.io/LibPQ.jl/stable/)
-[![Latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://invenia.github.io/LibPQ.jl/latest/)
+[![In Development](https://img.shields.io/badge/docs-dev-blue.svg)](https://invenia.github.io/LibPQ.jl/dev/)
 [![Build Status](https://travis-ci.com/invenia/LibPQ.jl.svg?branch=master)](https://travis-ci.com/invenia/LibPQ.jl)
 [![CodeCov](https://codecov.io/gh/invenia/LibPQ.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/invenia/LibPQ.jl)
 
