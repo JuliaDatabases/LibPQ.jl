@@ -3,7 +3,6 @@ using Test
 using Dates
 using DataFrames
 using DataFrames: eachrow
-using DataStreams
 using Decimals
 using IterTools: imap
 using Memento
@@ -77,7 +76,7 @@ end
         @test LibPQ.column_name(result, 1) == "typname"
         @test LibPQ.column_number(result, "typname") == 1
 
-        data = Data.stream!(result, NamedTuple)
+        data = columntable(result)
 
         @test data[:typname][1] == "bool"
 
@@ -98,7 +97,7 @@ end
         @test LibPQ.num_rows(result) == 1
         @test LibPQ.column_name(result, 1) == "typname"
 
-        data = Data.stream!(result, NamedTuple)
+        data = columntable(result)
 
         @test data[:typname][1] == "bool"
 
@@ -124,7 +123,7 @@ end
         @test LibPQ.column_name(result, 1) == "foo"
         @test LibPQ.column_name(result, 2) == "typname"
 
-        data = Data.stream!(result, NamedTuple)
+        data = columntable(result)
 
         @test data[:foo][1] == 1.0
         @test data[:typname][1] == "bool"
@@ -145,23 +144,13 @@ end
         @test LibPQ.column_name(result, 1) == "foo"
         @test LibPQ.column_name(result, 2) == "typname"
 
-        data = Data.stream!(result, NamedTuple)
+        data = columntable(result)
 
         @test data[:foo][1] == 1.0
         @test data[:typname][1] == "bool"
 
         close(result)
         @test !isopen(result)
-
-
-        # the same but with fetch
-        data = fetch!(NamedTuple, execute(
-            conn,
-            "SELECT typname FROM pg_type WHERE oid = \$1",
-            [16],
-        ))
-
-        @test data[:typname][1] == "bool"
 
         close(conn)
         @test !isopen(conn)
@@ -196,7 +185,7 @@ end
         @test LibPQ.num_rows(result) == 2
         @test LibPQ.num_columns(result) == 2
 
-        data = Data.stream!(result, NamedTuple)
+        data = columntable(result)
 
         @test data[:no_nulls] == ["foo", "baz"]
         @test data[:yes_nulls][1] == "bar"
@@ -204,9 +193,8 @@ end
 
         close(result)
 
-        stmt = Data.stream!(
+        stmt = LibPQ.load!(
             data,
-            LibPQ.Statement,
             conn,
             "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
         )
@@ -225,7 +213,7 @@ end
         @test LibPQ.num_rows(result) == 2
         @test LibPQ.num_columns(result) == 2
 
-        table_data = Data.stream!(result, NamedTuple)
+        table_data = columntable(result)
         @test table_data[:no_nulls] == data[:no_nulls]
         @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
         @test table_data[:yes_nulls][2] === missing
@@ -248,7 +236,7 @@ end
             "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
             throw_error=true,
         )
-        table_data_after_delete = Data.stream!(result, NamedTuple)
+        table_data_after_delete = columntable(result)
         @test table_data_after_delete[:no_nulls] == ["baz"]
         @test table_data_after_delete[:yes_nulls][1] === missing
 
@@ -306,7 +294,7 @@ end
             "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls ASC;";
             throw_error=true
         )
-        table_data = Data.close!(Data.stream!(result, DataFrame))
+        table_data = DataFrame(result)
         @test isequal(table_data, data)
         close(result)
 
@@ -376,7 +364,7 @@ end
             end)
             @test occursin("IntervalStyle=postgres_verbose", options.val)
 
-            results = fetch!(NamedTuple, execute(conn, "SELECT '1 12:59:10'::interval;"))
+            results = columntable(execute(conn, "SELECT '1 12:59:10'::interval;"))
             @test results[1][1] == "@ 1 day 12 hours 59 mins 10 secs"
             close(conn)
         end
@@ -423,7 +411,7 @@ end
             @test LibPQ.num_columns(result) == 1
             @test LibPQ.num_rows(result) == 1
 
-            data = Data.stream!(result, NamedTuple)
+            data = columntable(result)
 
             @test data[1][1] === missing
 
@@ -441,7 +429,7 @@ end
             @test LibPQ.num_rows(result) == 2
             @test LibPQ.num_columns(result) == 2
 
-            data = Data.stream!(result, NamedTuple)
+            data = columntable(result)
 
             @test data[:no_nulls] == ["foo", "baz"]
             @test data[:yes_nulls][1] == "bar"
@@ -464,7 +452,7 @@ end
             @test LibPQ.num_rows(result) == 2
             @test LibPQ.num_columns(result) == 2
 
-            data = Data.stream!(result, NamedTuple)
+            data = columntable(result)
 
             @test data[:no_nulls] == ["baz", "foo"]
             @test data[:yes_nulls][1] === missing
@@ -507,7 +495,7 @@ end
             @test LibPQ.num_columns(result) == 1
             @test LibPQ.num_rows(result) == 1
 
-            data = Data.stream!(result, NamedTuple)
+            data = columntable(result)
 
             @test data[1][1] === missing
 
@@ -518,7 +506,7 @@ end
             @test LibPQ.num_columns(result) == 1
             @test LibPQ.num_rows(result) == 1
 
-            @test_throws ErrorException Data.stream!(result, NamedTuple)
+            @test_throws MethodError columntable(result)
 
             close(result)
 
@@ -527,7 +515,7 @@ end
             @test LibPQ.num_columns(result) == 1
             @test LibPQ.num_rows(result) == 1
 
-            @test_throws ErrorException Data.stream!(result, NamedTuple)
+            @test_throws MethodError columntable(result)
 
             close(result)
 
@@ -544,7 +532,7 @@ end
             @test LibPQ.num_rows(result) == 2
             @test LibPQ.num_columns(result) == 2
 
-            data = Data.stream!(result, NamedTuple)
+            data = columntable(result)
 
             @test data[:no_nulls] == ["foo", "baz"]
             @test data[:no_nulls] isa Vector{String}
@@ -567,7 +555,7 @@ end
             @test LibPQ.num_rows(result) == 2
             @test LibPQ.num_columns(result) == 2
 
-            data = Data.stream!(result, NamedTuple)
+            data = columntable(result)
 
             @test data[:no_nulls] == ["foo", "baz"]
             @test data[:no_nulls] isa Vector{Union{String, Missing}}
@@ -624,7 +612,7 @@ end
                 @test LibPQ.num_columns(result) == 5
                 @test LibPQ.column_types(result) == [LibPQ.Oid, String, Int16, Bool, LibPQ.PQChar]
 
-                data = Data.stream!(result, NamedTuple)
+                data = columntable(result)
 
                 @test map(eltype, collect(values(data))) ==
                     map(T -> Union{T, Missing}, [LibPQ.Oid, String, Int16, Bool, LibPQ.PQChar])
@@ -865,7 +853,7 @@ end
                 [16],
             )
             close(result)
-            @test_throws ErrorException fetch!(NamedTuple, result)
+            @test_throws ErrorException columntable(result)
 
             close(conn)
             @test !isopen(conn)
@@ -910,7 +898,7 @@ end
             @test LibPQ.column_types(result) == [LibPQ.Oid, String]
             @test LibPQ.num_rows(result) == 1
 
-            data = fetch!(NamedTuple, result)
+            data = columntable(result)
             @test data[:oid][1] == 16
             @test data[:typname][1] == "bool"
 

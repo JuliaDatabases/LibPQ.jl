@@ -3,6 +3,9 @@
 ```@meta
 DocTestSetup = quote
     using LibPQ
+
+    DATABASE_USER = get(ENV, "LIBPQJL_DATABASE_USER", "postgres")
+    conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
 end
 ```
 
@@ -41,6 +44,7 @@ LibPQ.Statement
 num_columns(::LibPQ.Statement)
 num_params(::LibPQ.Statement)
 Base.show(::IO, ::LibPQ.Statement)
+LibPQ.load!
 ```
 
 ### Copy
@@ -48,13 +52,6 @@ Base.show(::IO, ::LibPQ.Statement)
 ```@docs
 LibPQ.CopyIn
 execute(::LibPQ.Connection, ::LibPQ.CopyIn)
-```
-
-### DataStreams Integration
-
-```@docs
-LibPQ.Statement(::LibPQ.DataStreams.Data.Schema, ::Type{LibPQ.DataStreams.Data.Row}, ::Bool, ::LibPQ.Connection, ::AbstractString)
-LibPQ.fetch!
 ```
 
 ## Internals
@@ -132,4 +129,8 @@ LibPQ.@pqv_str
 LibPQ.string_parameters
 LibPQ.parameter_pointers
 LibPQ.unsafe_string_or_null
+```
+
+```@meta
+DocTestSetup = nothing
 ```

@@ -6,7 +6,6 @@ export status, reset!, execute, clear, fetch!, prepare,
 using Dates
 using DocStringExtensions
 using Decimals
-using DataStreams
 using Tables
 using Base.Iterators: zip, product
 using IterTools: imap
@@ -641,7 +640,7 @@ end
 ### RESULTS BEGIN
 
 "A result from a PostgreSQL database query"
-mutable struct Result <: Data.Source
+mutable struct Result
     "A pointer to a libpq PGresult object (C_NULL if cleared)"
     result::Ptr{libpq_c.PGresult}
 
@@ -1078,6 +1077,8 @@ struct Statement
     num_params::Int
 end
 
+Base.broadcastable(stmt::Statement) = Ref(stmt)
+
 """
     prepare(jl_conn::Connection, query::AbstractString) -> Statement
 
@@ -1219,7 +1220,6 @@ end
 
 include("parsing.jl")
 include("copy.jl")
-include("datastreams.jl")
 include("tables.jl")
 
 Base.@deprecate clear!(jl_result::Result) close(jl_result)

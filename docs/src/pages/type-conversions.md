@@ -8,6 +8,7 @@ Luckily, it should be easy to *use* for whichever case you need.
 DocTestSetup = quote
     using LibPQ
     using DataFrames
+    using Tables
 
     DATABASE_USER = get(ENV, "LIBPQJL_DATABASE_USER", "postgres")
     conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
@@ -25,7 +26,7 @@ PostgreSQL, such as arrays.
 ```jldoctest
 julia> A = collect(12:15);
 
-julia> nt = fetch!(NamedTuple, execute(conn, "SELECT \$1 = ANY(\$2) AS result", Any[13, string("{", join(A, ","), "}")]));
+julia> nt = columntable(execute(conn, "SELECT \$1 = ANY(\$2) AS result", Any[13, string("{", join(A, ","), "}")]));
 
 julia> nt[:result][1]
 true
@@ -37,7 +38,7 @@ The default type conversions applied when fetching PostgreSQL data should be suf
 cases.
 
 ```julia
-julia> df = fetch!(DataFrame, execute(conn, "SELECT 1::int4, 'foo'::varchar, '{1.0, 2.1, 3.3}'::float8[], false, TIMESTAMP '2004-10-19 10:23:54'"))
+julia> df = DataFrame(execute(conn, "SELECT 1::int4, 'foo'::varchar, '{1.0, 2.1, 3.3}'::float8[], false, TIMESTAMP '2004-10-19 10:23:54'"))
 1×5 DataFrames.DataFrame
 │ Row │ int4 │ varchar │ float8          │ bool  │ timestamp           │
 ├─────┼──────┼─────────┼─────────────────┼───────┼─────────────────────┤
