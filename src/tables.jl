@@ -43,7 +43,7 @@ function load!(table::T, connection::Connection, query::AbstractString) where {T
     stmt = prepare(connection, query)
     state = iterate(rows)
     state === nothing && return
-    st, row = state
+    row, st = state
     names = propertynames(row)
     sch = Tables.Schema(names, nothing)
     parameters = Vector{Parameter}(undef, length(names))
