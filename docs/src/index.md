@@ -26,7 +26,7 @@ close(conn)
 ### Insertion
 
 ```julia
-using LibPQ, DataStreams
+using LibPQ
 
 conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
 
