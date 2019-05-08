@@ -1,6 +1,6 @@
 module LibPQ
 
-export status, reset!, execute, clear, fetch!, prepare,
+export status, reset!, execute, prepare,
     num_columns, num_rows, num_params, num_affected_rows
 
 using Dates
