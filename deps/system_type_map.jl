@@ -1,9 +1,8 @@
 using LibPQ
-using NamedTuples
+using Tables
 
 function print_types(io::IO, conn::Connection; text_limit=92)
-    nt = fetch!(
-        NamedTuple,
+    nt = Tables.columntable(
         execute(conn, "SELECT oid, typname FROM pg_catalog.pg_type ORDER BY oid"),
     )
 
