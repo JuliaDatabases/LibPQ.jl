@@ -1,6 +1,6 @@
 module LibPQ
 
-export status, reset!, execute, clear, fetch!, prepare,
+export status, reset!, execute, prepare,
     num_columns, num_rows, num_params, num_affected_rows
 
 using Dates
@@ -13,7 +13,6 @@ using LayerDicts
 using Memento: Memento, getlogger, warn, info, error, debug
 using OffsetArrays
 using TimeZones
-import Distributed: clear!
 
 const Parameter = Union{String, Missing}
 const LOGGER = getlogger(@__MODULE__)
@@ -1221,7 +1220,5 @@ end
 include("parsing.jl")
 include("copy.jl")
 include("tables.jl")
-
-Base.@deprecate clear!(jl_result::Result) close(jl_result)
 
 end
