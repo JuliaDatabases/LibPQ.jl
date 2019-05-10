@@ -75,10 +75,12 @@ show_option(bool::Bool) = ifelse(bool, 't', 'f')
 show_option(num::Real) = num
 
 # values containing spaces may not work correctly on PostgreSQL versions before 9.6
+env_pgtz = get(ENV, "PGTZ", "UTC")
+default_tz = ifelse(isempty(env_pgtz), "UTC", env_pgtz)
 const CONNECTION_OPTION_DEFAULTS = Dict{String, String}(
     "DateStyle" => "ISO,YMD",
     "IntervalStyle" => "iso_8601",
-    "TimeZone" => get(ENV, "PGTZ", "UTC"),
+    "TimeZone" => default_tz,
 )
 
 function _connection_parameter_dict(;
@@ -186,7 +188,7 @@ For a list of available options for the `options` argument, see
 The default connection options are:
 * "DateStyle" =  "ISO,YMD"
 * "IntervalStyle" = "iso_8601"
-* "TimeZone" => "UTC", or the `PGTZ` environment variable, if set
+* "TimeZone" = "UTC", or the `PGTZ` environment variable, if set
 
 Note that these default connection options may be different than the defaults in
 used by the server, and are used in `psql`. To use the defaults provided by the
