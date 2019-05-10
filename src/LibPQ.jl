@@ -76,11 +76,11 @@ show_option(num::Real) = num
 
 # values containing spaces may not work correctly on PostgreSQL versions before 9.6
 env_pgtz = get(ENV, "PGTZ", "UTC")
-default_tz = ifelse(isempty(env_pgtz), "UTC", env_pgtz)
+maybe_tz_arg = ifelse(isempty(env_pgtz), (), ("TimeZone" => env_pgtz,))
 const CONNECTION_OPTION_DEFAULTS = Dict{String, String}(
     "DateStyle" => "ISO,YMD",
     "IntervalStyle" => "iso_8601",
-    "TimeZone" => default_tz,
+    maybe_tz_arg...
 )
 
 function _connection_parameter_dict(;
