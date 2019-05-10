@@ -191,9 +191,9 @@ The default connection options are:
 * "TimeZone" = "UTC", or the `PGTZ` environment variable, or server timezone if
 `PGTZ` is set but empty
 
-Note that these default connection options may be different than the defaults in
-used by the server, and are used in `psql`. To use the defaults provided by the
-server, use `options = Dict{String, String}()`.
+Note that these default connection options may be different than the defaults
+used by the server, which are the defaults used by `psql`. To use the defaults
+provided by the server, use `options = Dict{String, String}()`.
 """
 function Connection(
     str::AbstractString;
