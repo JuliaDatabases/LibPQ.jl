@@ -188,7 +188,8 @@ For a list of available options for the `options` argument, see
 The default connection options are:
 * "DateStyle" =  "ISO,YMD"
 * "IntervalStyle" = "iso_8601"
-* "TimeZone" = "UTC", or the `PGTZ` environment variable, if set
+* "TimeZone" = "UTC", or the `PGTZ` environment variable, or server timezone if
+`PGTZ` is set but empty
 
 Note that these default connection options may be different than the defaults in
 used by the server, and are used in `psql`. To use the defaults provided by the
