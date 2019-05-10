@@ -78,7 +78,7 @@ show_option(num::Real) = num
 const CONNECTION_OPTION_DEFAULTS = Dict{String, String}(
     "DateStyle" => "ISO,YMD",
     "IntervalStyle" => "iso_8601",
-    "TimeZone" => "UTC",
+    "TimeZone" => string(localzone()),
 )
 
 function _connection_parameter_dict(;
