@@ -75,10 +75,12 @@ show_option(bool::Bool) = ifelse(bool, 't', 'f')
 show_option(num::Real) = num
 
 # values containing spaces may not work correctly on PostgreSQL versions before 9.6
+maybe_pgtz_env = get(ENV, "PGTZ", nothing)
+maybe_timezone_arg = ifelse(maybe_pgtz_env == nothing, (), ("TimeZone" => maybe_pgtz_env,))
 const CONNECTION_OPTION_DEFAULTS = Dict{String, String}(
     "DateStyle" => "ISO,YMD",
     "IntervalStyle" => "iso_8601",
-    "TimeZone" => string(localzone()),
+    maybe_timezone_arg...
 )
 
 function _connection_parameter_dict(;
