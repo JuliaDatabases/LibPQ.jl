@@ -6,6 +6,7 @@ using DataFrames: eachrow
 using Decimals
 using IterTools: imap
 using Memento
+using Memento.TestUtils
 using OffsetArrays
 using TimeZones
 using Tables
@@ -367,6 +368,100 @@ end
             results = columntable(execute(conn, "SELECT '1 12:59:10'::interval;"))
             @test results[1][1] == "@ 1 day 12 hours 59 mins 10 secs"
             close(conn)
+        end
+
+        @testset "Time Zone" begin
+            function connection_tz(conn::LibPQ.Connection)
+                result = execute(conn, "SELECT current_setting('TIMEZONE');")
+
+                tz = columntable(result)[:current_setting][1]
+                close(result)
+                return tz
+            end
+
+            # test with rare time zones to avoid collision with actual server time zones
+            # NOTE: do not run tests in Greenland
+            default_tz = LibPQ.DEFAULT_CLIENT_TIME_ZONE[]
+            try
+                LibPQ.DEFAULT_CLIENT_TIME_ZONE[] = "America/Scoresbysund"
+                withenv("PGTZ" => nothing) do  # unset
+                    LibPQ.Connection(
+                        "dbname=postgres user=$DATABASE_USER"; throw_error=true
+                    ) do conn
+                        @test connection_tz(conn) == "America/Scoresbysund"
+                    end
+
+                    LibPQ.Connection(
+                        "dbname=postgres user=$DATABASE_USER";
+                        options=Dict("TimeZone" => "America/Danmarkshavn"),
+                        throw_error=true,
+                    ) do conn
+                        @test connection_tz(conn) == "America/Danmarkshavn"
+                    end
+
+                    LibPQ.Connection(
+                        "dbname=postgres user=$DATABASE_USER";
+                        options=Dict("TimeZone" => ""),
+                        throw_error=true,
+                    ) do conn
+                        @test connection_tz(conn) != "America/Scoresbysund"
+                        @test connection_tz(conn) != "America/Danmarkshavn"
+                    end
+                end
+
+                withenv("PGTZ" => "America/Thule") do
+                    LibPQ.Connection(
+                        "dbname=postgres user=$DATABASE_USER"; throw_error=true
+                    ) do conn
+                        @test connection_tz(conn) == "America/Thule"
+                    end
+
+                    LibPQ.Connection(
+                        "dbname=postgres user=$DATABASE_USER";
+                        options=Dict("TimeZone" => "America/Danmarkshavn"),
+                        throw_error=true,
+                    ) do conn
+                        @test connection_tz(conn) == "America/Thule"
+                    end
+
+                    LibPQ.Connection(
+                        "dbname=postgres user=$DATABASE_USER";
+                        options=Dict("TimeZone" => ""),
+                        throw_error=true,
+                    ) do conn
+                        @test connection_tz(conn) == "America/Thule"
+                    end
+                end
+
+                withenv("PGTZ" => "") do
+                    @test_log LibPQ.LOGGER "error" "invalid value for parameter" try
+                        LibPQ.Connection(
+                            "dbname=postgres user=$DATABASE_USER"; throw_error=true
+                        )
+                    catch
+                    end
+
+                    @test_log LibPQ.LOGGER "error" "invalid value for parameter" try
+                        LibPQ.Connection(
+                            "dbname=postgres user=$DATABASE_USER";
+                            options=Dict("TimeZone" => "America/Danmarkshavn"),
+                            throw_error=true,
+                        )
+                    catch
+                    end
+
+                    @test_log LibPQ.LOGGER "error" "invalid value for parameter" try
+                        LibPQ.Connection(
+                            "dbname=postgres user=$DATABASE_USER";
+                            options=Dict("TimeZone" => ""),
+                            throw_error=true,
+                        )
+                    catch
+                    end
+                end
+            finally
+                LibPQ.DEFAULT_CLIENT_TIME_ZONE[] = default_tz
+            end
         end
 
         @testset "Bad Connection" begin

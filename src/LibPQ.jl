@@ -51,6 +51,8 @@ using .libpq_c
 
 include("typemaps.jl")
 
+const DEFAULT_CLIENT_TIME_ZONE = Ref("UTC")
+
 """
     const LIBPQ_TYPE_MAP::PQTypeMap
 
@@ -78,26 +80,33 @@ show_option(num::Real) = num
 const CONNECTION_OPTION_DEFAULTS = Dict{String, String}(
     "DateStyle" => "ISO,YMD",
     "IntervalStyle" => "iso_8601",
-    "TimeZone" => "UTC",
 )
 
 function _connection_parameter_dict(;
     client_encoding::String="UTF8",
     application_name::String="LibPQ.jl",
+    time_zone::String="",
     connection_options::Dict{String, String}=Dict{String, String}(),
 )
+    options_iter = ((k, v) for (k, v) in connection_options if k != "TimeZone")
+
+    # If empty string, use server time zone
+    if time_zone != ""
+        options_iter = Iterators.flatten((options_iter, (("TimeZone", time_zone),),))
+    end
+
     Dict{String, String}(
-        "client_encoding" => "UTF8",
-        "application_name" => "LibPQ.jl",
+        "client_encoding" => client_encoding,
+        "application_name" => application_name,
         "options" => join(
-            ("-c $k=$(show_option(v))" for (k, v) in connection_options),
+            ("-c $k=$(show_option(v))" for (k, v) in options_iter),
             " ",
         ),
     )
 end
 
 const CONNECTION_PARAMETER_DEFAULTS = _connection_parameter_dict(
-    connection_options=CONNECTION_OPTION_DEFAULTS
+    connection_options=CONNECTION_OPTION_DEFAULTS, time_zone=DEFAULT_CLIENT_TIME_ZONE[],
 )
 
 "A connection to a PostgreSQL database."
@@ -168,7 +177,7 @@ end
         throw_error::Bool=true,
         type_map::AbstractDict=LibPQ.PQTypeMap(),
         conversions::AbstractDict=LibPQ.PQConversions(),
-        options::Dict{String, String}=$(CONNECTION_OPTION_DEFAULTS),
+        options::Dict{String, String}=LibPQ.CONNECTION_OPTION_DEFAULTS,
     ) -> Connection
 
 Create a `Connection` from a connection string as specified in the PostgreSQL
@@ -176,9 +185,24 @@ documentation ([33.1.1. Connection Strings](https://www.postgresql.org/docs/10/l
 
 For information on the `type_map` and `conversions` arguments, see [Type Conversions](@ref typeconv).
 
+See [`handle_new_connection`](@ref) for information on the `throw_error` argument.
+
+## PostgreSQL Connection Options
+
 For a list of available options for the `options` argument, see [Server Configuration](https://www.postgresql.org/docs/10/runtime-config.html).
 
-See [`handle_new_connection`](@ref) for information on the `throw_error` argument.
+The default connection options are:
+
+$(join(map(pair for pair in CONNECTION_OPTION_DEFAULTS) do (k, v)
+    "* `$(repr(k)) => $(repr(v))`"
+end, "\n"))
+* `"TimeZone" => $(repr(DEFAULT_CLIENT_TIME_ZONE[]))`, or the `PGTZ` environment variable.
+  Will use the server time zone if option is set to `""`.
+
+Note that these default connection options may be different than the defaults used by the
+server, which are the defaults used by `psql` and other LibPQ clients.
+To use the defaults provided by the server, use
+`options = Dict{String, String}("TimeZone" => "")`.
 """
 function Connection(
     str::AbstractString;
@@ -186,12 +210,10 @@ function Connection(
     options::Dict{String, String}=CONNECTION_OPTION_DEFAULTS,
     kwargs...
 )
-    if options === CONNECTION_OPTION_DEFAULTS
-        # avoid allocating another dict in the common case
-        connection_parameters = CONNECTION_PARAMETER_DEFAULTS
-    else
-        connection_parameters = _connection_parameter_dict(connection_options=options)
-    end
+    connection_parameters = _connection_parameter_dict(
+        connection_options=options,
+        time_zone=get(options, "TimeZone", DEFAULT_CLIENT_TIME_ZONE[]),
+    )
 
     ci_array = conninfo(str)
 
