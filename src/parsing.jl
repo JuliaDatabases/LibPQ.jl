@@ -326,8 +326,10 @@ for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
     _DEFAULT_TYPE_MAP[array_oid] = AbstractArray{jl_missingtype}
 
     for jl_eltype in (jl_type, jl_missingtype)
-        @eval function Base.parse(::Type{AbstractArray{$jl_eltype}}, pqv::PQValue{$array_oid})
-            parse_numeric_array($jl_eltype, string_view(pqv))
+        @eval function Base.parse(
+            ::Type{A}, pqv::PQValue{$array_oid}
+        ) where A <: AbstractArray{$jl_eltype}
+            parse_numeric_array($jl_eltype, string_view(pqv))::A
         end
     end
 end
