@@ -88,11 +88,15 @@ function _connection_parameter_dict(;
     application_name::String="LibPQ.jl",
     connection_options::Dict{String, String}=Dict{String, String}(),
 )
+    keep_option((k, v)) = !(k == "TimeZone" && v == "")
+
     Dict{String, String}(
         "client_encoding" => client_encoding,
         "application_name" => application_name,
         "options" => join(
-            ("-c $k=$(show_option(v))" for (k, v) in connection_options if !(k == "TimeZone" && v == "")),
+            imap(Iterators.filter(keep_option, connection_options)) do (k, v)
+                "-c $k=$(show_option(v))"
+            end,
             " ",
         ),
     )
