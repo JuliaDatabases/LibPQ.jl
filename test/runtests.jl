@@ -400,6 +400,8 @@ end
             default_tz = LibPQ.DEFAULT_CLIENT_TIME_ZONE[]
             try
                 LibPQ.DEFAULT_CLIENT_TIME_ZONE[] = "America/Scoresbysund"
+                LibPQ.CONNECTION_OPTION_DEFAULTS["TimeZone"] = LibPQ.DEFAULT_CLIENT_TIME_ZONE[]
+                merge!(LibPQ.CONNECTION_PARAMETER_DEFAULTS, LibPQ._connection_parameter_dict(connection_options=LibPQ.CONNECTION_OPTION_DEFAULTS))
                 withenv("PGTZ" => nothing) do  # unset
                     LibPQ.Connection(
                         "dbname=postgres user=$DATABASE_USER"; throw_error=true
@@ -480,6 +482,8 @@ end
                 end
             finally
                 LibPQ.DEFAULT_CLIENT_TIME_ZONE[] = default_tz
+                LibPQ.CONNECTION_OPTION_DEFAULTS["TimeZone"] = LibPQ.DEFAULT_CLIENT_TIME_ZONE[]
+                merge!(LibPQ.CONNECTION_PARAMETER_DEFAULTS, LibPQ._connection_parameter_dict(connection_options=LibPQ.CONNECTION_OPTION_DEFAULTS))
             end
         end
 

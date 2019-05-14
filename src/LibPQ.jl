@@ -80,33 +80,26 @@ show_option(num::Real) = num
 const CONNECTION_OPTION_DEFAULTS = Dict{String, String}(
     "DateStyle" => "ISO,YMD",
     "IntervalStyle" => "iso_8601",
+    "TimeZone" => DEFAULT_CLIENT_TIME_ZONE[],
 )
 
 function _connection_parameter_dict(;
     client_encoding::String="UTF8",
     application_name::String="LibPQ.jl",
-    time_zone::String="",
     connection_options::Dict{String, String}=Dict{String, String}(),
 )
-    options_iter = ((k, v) for (k, v) in connection_options if k != "TimeZone")
-
-    # If empty string, use server time zone
-    if time_zone != ""
-        options_iter = Iterators.flatten((options_iter, (("TimeZone", time_zone),),))
-    end
-
     Dict{String, String}(
         "client_encoding" => client_encoding,
         "application_name" => application_name,
         "options" => join(
-            ("-c $k=$(show_option(v))" for (k, v) in options_iter),
+            ("-c $k=$(show_option(v))" for (k, v) in connection_options if !(k == "TimeZone" && v == "")),
             " ",
         ),
     )
 end
 
 const CONNECTION_PARAMETER_DEFAULTS = _connection_parameter_dict(
-    connection_options=CONNECTION_OPTION_DEFAULTS, time_zone=DEFAULT_CLIENT_TIME_ZONE[],
+    connection_options=CONNECTION_OPTION_DEFAULTS,
 )
 
 "A connection to a PostgreSQL database."
@@ -193,7 +186,7 @@ For a list of available options for the `options` argument, see [Server Configur
 
 The default connection options are:
 
-$(join(map(pair for pair in CONNECTION_OPTION_DEFAULTS) do (k, v)
+$(join(map((k, v) for (k, v) in CONNECTION_OPTION_DEFAULTS if k != "TimeZone") do (k, v)
     "* `$(repr(k)) => $(repr(v))`"
 end, "\n"))
 * `"TimeZone" => $(repr(DEFAULT_CLIENT_TIME_ZONE[]))`, or the `PGTZ` environment variable.
@@ -210,10 +203,11 @@ function Connection(
     options::Dict{String, String}=CONNECTION_OPTION_DEFAULTS,
     kwargs...
 )
-    connection_parameters = _connection_parameter_dict(
-        connection_options=options,
-        time_zone=get(options, "TimeZone", DEFAULT_CLIENT_TIME_ZONE[]),
-    )
+    if options === CONNECTION_OPTION_DEFAULTS
+        connection_parameters = CONNECTION_PARAMETER_DEFAULTS
+    else
+        connection_parameters = _connection_parameter_dict(connection_options=options)
+    end
 
     ci_array = conninfo(str)
 
