@@ -57,5 +57,7 @@ function execute(jl_conn::Connection, copy::CopyIn, args...; throw_error=true, k
         level(LOGGER, error_message(jl_conn))
     end
 
-    return Result(libpq_c.PQgetResult(jl_conn.conn), jl_conn)
+    return handle_result(
+        Result(libpq_c.PQgetResult(jl_conn.conn), jl_conn); throw_error=throw_error
+    )
 end
