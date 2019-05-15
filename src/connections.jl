@@ -189,8 +189,18 @@ function Connection(
             throw_error=throw_error,
         )
     end
-
 end
+
+# AbstractLock primitives:
+# https://github.com/JuliaLang/julia/blob/master/base/condition.jl#L18
+Base.lock(conn::Connection) = lock(conn.lock)
+Base.unlock(conn::Connection) = unlock(conn.lock)
+Base.trylock(conn::Connection) = trylock(conn.lock)
+Base.islocked(conn::Connection) = islocked(conn.lock)
+
+# AbstractLock conventions:
+Base.lock(f, conn::Connection) = lock(f, conn.lock)
+Base.trylock(f, conn::Connection) = trylock(f, conn.lock)
 
 """
     Connection(f, args...; kwargs...) -> Connection
@@ -330,7 +340,7 @@ Other encodings are not explicitly handled by this package and will probably be 
 See also: [`encoding`](@ref), [`reset_encoding!`](@ref)
 """
 function set_encoding!(jl_conn::Connection, encoding::String)
-    lock(jl_conn.lock) do
+    lock(jl_conn) do
         status = libpq_c.PQsetClientEncoding(jl_conn.conn, encoding)
 
         if status == -1
@@ -363,7 +373,7 @@ Return a valid PostgreSQL identifier that is unique for the current connection.
 This is mostly used to create names for prepared statements.
 """
 function unique_id(jl_conn::Connection, prefix::AbstractString="")
-    lock(jl_conn.lock) do
+    lock(jl_conn) do
         id_number = jl_conn.uid_counter
         jl_conn.uid_counter += 1
 
@@ -400,7 +410,7 @@ but only if `jl_conn.closed` is `false`, to avoid a double-free.
 """
 function Base.close(jl_conn::Connection)
     if !atomic_cas!(jl_conn.closed, false, true)
-        lock(jl_conn.lock) do
+        lock(jl_conn) do
             libpq_c.PQfinish(jl_conn.conn)
             jl_conn.conn = C_NULL
         end
@@ -430,7 +440,7 @@ See [`handle_new_connection`](@ref) for information on the `throw_error` argumen
 """
 function reset!(jl_conn::Connection; throw_error::Bool=true)
     if !atomic_cas!(jl_conn.closed, false, true)
-        lock(jl_conn.lock) do
+        lock(jl_conn) do
             jl_conn.closed[] = false
             libpq_c.PQreset(jl_conn.conn)
         end

@@ -48,7 +48,7 @@ function execute(
         pointer_params = parameter_pointers(string_params)
     end
 
-    copy_end_result = lock(jl_conn.lock) do
+    copy_end_result = lock(jl_conn) do
         if parameters === nothing
             result = _execute(jl_conn.conn, copy.query)
         else

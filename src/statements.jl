@@ -35,7 +35,7 @@ The statement is given an generated unique name using [`unique_id`](@ref).
 function prepare(jl_conn::Connection, query::AbstractString)
     uid = unique_id(jl_conn, "stmt")
 
-    result = lock(jl_conn.lock) do
+    result = lock(jl_conn) do
         libpq_c.PQprepare(
             jl_conn.conn,
             uid,
@@ -47,7 +47,7 @@ function prepare(jl_conn::Connection, query::AbstractString)
 
     close(handle_result(Result(result, jl_conn); throw_error=true))
 
-    result = lock(jl_conn.lock) do
+    result = lock(jl_conn) do
         libpq_c.PQdescribePrepared(jl_conn.conn, uid)
     end
 
@@ -123,7 +123,7 @@ function execute(
     string_params = string_parameters(parameters)
     pointer_params = parameter_pointers(string_params)
 
-    result = lock(stmt.jl_conn.lock) do
+    result = lock(stmt.jl_conn) do
         _execute_prepared(stmt.jl_conn.conn, stmt.name, pointer_params)
     end
 
@@ -135,7 +135,7 @@ function execute(
     throw_error::Bool=true,
     kwargs...
 )
-    result = lock(stmt.jl_conn.lock) do
+    result = lock(stmt.jl_conn) do
         _execute_prepared(stmt.jl_conn.conn, stmt.name)
     end
 

@@ -220,7 +220,7 @@ function execute(
     throw_error::Bool=true,
     kwargs...
 )
-    result = lock(jl_conn.lock) do
+    result = lock(jl_conn) do
         _execute(jl_conn.conn, query)
     end
 
@@ -237,7 +237,7 @@ function execute(
     string_params = string_parameters(parameters)
     pointer_params = parameter_pointers(string_params)
 
-    result = lock(jl_conn.lock) do
+    result = lock(jl_conn) do
         _execute(jl_conn.conn, query, pointer_params)
     end
 
