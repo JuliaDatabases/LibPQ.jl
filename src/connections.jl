@@ -50,7 +50,10 @@ mutable struct Connection
     func_map::PQConversions
 
     "True if the connection is closed and the PGconn object has been cleaned up"
-    closed::Bool
+    closed::Atomic{Bool}
+
+    "Lock for thread-safety"
+    lock::Mutex
 
     function Connection(
         conn::Ptr,
@@ -58,7 +61,15 @@ mutable struct Connection
         type_map::AbstractDict=PQTypeMap(),
         conversions::AbstractDict=PQConversions(),
     )
-        return new(conn, "UTF8", 0, PQTypeMap(type_map), PQConversions(conversions), closed)
+        return new(
+            conn,
+            "UTF8",
+            0,
+            PQTypeMap(type_map),
+            PQConversions(conversions),
+            Atomic{Bool}(closed),
+            Mutex(),
+        )
     end
 end
 
@@ -319,12 +330,16 @@ Other encodings are not explicitly handled by this package and will probably be 
 See also: [`encoding`](@ref), [`reset_encoding!`](@ref)
 """
 function set_encoding!(jl_conn::Connection, encoding::String)
-    status = libpq_c.PQsetClientEncoding(jl_conn.conn, encoding)
+    lock(jl_conn.lock) do
+        status = libpq_c.PQsetClientEncoding(jl_conn.conn, encoding)
 
-    if status == -1
-        error(LOGGER, "libpq could not set the connection's client encoding to $encoding")
-    else
-        jl_conn.encoding = encoding
+        if status == -1
+            error(LOGGER,
+                "libpq could not set the connection's client encoding to $encoding"
+            )
+        else
+            jl_conn.encoding = encoding
+        end
     end
 
     return nothing
@@ -348,9 +363,11 @@ Return a valid PostgreSQL identifier that is unique for the current connection.
 This is mostly used to create names for prepared statements.
 """
 function unique_id(jl_conn::Connection, prefix::AbstractString="")
-    id_number, jl_conn.uid_counter = jl_conn.uid_counter, jl_conn.uid_counter + 1
+    lock(jl_conn.lock) do
+        id_number, jl_conn.uid_counter = jl_conn.uid_counter, jl_conn.uid_counter + 1
 
-    return "__libpq_$(prefix)_$(id_number)__"
+        return "__libpq_$(prefix)_$(id_number)__"
+    end
 end
 
 """
@@ -381,12 +398,12 @@ This function calls [`PQfinish`](https://www.postgresql.org/docs/10/libpq-connec
 but only if `jl_conn.closed` is `false`, to avoid a double-free.
 """
 function Base.close(jl_conn::Connection)
-    if !jl_conn.closed
-        libpq_c.PQfinish(jl_conn.conn)
+    if !atomic_cas!(jl_conn.closed, false, true)
+        lock(jl_conn.lock) do
+            libpq_c.PQfinish(jl_conn.conn)
+            jl_conn.conn = C_NULL
+        end
     end
-
-    jl_conn.closed = true
-    jl_conn.conn = C_NULL
     return nothing
 end
 
@@ -395,7 +412,7 @@ end
 
 Check whether a connection is open.
 """
-Base.isopen(jl_conn::Connection) = !jl_conn.closed
+Base.isopen(jl_conn::Connection) = !jl_conn.closed[]
 
 """
     reset!(jl_conn::Connection; throw_error=true)
@@ -411,12 +428,16 @@ See [`handle_new_connection`](@ref) for information on the `throw_error` argumen
     but cannot be called on a connection that has been closed.
 """
 function reset!(jl_conn::Connection; throw_error::Bool=true)
-    if jl_conn.closed
+    if !atomic_cas!(jl_conn.closed, false, true)
+        lock(jl_conn.lock) do
+            jl_conn.closed[] = false
+            libpq_c.PQreset(jl_conn.conn)
+        end
+
+        handle_new_connection(jl_conn; throw_error=throw_error)
+    else
         error(LOGGER, "Cannot reset a connection that has been closed")
     end
-
-    libpq_c.PQreset(jl_conn.conn)
-    handle_new_connection(jl_conn; throw_error=throw_error)
 
     return nothing
 end
@@ -507,7 +528,11 @@ function conninfo(jl_conn::Connection)
     ci_ptr = libpq_c.PQconninfo(jl_conn.conn)
 
     if ci_ptr == C_NULL
-        error(LOGGER, "libpq could not allocate memory for connection info")
+        if !isopen(jl_conn)
+            error(LOGGER, "Connection is closed")
+        else
+            error(LOGGER, "libpq could not allocate memory for connection info")
+        end
     end
 
     ci_array = conninfo(ci_ptr)
@@ -562,7 +587,7 @@ end
 Display a [`Connection`](@ref) by showing the connection status and each connection option.
 """
 function Base.show(io::IO, jl_conn::Connection)
-    if jl_conn.closed
+    if !isopen(jl_conn)
         print(io, "PostgreSQL connection (closed)")
         return nothing
     end

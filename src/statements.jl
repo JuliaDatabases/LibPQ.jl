@@ -35,26 +35,23 @@ The statement is given an generated unique name using [`unique_id`](@ref).
 function prepare(jl_conn::Connection, query::AbstractString)
     uid = unique_id(jl_conn, "stmt")
 
-    jl_result = handle_result(
-        Result(libpq_c.PQprepare(
+    result = lock(jl_conn.lock) do
+        libpq_c.PQprepare(
             jl_conn.conn,
             uid,
             query,
             0,  # infer all parameters from the query string
             C_NULL,
-        ), jl_conn);
-        throw_error=true,
-    )
+        )
+    end
 
-    close(jl_result)
+    close(handle_result(Result(result, jl_conn); throw_error=true))
 
-    description = handle_result(
-        Result(libpq_c.PQdescribePrepared(
-            jl_conn.conn,
-            uid,
-        ), jl_conn);
-        throw_error=true,
-    )
+    result = lock(jl_conn.lock) do
+        libpq_c.PQdescribePrepared(jl_conn.conn, uid)
+    end
+
+    description = handle_result(Result(result, jl_conn); throw_error=true)
 
     Statement(jl_conn, uid, query, description, num_params(description))
 end
@@ -124,19 +121,13 @@ function execute(
 )
     num_params = length(parameters)
     string_params = string_parameters(parameters)
+    pointer_params = parameter_pointers(string_params)
 
-    return handle_result(
-        Result(libpq_c.PQexecPrepared(
-            stmt.jl_conn.conn,
-            stmt.name,
-            num_params,
-            parameter_pointers(string_params),
-            C_NULL,  # paramLengths is ignored for text format parameters
-            zeros(Cint, num_params),  # all parameters in text format
-            zero(Cint),  # return result in text format
-        ), stmt.jl_conn; kwargs...);
-        throw_error=throw_error,
-    )
+    result = lock(stmt.jl_conn.lock) do
+        _execute_prepared(stmt.jl_conn.conn, stmt.name, pointer_params)
+    end
+
+    return handle_result(Result(result, stmt.jl_conn; kwargs...); throw_error=throw_error)
 end
 
 function execute(
@@ -144,16 +135,27 @@ function execute(
     throw_error::Bool=true,
     kwargs...
 )
-    return handle_result(
-        Result(libpq_c.PQexecPrepared(
-            stmt.jl_conn.conn,
-            stmt.name,
-            0,  # no parameters
-            C_NULL,
-            C_NULL,  # paramLengths is ignored for text format parameters
-            C_NULL,  # all parameters in text format
-            zero(Cint),  # return result in text format
-        ), stmt.jl_conn; kwargs...);
-        throw_error=throw_error,
+    result = lock(stmt.jl_conn.lock) do
+        _execute_prepared(stmt.jl_conn.conn, stmt.name)
+    end
+
+    return handle_result(Result(result, stmt.jl_conn; kwargs...); throw_error=throw_error)
+end
+
+function _execute_prepared(
+    conn_ptr::Ptr{libpq_c.PGconn},
+    stmt_name::AbstractString,
+    parameters::Vector{Ptr{UInt8}}=Ptr{UInt8}[],
+)
+    num_params = length(parameters)
+
+    libpq_c.PQexecPrepared(
+        conn_ptr,
+        stmt_name,
+        num_params,
+        num_params == 0 ? C_NULL : parameters,
+        C_NULL,  # paramLengths is ignored for text format parameters
+        num_params == 0 ? C_NULL : zeros(Cint, num_params),  # all parameters in text format
+        zero(Cint),  # return result in text format
     )
 end

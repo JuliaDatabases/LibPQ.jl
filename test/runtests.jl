@@ -74,7 +74,7 @@ end
         @test conn isa LibPQ.Connection
         @test isopen(conn)
         @test status(conn) == LibPQ.libpq_c.CONNECTION_OK
-        @test conn.closed == false
+        @test conn.closed[] == false
 
         text_display = sprint(show, conn)
         @test occursin("dbname = postgres", text_display)
@@ -171,7 +171,7 @@ end
 
         close(conn)
         @test !isopen(conn)
-        @test conn.closed == true
+        @test conn.closed[] == true
 
         text_display_closed = sprint(show, conn)
         @test occursin("closed", text_display_closed)
@@ -540,15 +540,15 @@ end
                 conn = LibPQ.Connection("dbname=123fake"; throw_error=false)
                 @test conn isa LibPQ.Connection
                 @test status(conn) == LibPQ.libpq_c.CONNECTION_BAD
-                @test conn.closed == false
+                @test isopen(conn)
 
                 reset!(conn; throw_error=false)
                 @test status(conn) == LibPQ.libpq_c.CONNECTION_BAD
-                @test conn.closed == false
+                @test isopen(conn)
 
                 close(conn)
                 @test !isopen(conn)
-                @test conn.closed == true
+                @test conn.closed[] == true
                 @test_throws ErrorException reset!(conn; throw_error=false)
             end
 
@@ -558,11 +558,11 @@ end
                 conn = LibPQ.Connection("dbname=123fake"; throw_error=false)
                 @test conn isa LibPQ.Connection
                 @test status(conn) == LibPQ.libpq_c.CONNECTION_BAD
-                @test conn.closed == false
+                @test isopen(conn)
 
                 @test_throws ErrorException reset!(conn; throw_error=true)
                 @test !isopen(conn)
-                @test conn.closed == true
+                @test conn.closed[] == true
                 @test_throws ErrorException reset!(conn; throw_error=true)
             end
         end

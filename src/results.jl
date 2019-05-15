@@ -3,6 +3,9 @@ mutable struct Result
     "A pointer to a libpq PGresult object (C_NULL if cleared)"
     result::Ptr{libpq_c.PGresult}
 
+    "True if the PG object has been cleaned up"
+    closed::Atomic{Bool}
+
     "PostgreSQL Oids for each column in the result"
     column_oids::Vector{Oid}
 
@@ -24,7 +27,7 @@ mutable struct Result
         conversions::AbstractDict=PQConversions(),
         not_null=false,
     )
-        jl_result = new(result)
+        jl_result = new(result, Atomic{Bool}(result == C_NULL))
 
         column_type_map = ColumnTypeMap()
         for (k, v) in column_types
@@ -136,8 +139,8 @@ Clean up the memory used by the `PGresult` object.
 The `Result` will no longer be usable.
 """
 function Base.close(jl_result::Result)
-    ptr, jl_result.result = jl_result.result, C_NULL
-    if ptr != C_NULL
+    if !atomic_cas!(jl_result.closed, false, true)
+        ptr, jl_result.result = jl_result.result, C_NULL
         libpq_c.PQclear(ptr)
     end
     return nothing
@@ -149,7 +152,7 @@ end
 Determine whether the given `Result` has been `close`d, i.e. whether the memory
 associated with the underlying `PGresult` object has been cleared.
 """
-Base.isopen(jl_result::Result) = jl_result.result != C_NULL
+Base.isopen(jl_result::Result) = !jl_result.closed[]
 
 """
     handle_result(jl_result::Result; throw_error::Bool=true) -> Result
@@ -217,10 +220,11 @@ function execute(
     throw_error::Bool=true,
     kwargs...
 )
-    return handle_result(
-        Result(libpq_c.PQexec(jl_conn.conn, query), jl_conn; kwargs...);
-        throw_error=throw_error,
-    )
+    result = lock(jl_conn.lock) do
+        _execute(jl_conn.conn, query)
+    end
+
+    return handle_result(Result(result, jl_conn; kwargs...); throw_error=throw_error)
 end
 
 function execute(
@@ -230,21 +234,36 @@ function execute(
     throw_error::Bool=true,
     kwargs...
 )
-    num_params = length(parameters)
     string_params = string_parameters(parameters)
+    pointer_params = parameter_pointers(string_params)
 
-    return handle_result(
-        Result(libpq_c.PQexecParams(
-            jl_conn.conn,
-            query,
-            num_params,
-            C_NULL,  # set paramTypes to C_NULL to have the server infer a type
-            parameter_pointers(string_params),
-            C_NULL,  # paramLengths is ignored for text format parameters
-            zeros(Cint, num_params),  # all parameters in text format
-            zero(Cint),  # return result in text format
-        ), jl_conn; kwargs...);
-        throw_error=throw_error,
+    result = lock(jl_conn.lock) do
+        _execute(jl_conn.conn, query, pointer_params)
+    end
+
+    return handle_result(Result(result, jl_conn; kwargs...); throw_error=throw_error)
+end
+
+function _execute(conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString)
+    libpq_c.PQexec(conn_ptr, query)
+end
+
+function _execute(
+    conn_ptr::Ptr{libpq_c.PGconn},
+    query::AbstractString,
+    parameters::Vector{Ptr{UInt8}},
+)
+    num_params = length(parameters)
+
+    libpq_c.PQexecParams(
+        conn_ptr,
+        query,
+        num_params,
+        C_NULL,  # set paramTypes to C_NULL to have the server infer a type
+        parameters,
+        C_NULL,  # paramLengths is ignored for text format parameters
+        zeros(Cint, num_params),  # all parameters in text format
+        zero(Cint),  # return result in text format
     )
 end
 
