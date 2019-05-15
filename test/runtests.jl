@@ -6,11 +6,28 @@ using DataFrames: eachrow
 using Decimals
 using IterTools: imap
 using Memento
+using Memento.TestUtils
 using OffsetArrays
 using TimeZones
 using Tables
 
 Memento.config!("critical")
+
+macro test_broken_on_windows(ex)
+    if Sys.iswindows()
+        :(@test_broken $(esc(ex)))
+    else
+        :(@test $(esc(ex)))
+    end
+end
+
+macro test_nolog_on_windows(ex...)
+    if Sys.iswindows()
+        :(@test_nolog($(map(esc, ex)...)))
+    else
+        :(@test_log($(map(esc, ex)...)))
+    end
+end
 
 @testset "LibPQ" begin
 
@@ -367,6 +384,107 @@ end
             results = columntable(execute(conn, "SELECT '1 12:59:10'::interval;"))
             @test results[1][1] == "@ 1 day 12 hours 59 mins 10 secs"
             close(conn)
+        end
+
+        @testset "Time Zone" begin
+            function connection_tz(conn::LibPQ.Connection)
+                result = execute(conn, "SELECT current_setting('TIMEZONE');")
+
+                tz = columntable(result)[:current_setting][1]
+                close(result)
+                return tz
+            end
+
+            # test with rare time zones to avoid collision with actual server time zones
+            # NOTE: do not run tests in Greenland
+            default_tz = LibPQ.DEFAULT_CLIENT_TIME_ZONE[]
+            try
+                LibPQ.DEFAULT_CLIENT_TIME_ZONE[] = "America/Scoresbysund"
+                LibPQ.CONNECTION_OPTION_DEFAULTS["TimeZone"] = LibPQ.DEFAULT_CLIENT_TIME_ZONE[]
+                merge!(LibPQ.CONNECTION_PARAMETER_DEFAULTS, LibPQ._connection_parameter_dict(connection_options=LibPQ.CONNECTION_OPTION_DEFAULTS))
+                withenv("PGTZ" => nothing) do  # unset
+                    LibPQ.Connection(
+                        "dbname=postgres user=$DATABASE_USER"; throw_error=true
+                    ) do conn
+                        @test connection_tz(conn) == "America/Scoresbysund"
+                    end
+
+                    LibPQ.Connection(
+                        "dbname=postgres user=$DATABASE_USER";
+                        options=Dict("TimeZone" => "America/Danmarkshavn"),
+                        throw_error=true,
+                    ) do conn
+                        @test connection_tz(conn) == "America/Danmarkshavn"
+                    end
+
+                    LibPQ.Connection(
+                        "dbname=postgres user=$DATABASE_USER";
+                        options=Dict("TimeZone" => ""),
+                        throw_error=true,
+                    ) do conn
+                        @test connection_tz(conn) != "America/Scoresbysund"
+                        @test connection_tz(conn) != "America/Danmarkshavn"
+                    end
+                end
+
+                # For some reason, libpq won't pick up environment variables which are set
+                # after it has been loaded. This seems to happen with Julia only; psycopg2
+                # does not have this problem. Perhaps we need to set some dlopen option?
+                withenv("PGTZ" => "America/Thule") do
+                    LibPQ.Connection(
+                        "dbname=postgres user=$DATABASE_USER"; throw_error=true
+                    ) do conn
+                        @test_broken_on_windows connection_tz(conn) == "America/Thule"
+                    end
+
+                    LibPQ.Connection(
+                        "dbname=postgres user=$DATABASE_USER";
+                        options=Dict("TimeZone" => "America/Danmarkshavn"),
+                        throw_error=true,
+                    ) do conn
+                        @test_broken_on_windows connection_tz(conn) == "America/Thule"
+                    end
+
+                    LibPQ.Connection(
+                        "dbname=postgres user=$DATABASE_USER";
+                        options=Dict("TimeZone" => ""),
+                        throw_error=true,
+                    ) do conn
+                        @test_broken_on_windows connection_tz(conn) == "America/Thule"
+                    end
+                end
+
+                withenv("PGTZ" => "") do
+                    @test_nolog_on_windows LibPQ.LOGGER "error" "invalid value for parameter" try
+                        LibPQ.Connection(
+                            "dbname=postgres user=$DATABASE_USER"; throw_error=true
+                        )
+                    catch
+                    end
+
+                    @test_nolog_on_windows LibPQ.LOGGER "error" "invalid value for parameter" try
+                        LibPQ.Connection(
+                            "dbname=postgres user=$DATABASE_USER";
+                            options=Dict("TimeZone" => "America/Danmarkshavn"),
+                            throw_error=true,
+                        )
+                    catch
+                    end
+
+                    @test_nolog_on_windows LibPQ.LOGGER "error" "invalid value for parameter" try
+                        LibPQ.Connection(
+                            "dbname=postgres user=$DATABASE_USER";
+                            options=Dict("TimeZone" => ""),
+                            throw_error=true,
+                        )
+                    catch
+                    end
+                end
+            finally
+                LibPQ.DEFAULT_CLIENT_TIME_ZONE[] = default_tz
+                LibPQ.CONNECTION_OPTION_DEFAULTS["TimeZone"] = LibPQ.DEFAULT_CLIENT_TIME_ZONE[]
+                merge!(LibPQ.CONNECTION_PARAMETER_DEFAULTS, LibPQ._connection_parameter_dict(connection_options=LibPQ.CONNECTION_OPTION_DEFAULTS))
+            end
         end
 
         @testset "Bad Connection" begin
