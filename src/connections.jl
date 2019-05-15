@@ -364,7 +364,8 @@ This is mostly used to create names for prepared statements.
 """
 function unique_id(jl_conn::Connection, prefix::AbstractString="")
     lock(jl_conn.lock) do
-        id_number, jl_conn.uid_counter = jl_conn.uid_counter, jl_conn.uid_counter + 1
+        id_number = jl_conn.uid_counter
+        jl_conn.uid_counter += 1
 
         return "__libpq_$(prefix)_$(id_number)__"
     end
