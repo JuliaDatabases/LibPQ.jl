@@ -245,7 +245,7 @@ function execute(
 end
 
 function _execute(conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString)
-    libpq_c.PQexec(conn_ptr, query)
+    return libpq_c.PQexec(conn_ptr, query)
 end
 
 function _execute(
@@ -255,7 +255,7 @@ function _execute(
 )
     num_params = length(parameters)
 
-    libpq_c.PQexecParams(
+    return libpq_c.PQexecParams(
         conn_ptr,
         query,
         num_params,

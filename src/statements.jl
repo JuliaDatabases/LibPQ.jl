@@ -149,7 +149,7 @@ function _execute_prepared(
 )
     num_params = length(parameters)
 
-    libpq_c.PQexecPrepared(
+    return libpq_c.PQexecPrepared(
         conn_ptr,
         stmt_name,
         num_params,
