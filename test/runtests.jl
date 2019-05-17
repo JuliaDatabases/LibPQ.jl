@@ -792,6 +792,37 @@ end
                 close(conn)
             end
 
+            @testset "Overrides" begin
+                conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+                result = execute(conn, "SELECT 4::bigint;")
+                @test first(first(result)) === Int64(4)
+
+                result = execute(conn, "SELECT 4::bigint;", type_map=Dict("int8"=>UInt8))
+                @test first(first(result)) === 0x4
+
+                result = execute(conn, "SELECT 'deadbeef';")
+                @test first(first(result)) == "deadbeef"
+
+                result = execute(
+                    conn,
+                    "SELECT 'deadbeef';",
+                    type_map=Dict(:text=>Vector{UInt8}),
+                    conversions=Dict((:text, Vector{UInt8})=>hex2bytes∘LibPQ.string_view),
+                )
+                @test first(first(result)) == [0xde, 0xad, 0xbe, 0xef]
+
+                result = execute(
+                    conn,
+                    "SELECT '0xdeadbeef';",
+                    type_map=Dict(:text=>String),
+                    column_types=[UInt32],
+                )
+                @test first(first(result)) == 0xdeadbeef
+
+                close(conn)
+            end
+
             @testset "Parsing" begin
                 @testset "Default Types" begin
                     conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)

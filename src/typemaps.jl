@@ -214,9 +214,19 @@ end
 
 PQConversions(func_map::PQConversions) = func_map
 function PQConversions(func_map::AbstractDict{Tuple{Oid, Type}, Base.Callable})
-    return Dict{Tuple{Oid, Type}, Base.Callable}(func_map)
+    return PQConversions(Dict{Tuple{Oid, Type}, Base.Callable}(func_map))
 end
 PQConversions() = PQConversions(Dict{Tuple{Oid, Type}, Base.Callable}())
+
+function PQConversions(user_map::AbstractDict)
+    func_map = PQConversions()
+
+    for (k, v) in user_map
+        func_map[k] = v
+    end
+
+    return func_map
+end
 
 """
     Base.getindex(cmap::PQConversions, oid_typ::Tuple{Any, Type}) -> Base.Callable

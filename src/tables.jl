@@ -25,7 +25,7 @@ end
 result(pqrow::Row) = getfield(pqrow, :result)
 row_number(pqrow::Row) = getfield(pqrow, :row)
 
-Base.propertynames(r::Row) = column_names(getfield(r, :result))
+Base.propertynames(pqrow::Row) = column_names(result(pqrow))
 
 function Base.getproperty(pqrow::Row, name::Symbol)
     jl_result = result(pqrow)

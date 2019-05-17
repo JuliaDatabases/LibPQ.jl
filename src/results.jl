@@ -22,7 +22,7 @@ mutable struct Result
     function Result(
         result::Ptr{libpq_c.PGresult},
         jl_conn::Connection;
-        column_types::AbstractDict=ColumnTypeMap(),
+        column_types::Union{AbstractDict, AbstractVector}=ColumnTypeMap(),
         type_map::AbstractDict=PQTypeMap(),
         conversions::AbstractDict=PQConversions(),
         not_null=false,
@@ -30,7 +30,7 @@ mutable struct Result
         jl_result = new(result, Atomic{Bool}(result == C_NULL))
 
         column_type_map = ColumnTypeMap()
-        for (k, v) in column_types
+        for (k, v) in pairs(column_types)
             column_type_map[column_number(jl_result, k)] = v
         end
 
