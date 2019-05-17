@@ -1,0 +1,430 @@
+"A result from a PostgreSQL database query"
+mutable struct Result
+    "A pointer to a libpq PGresult object (C_NULL if cleared)"
+    result::Ptr{libpq_c.PGresult}
+
+    "True if the PG object has been cleaned up"
+    closed::Atomic{Bool}
+
+    "PostgreSQL Oids for each column in the result"
+    column_oids::Vector{Oid}
+
+    "Julia types for each column in the result"
+    column_types::Vector{Type}
+
+    "Whether to expect NULL for each column (whether output data can have `missing`)"
+    not_null::Vector{Bool}
+
+    "Conversions from PostgreSQL data to Julia types for each column in the result"
+    column_funcs::Vector{Base.Callable}
+
+    # TODO: attach encoding per https://wiki.postgresql.org/wiki/Driver_development#Result_object_and_client_encoding
+    function Result(
+        result::Ptr{libpq_c.PGresult},
+        jl_conn::Connection;
+        column_types::AbstractDict=ColumnTypeMap(),
+        type_map::AbstractDict=PQTypeMap(),
+        conversions::AbstractDict=PQConversions(),
+        not_null=false,
+    )
+        jl_result = new(result, Atomic{Bool}(result == C_NULL))
+
+        column_type_map = ColumnTypeMap()
+        for (k, v) in column_types
+            column_type_map[column_number(jl_result, k)] = v
+        end
+
+        type_lookup = LayerDict(
+            PQTypeMap(type_map),
+            jl_conn.type_map,
+            LIBPQ_TYPE_MAP,
+            _DEFAULT_TYPE_MAP,
+        )
+
+        func_lookup = LayerDict(
+            PQConversions(conversions),
+            jl_conn.func_map,
+            LIBPQ_CONVERSIONS,
+            _DEFAULT_CONVERSIONS,
+            _FALLBACK_CONVERSION,
+        )
+
+        jl_result.column_oids = col_oids = map(1:num_columns(jl_result)) do col_num
+            libpq_c.PQftype(jl_result.result, col_num - 1)
+        end
+
+        jl_result.column_types = col_types = collect(Type, imap(enumerate(col_oids)) do itr
+            col_num, col_oid = itr
+            get(column_type_map, col_num) do
+                get(type_lookup, col_oid, String)
+            end
+        end)
+
+        jl_result.column_funcs = collect(Base.Callable, imap(col_oids, col_types) do oid, typ
+            func_lookup[(oid, typ)]
+        end)
+
+        # figure out which columns the user says may contain nulls
+        if not_null isa Bool
+            jl_result.not_null = fill(not_null, size(col_types))
+        elseif not_null isa AbstractArray
+            if eltype(not_null) === Bool
+                if length(not_null) != length(col_types)
+                    throw(ArgumentError(
+                        "The length of keyword argument not_null, when an array, must be equal to the number of columns"
+                    ))
+                end
+
+                jl_result.not_null = not_null
+            else
+                # assume array of column names
+                jl_result.not_null = fill(false, size(col_types))
+
+                for col_name in not_null
+                    col_num = column_number(jl_result, col_name)
+                    jl_result.not_null[col_num] = true
+                end
+            end
+        else
+            throw(ArgumentError(
+                "Unsupported type $(typeof(not_null)) for keyword argument not_null"
+            ))
+        end
+
+        finalizer(close, jl_result)
+
+        return jl_result
+    end
+end
+
+"""
+    show(io::IO, jl_result::Result)
+
+Show a PostgreSQL result and whether it has been cleared.
+"""
+function Base.show(io::IO, jl_result::Result)
+    print(io, "PostgreSQL result")
+
+    if !isopen(jl_result)
+        print(io, " (cleared)")
+    end
+end
+
+"""
+    status(jl_result::Result) -> libpq_c.ExecStatusType
+
+Return the status of a result's corresponding database query according to libpq.
+Only `CONNECTION_OK` and `CONNECTION_BAD` are valid for blocking connections, and only
+blocking connections are supported right now.
+
+See also: [`error_message`](@ref)
+"""
+status(jl_result::Result) = libpq_c.PQresultStatus(jl_result.result)
+
+"""
+    error_message(jl_result::Result) -> String
+
+Return the error message associated with the result, or an empty string if there was no
+error.
+Includes a trailing newline.
+"""
+function error_message(jl_result::Result)
+    unsafe_string(libpq_c.PQresultErrorMessage(jl_result.result))
+end
+
+"""
+    close(jl_result::Result)
+
+Clean up the memory used by the `PGresult` object.
+The `Result` will no longer be usable.
+"""
+function Base.close(jl_result::Result)
+    if !atomic_cas!(jl_result.closed, false, true)
+        ptr, jl_result.result = jl_result.result, C_NULL
+        libpq_c.PQclear(ptr)
+    end
+    return nothing
+end
+
+"""
+    isopen(jl_result::Result)
+
+Determine whether the given `Result` has been `close`d, i.e. whether the memory
+associated with the underlying `PGresult` object has been cleared.
+"""
+Base.isopen(jl_result::Result) = !jl_result.closed[]
+
+"""
+    handle_result(jl_result::Result; throw_error::Bool=true) -> Result
+
+Check status and handle errors for newly-created result objects.
+
+If `throw_error` is `true`, throw an error and clear the result if the query results in a
+fatal error or unreadable response.
+Otherwise a warning is shown.
+
+Also print an info message about the result.
+"""
+function handle_result(jl_result::Result; throw_error::Bool=true)
+    err_msg = error_message(jl_result)
+    result_status = status(jl_result)
+
+    if result_status in (libpq_c.PGRES_BAD_RESPONSE, libpq_c.PGRES_FATAL_ERROR)
+        if throw_error
+            close(jl_result)
+            error(LOGGER, err_msg)
+        else
+            warn(LOGGER, err_msg)
+        end
+    else
+        if result_status == libpq_c.PGRES_NONFATAL_ERROR
+            warn(LOGGER, err_msg)
+        end
+
+        debug(LOGGER, unsafe_string(libpq_c.PQcmdStatus(jl_result.result)))
+    end
+
+    return jl_result
+end
+
+"""
+    execute(
+        {jl_conn::Connection, query::AbstractString | stmt::Statement},
+        [parameters::Union{AbstractVector, Tuple},]
+        throw_error::Bool=true,
+        column_types::AbstractDict=ColumnTypeMap(),
+        type_map::AbstractDict=LibPQ.PQTypeMap(),
+        conversions::AbstractDict=LibPQ.PQConversions(),
+    ) -> Result
+
+Run a query on the PostgreSQL database and return a `Result`.
+If `throw_error` is `true`, throw an error and clear the result if the query results in a
+fatal error or unreadable response.
+
+The query may be passed as `Connection` and `AbstractString` (SQL) arguments, or as a
+`Statement`.
+
+`execute` optionally takes a `parameters` vector which passes query parameters as strings to
+PostgreSQL.
+
+`column_types` accepts type overrides for columns in the result which take priority over
+those in `type_map`.
+For information on the `column_types`, `type_map`, and `conversions` arguments, see
+[Type Conversions](@ref typeconv).
+"""
+function execute end
+
+function execute(
+    jl_conn::Connection,
+    query::AbstractString;
+    throw_error::Bool=true,
+    kwargs...
+)
+    result = lock(jl_conn) do
+        _execute(jl_conn.conn, query)
+    end
+
+    return handle_result(Result(result, jl_conn; kwargs...); throw_error=throw_error)
+end
+
+function execute(
+    jl_conn::Connection,
+    query::AbstractString,
+    parameters::Union{AbstractVector, Tuple};
+    throw_error::Bool=true,
+    kwargs...
+)
+    string_params = string_parameters(parameters)
+    pointer_params = parameter_pointers(string_params)
+
+    result = lock(jl_conn) do
+        _execute(jl_conn.conn, query, pointer_params)
+    end
+
+    return handle_result(Result(result, jl_conn; kwargs...); throw_error=throw_error)
+end
+
+function _execute(conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString)
+    return libpq_c.PQexec(conn_ptr, query)
+end
+
+function _execute(
+    conn_ptr::Ptr{libpq_c.PGconn},
+    query::AbstractString,
+    parameters::Vector{Ptr{UInt8}},
+)
+    num_params = length(parameters)
+
+    return libpq_c.PQexecParams(
+        conn_ptr,
+        query,
+        num_params,
+        C_NULL,  # set paramTypes to C_NULL to have the server infer a type
+        parameters,
+        C_NULL,  # paramLengths is ignored for text format parameters
+        zeros(Cint, num_params),  # all parameters in text format
+        zero(Cint),  # return result in text format
+    )
+end
+
+"""
+    string_parameters(parameters::AbstractVector) -> Vector{Union{String, Missing}}
+
+Convert parameters to strings which can be passed to libpq, propagating `missing`.
+"""
+function string_parameters end
+
+string_parameters(parameters::AbstractVector{<:Parameter}) = parameters
+
+# Tuples of parameters
+string_parameters(parameters::Tuple) = string_parameters(collect(parameters))
+
+# vector which can't contain missing
+string_parameters(parameters::AbstractVector) = map(string_parameter, parameters)
+
+# vector which might contain missings
+function string_parameters(parameters::AbstractVector{>:Missing})
+    collect(
+        Union{String, Missing},
+        imap(parameters) do parameter
+            ismissing(parameter) ? missing : string_parameter(parameter)
+        end
+    )
+end
+
+string_parameter(parameter) = string(parameter)
+
+function string_parameter(parameter::AbstractVector)
+    io = IOBuffer()
+    print(io, "{")
+    join(io, (_array_element(el) for el in parameter), ",")
+    print(io, "}")
+    String(take!(io))
+end
+
+_array_element(el::AbstractString) = "\"$el\""
+_array_element(el::Missing) = "NULL"
+_array_element(el) = string_parameter(el)
+
+"""
+    parameter_pointers(parameters::AbstractVector{<:Parameter}) -> Vector{Ptr{UInt8}}
+
+Given a vector of parameters, returns a vector of pointers to either the string bytes in the
+original or `C_NULL` if the element is `missing`.
+"""
+function parameter_pointers(parameters::AbstractVector{<:Parameter})
+    pointers = Vector{Ptr{UInt8}}(undef, length(parameters))
+
+    map!(pointers, parameters) do parameter
+        ismissing(parameter) ? C_NULL : pointer(parameter)
+    end
+
+    return pointers
+end
+
+"""
+    num_params(jl_result::Result) -> Int
+
+Return the number of parameters in a prepared statement.
+If this result did not come from the description of a prepared statement, return 0.
+"""
+function num_params(jl_result::Result)::Int
+    # todo: check cleared?
+    libpq_c.PQnparams(jl_result.result)
+end
+
+"""
+    num_rows(jl_result::Result) -> Int
+
+Return the number of rows in the query result.
+This will be 0 if the query would never return data.
+"""
+function num_rows(jl_result::Result)::Int
+    # todo: check cleared?
+    libpq_c.PQntuples(jl_result.result)
+end
+
+"""
+    num_affected_rows(jl_result::Result) -> Int
+
+Return the number of rows affected by the command returning the result.
+This is useful for counting the rows affected by operations such as INSERT,
+UPDATE and DELETE that do not return rows but affect them.
+This will be 0 if the query does not affect any row.
+"""
+function num_affected_rows(jl_result::Result)::Int
+    # todo: check cleared?
+    str = unsafe_string(libpq_c.PQcmdTuples(jl_result.result))
+    if isempty(str)
+        throw(ArgumentError("Result generated by an incompatible command"))
+    else
+        return parse(Int, str)
+    end
+end
+
+"""
+    num_columns(jl_result::Result) -> Int
+
+Return the number of columns in the query result.
+This will be 0 if the query would never return data.
+"""
+function num_columns(jl_result::Result)::Int
+    # todo: check cleared?
+    libpq_c.PQnfields(jl_result.result)
+end
+
+"""
+    column_name(jl_result::Result, column_number::Integer) -> String
+
+Return the name of the column at index `column_number` (1-based).
+"""
+function column_name(jl_result::Result, column_number::Integer)
+    # todo: check cleared?
+    unsafe_string(libpq_c.PQfname(jl_result.result, column_number - 1))
+end
+
+"""
+    column_names(jl_result::Result) -> Vector{String}
+
+Return the names of all the columns in the query result.
+"""
+function column_names(jl_result::Result)
+    return [column_name(jl_result, i) for i in 1:num_columns(jl_result)]
+end
+
+"""
+    column_number(jl_result::Result, column_name::Union{AbstractString, Symbol}) -> Int
+
+Return the index (1-based) of the column named `column_name`.
+"""
+function column_number(jl_result::Result, column_name::Union{AbstractString, Symbol})::Int
+    # todo: check cleared?
+    return libpq_c.PQfnumber(jl_result.result, String(column_name)) + 1
+end
+
+"""
+    column_number(jl_result::Result, column_idx::Integer) -> Int
+
+Return the index of the column if it is valid, or error.
+"""
+function column_number(jl_result::Result, column_idx::Integer)::Int
+    if !checkindex(Bool, 1:num_columns(jl_result), column_idx)
+        throw(BoundsError(column_names(jl_result), column_idx))
+    end
+
+    return column_idx
+end
+
+"""
+    column_oids(jl_result::Result) -> Vector{LibPQ.Oid}
+
+Return the PostgreSQL oids for each column in the result.
+"""
+column_oids(jl_result::Result) = jl_result.column_oids
+
+"""
+    column_types(jl_result::Result) -> Vector{Type}
+
+Return the corresponding Julia types for each column in the result.
+"""
+column_types(jl_result::Result) = jl_result.column_types
