@@ -428,3 +428,20 @@ column_oids(jl_result::Result) = jl_result.column_oids
 Return the corresponding Julia types for each column in the result.
 """
 column_types(jl_result::Result) = jl_result.column_types
+
+"""
+    getindex(jl_result::Result, row::Integer, col::Integer) -> Union{_, Missing}
+
+Return the parsed value of the result at the row and column specified (1-indexed).
+The returned value will be `missing` if `NULL`, or will be of the type specified in
+[`column_types`](@ref).
+"""
+function Base.getindex(jl_result::Result, row::Integer, col::Integer)
+    if isnull(jl_result, row, col)
+        return missing
+    else
+        oid = column_oids(jl_result)[col]
+        T = column_types(jl_result)[col]
+        return jl_result.column_funcs[col](PQValue{oid}(jl_result, row, col))::T
+    end
+end

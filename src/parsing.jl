@@ -30,6 +30,15 @@ function PQValue(jl_result::Result, row::Integer, col::Integer)
 end
 
 """
+    isnull(jl_result::Result, row::Integer, col::Integer) -> Bool
+
+Return whether the result value at the specified row and column (1-indexed) is `NULL`.
+"""
+function isnull(jl_result::Result, row::Integer, col::Integer)
+    return libpq_c.PQgetisnull(jl_result.result, row - 1, col - 1) == 1
+end
+
+"""
     num_bytes(pqv::PQValue) -> Cint
 
 The length in bytes of the `PQValue`'s corresponding data.

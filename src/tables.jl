@@ -22,19 +22,28 @@ struct Row
     row::Int
 end
 
+result(pqrow::Row) = getfield(pqrow, :result)
+row_number(pqrow::Row) = getfield(pqrow, :row)
+
 Base.propertynames(r::Row) = column_names(getfield(r, :result))
 
 function Base.getproperty(pqrow::Row, name::Symbol)
-    jl_result = getfield(pqrow, :result)
-    row = getfield(pqrow, :row)
+    jl_result = result(pqrow)
+    row = row_number(pqrow)
     col = column_number(jl_result, name)
-    if libpq_c.PQgetisnull(jl_result.result, row - 1, col - 1) == 1
-        return missing
-    else
-        oid = jl_result.column_oids[col]
-        T = jl_result.column_types[col]
-        return jl_result.column_funcs[col](PQValue{oid}(jl_result, row, col))::T
-    end
+    return jl_result[row, col]
+end
+
+function Base.getindex(pqrow::Row, col::Integer)
+    row = row_number(pqrow)
+    return result(pqrow)[row, col]
+end
+
+Base.length(pqrow::Row) = num_columns(result(pqrow))
+
+function Base.iterate(pqrow::Row, (len, col)=(length(pqrow), 1))
+    col > len && return nothing
+    return (result(pqrow)[row_number(pqrow), col], (len, col + 1))
 end
 
 """
