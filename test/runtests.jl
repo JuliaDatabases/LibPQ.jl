@@ -835,7 +835,7 @@ end
 
                 result = execute(
                     conn,
-                    "SELECT 'deadbeef';",
+                    "SELECT 'deadbeef'::text;",  # unknown type on PostgreSQL < 10
                     type_map=Dict(:text=>Vector{UInt8}),
                     conversions=Dict((:text, Vector{UInt8})=>hex2bytes∘LibPQ.string_view),
                 )
@@ -843,7 +843,7 @@ end
 
                 result = execute(
                     conn,
-                    "SELECT '0xdeadbeef';",
+                    "SELECT '0xdeadbeef'::text;",
                     type_map=Dict(:text=>String),
                     column_types=[UInt32],
                 )
