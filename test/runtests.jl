@@ -208,13 +208,12 @@ end
         @test data[:yes_nulls][1] == "bar"
         @test data[:yes_nulls][2] === missing
 
-        close(result)
-
         stmt = LibPQ.load!(
             data,
             conn,
             "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
         )
+
         @test_throws ArgumentError num_affected_rows(stmt.description)
         @test num_params(stmt) == 2
         @test num_columns(stmt) == 0  # an insert has no results
@@ -672,7 +671,7 @@ end
             @test LibPQ.num_columns(result) == 1
             @test LibPQ.num_rows(result) == 1
 
-            @test_throws MethodError columntable(result)
+            @test_throws MethodError columntable(result)[1][1]
 
             close(result)
 
@@ -681,7 +680,7 @@ end
             @test LibPQ.num_columns(result) == 1
             @test LibPQ.num_rows(result) == 1
 
-            @test_throws MethodError columntable(result)
+            @test_throws MethodError columntable(result)[1][1]
 
             close(result)
 
@@ -701,10 +700,10 @@ end
             data = columntable(result)
 
             @test data[:no_nulls] == ["foo", "baz"]
-            @test data[:no_nulls] isa Vector{String}
+            @test data[:no_nulls] isa AbstractVector{String}
             @test data[:yes_nulls][1] == "bar"
             @test data[:yes_nulls][2] === missing
-            @test data[:yes_nulls] isa Vector{Union{String, Missing}}
+            @test data[:yes_nulls] isa AbstractVector{Union{String, Missing}}
 
             close(result)
 
@@ -724,10 +723,10 @@ end
             data = columntable(result)
 
             @test data[:no_nulls] == ["foo", "baz"]
-            @test data[:no_nulls] isa Vector{Union{String, Missing}}
+            @test data[:no_nulls] isa AbstractVector{Union{String, Missing}}
             @test data[:yes_nulls][1] == "bar"
             @test data[:yes_nulls][2] === missing
-            @test data[:yes_nulls] isa Vector{Union{String, Missing}}
+            @test data[:yes_nulls] isa AbstractVector{Union{String, Missing}}
 
             close(result)
         end
@@ -749,15 +748,45 @@ end
             rt = Tables.rows(result)
             data = collect(rt)
             @test data[1].no_nulls == "foo"
+            @test data[1][1] == "foo"
             @test data[2].no_nulls == "baz"
+            @test data[2][1] == "baz"
             @test data[1].yes_nulls == "bar"
+            @test data[1][2] == "bar"
             @test data[2].yes_nulls === missing
+            @test data[2][2] === missing
 
+            # columns
             ct = Tables.columns(result)
             no_nulls = collect(ct.no_nulls)
             @test no_nulls == ["foo", "baz"]
             yes_nulls = collect(ct.yes_nulls)
             @test isequal(yes_nulls, ["bar", missing])
+
+            collected = map(collect, Tables.columns(result))
+            @test collected isa AbstractVector{<:AbstractVector{Union{String, Missing}}}
+            @test collected isa Vector{Vector{Union{String, Missing}}}
+            @test collected[1] == ["foo", "baz"]
+            @test isequal(collected[2], ["bar", missing])
+
+            close(result)
+            close(conn)
+        end
+
+        @testset "Duplicate names" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            result = execute(conn, "SELECT 1 AS col, 2 AS col;", not_null=true, throw_error=true)
+            columns = Tables.columns(result)
+            @test columns[1] == [1]
+            @test columns[2] == [2]
+
+            row = first(Tables.rows(result))
+            @test row[1] == 1
+            @test row[2] == 2
+
+            close(result)
+            close(conn)
         end
 
         @testset "Type Conversions" begin
@@ -1050,7 +1079,7 @@ end
                 [16],
             )
             close(result)
-            @test_throws ErrorException columntable(result)
+            @test_throws BoundsError columntable(result)
 
             close(conn)
             @test !isopen(conn)
