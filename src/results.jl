@@ -408,7 +408,7 @@ end
 Return the index of the column if it is valid, or error.
 """
 function column_number(jl_result::Result, column_idx::Integer)::Int
-    if !checkindex(Bool, Base.OneTo(num_columns(jl_result)), column_idx)
+    @boundscheck if !checkindex(Bool, Base.OneTo(num_columns(jl_result)), column_idx)
         throw(BoundsError(column_names(jl_result), column_idx))
     end
 
