@@ -22,7 +22,7 @@ mutable struct Result
     function Result(
         result::Ptr{libpq_c.PGresult},
         jl_conn::Connection;
-        column_types::AbstractDict=ColumnTypeMap(),
+        column_types::Union{AbstractDict, AbstractVector}=ColumnTypeMap(),
         type_map::AbstractDict=PQTypeMap(),
         conversions::AbstractDict=PQConversions(),
         not_null=false,
@@ -30,7 +30,7 @@ mutable struct Result
         jl_result = new(result, Atomic{Bool}(result == C_NULL))
 
         column_type_map = ColumnTypeMap()
-        for (k, v) in column_types
+        for (k, v) in pairs(column_types)
             column_type_map[column_number(jl_result, k)] = v
         end
 
@@ -408,7 +408,7 @@ end
 Return the index of the column if it is valid, or error.
 """
 function column_number(jl_result::Result, column_idx::Integer)::Int
-    if !checkindex(Bool, 1:num_columns(jl_result), column_idx)
+    @boundscheck if !checkindex(Bool, Base.OneTo(num_columns(jl_result)), column_idx)
         throw(BoundsError(column_names(jl_result), column_idx))
     end
 
@@ -428,3 +428,20 @@ column_oids(jl_result::Result) = jl_result.column_oids
 Return the corresponding Julia types for each column in the result.
 """
 column_types(jl_result::Result) = jl_result.column_types
+
+"""
+    getindex(jl_result::Result, row::Integer, col::Integer) -> Union{_, Missing}
+
+Return the parsed value of the result at the row and column specified (1-indexed).
+The returned value will be `missing` if `NULL`, or will be of the type specified in
+[`column_types`](@ref).
+"""
+function Base.getindex(jl_result::Result, row::Integer, col::Integer)
+    if isnull(jl_result, row, col)
+        return missing
+    else
+        oid = column_oids(jl_result)[col]
+        T = column_types(jl_result)[col]
+        return jl_result.column_funcs[col](PQValue{oid}(jl_result, row, col))::T
+    end
+end

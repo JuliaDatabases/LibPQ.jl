@@ -1,9 +1,17 @@
 Tables.istable(::Type{<:Result}) = true
+
+# Rows
+
 Tables.rowaccess(::Type{<:Result}) = true
 Tables.rows(jl_result::Result) = jl_result
 
 Base.eltype(jl_result::Result) = Row
 Base.length(jl_result::Result) = num_rows(jl_result)
+
+function Base.iterate(jl_result::Result, (len, row)=(length(jl_result), 1))
+    row > len && return nothing
+    return Row(jl_result, row), (len, row + 1)
+end
 
 function Tables.schema(jl_result::Result)
     types = map(jl_result.not_null, column_types(jl_result)) do not_null, col_type
@@ -12,30 +20,107 @@ function Tables.schema(jl_result::Result)
     return Tables.Schema(map(Symbol, column_names(jl_result)), types)
 end
 
-function Base.iterate(jl_result::Result, (len, row)=(length(jl_result), 1))
-    row > len && return nothing
-    return Row(jl_result, row), (len, row + 1)
-end
-
 struct Row
     result::Result
     row::Int
 end
 
-Base.propertynames(r::Row) = column_names(getfield(r, :result))
+result(pqrow::Row) = getfield(pqrow, :result)
+row_number(pqrow::Row) = getfield(pqrow, :row)
+
+Base.propertynames(pqrow::Row) = map(Symbol, column_names(result(pqrow)))
 
 function Base.getproperty(pqrow::Row, name::Symbol)
-    jl_result = getfield(pqrow, :result)
-    row = getfield(pqrow, :row)
+    jl_result = result(pqrow)
+    row = row_number(pqrow)
     col = column_number(jl_result, name)
-    if libpq_c.PQgetisnull(jl_result.result, row - 1, col - 1) == 1
+    return jl_result[row, col]
+end
+
+function Base.getindex(pqrow::Row, col::Integer)
+    row = row_number(pqrow)
+    return result(pqrow)[row, col]
+end
+
+Base.length(pqrow::Row) = num_columns(result(pqrow))
+
+function Base.iterate(pqrow::Row, (len, col)=(length(pqrow), 1))
+    col > len && return nothing
+    return (result(pqrow)[row_number(pqrow), col], (len, col + 1))
+end
+
+# Columns
+
+struct Column{T} <: AbstractVector{T}
+    result::Result
+    col::Int
+    col_name::Symbol
+    oid::Oid
+    not_null::Bool
+    typ::Type
+    func::Base.Callable
+end
+
+struct Columns <: AbstractVector{Column}
+    result::Result
+end
+
+result(cs::Columns) = getfield(cs, :result)
+
+Base.propertynames(cs::Columns) = map(Symbol, column_names(result(cs)))
+
+Base.getproperty(cs::Columns, name::Symbol) = Column(result(cs), name)
+Base.getindex(cs::Columns, col::Integer) = Column(result(cs), col)
+Base.IndexStyle(::Type{Columns}) = IndexLinear()
+Base.length(cs::Columns) = num_columns(result(cs))
+Base.size(cs::Columns) = (length(cs),)
+
+Tables.columnaccess(::Type{<:Result}) = true
+Tables.columns(jl_result::Result) = Columns(jl_result)
+
+function Tables.schema(cs::Columns)
+    jl_result = result(cs)
+    types = map(jl_result.not_null, column_types(jl_result)) do not_null, col_type
+        not_null ? col_type : Union{col_type, Missing}
+    end
+    return Tables.Schema(map(Symbol, column_names(jl_result)), types)
+end
+
+function Column(jl_result::Result, col::Integer, name=Symbol(column_name(jl_result, col)))
+    @boundscheck if !checkindex(Bool, Base.OneTo(num_columns(jl_result)), col)
+        throw(BoundsError(Columns(jl_result)), col)
+    end
+
+    oid = column_oids(jl_result)[col]
+    typ = column_types(jl_result)[col]
+    func = jl_result.column_funcs[col]
+    not_null = jl_result.not_null[col]
+    element_type = not_null ? typ : Union{typ, Missing}
+    return Column{element_type}(jl_result, col, name, oid, not_null, typ, func)
+end
+
+function Column(jl_result::Result, name::Symbol, col=column_number(jl_result, name))
+    return Column(jl_result, col, name)
+end
+
+result(c::Column) = getfield(c, :result)
+column_number(c::Column) = getfield(c, :col)
+column_name(c::Column) = getfield(c, :col_name)
+
+function Base.getindex(c::Column{T}, row::Integer)::T where T
+    jl_result = result(c)
+    col = column_number(c)
+    if isnull(jl_result, row, col)
         return missing
     else
-        oid = jl_result.column_oids[col]
-        T = jl_result.column_types[col]
-        return jl_result.column_funcs[col](PQValue{oid}(jl_result, row, col))::T
+        return c.func(PQValue{c.oid}(jl_result, row, col))::c.typ
     end
 end
+
+Base.IndexStyle(::Type{<:Column}) = IndexLinear()
+Base.length(c::Column) = num_rows(result(c))
+Base.size(c::Column) = (length(c),)
+
 
 """
     LibPQ.load!(table, connection::LibPQ.Connection, query) -> LibPQ.Statement
@@ -62,7 +147,7 @@ function load!(table::T, connection::Connection, query::AbstractString) where {T
     rows = Tables.rows(table)
     stmt = prepare(connection, query)
     state = iterate(rows)
-    state === nothing && return
+    state === nothing && return stmt
     row, st = state
     names = propertynames(row)
     sch = Tables.Schema(names, nothing)
