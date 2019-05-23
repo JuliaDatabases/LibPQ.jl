@@ -152,7 +152,8 @@ function load!(table::T, connection::Connection, query::AbstractString) where {T
     names = propertynames(row)
     sch = Tables.Schema(names, nothing)
     parameters = Vector{Parameter}(undef, length(names))
-    while true
+    while state !== nothing
+        row, st = state
         Tables.eachcolumn(sch, row) do val, col, nm
             parameters[col] = if ismissing(val)
                 missing
@@ -164,8 +165,6 @@ function load!(table::T, connection::Connection, query::AbstractString) where {T
         end
         close(execute(stmt, parameters; throw_error=true))
         state = iterate(rows, st)
-        state === nothing && break
-        row, st = state
     end
     return stmt
 end
