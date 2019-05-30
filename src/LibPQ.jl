@@ -1,15 +1,17 @@
 module LibPQ
 
-export status, reset!, execute, prepare,
+export status, reset!, execute, prepare, async_execute, cancel,
     num_columns, num_rows, num_params, num_affected_rows
 
 
+using Base: Semaphore, acquire, release
 using Base.Iterators: zip, product
 using Base.Threads
 
 using Dates
 using DocStringExtensions
 using Decimals
+using FileWatching
 using Tables
 using IterTools: imap
 using LayerDicts
@@ -81,5 +83,7 @@ include("statements.jl")
 include("parsing.jl")
 include("copy.jl")
 include("tables.jl")
+
+include("asyncresults.jl")
 
 end

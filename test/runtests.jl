@@ -1133,6 +1133,138 @@ end
             close(conn)
         end
     end
+
+    @testset "AsyncResults" begin
+        @testset "Basic" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            ar = async_execute(conn, "SELECT pg_sleep(2);"; throw_error=false)
+            @test !isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === ar
+
+            wait(ar)
+            @test isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === nothing
+
+            result = fetch(ar)
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test LibPQ.column_name(result, 1) == "pg_sleep"
+
+            close(result)
+            close(conn)
+        end
+
+        # Ensures multiple queries can be created without blocking
+        @testset "Wait in line to start" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            first_ar = async_execute(conn, "SELECT pg_sleep(3);")
+            second_ar_task = @async async_execute(conn, "SELECT pg_sleep(1);")
+            @test !isready(first_ar)
+            @test conn.async_result === first_ar
+
+            second_ar = fetch(second_ar_task)
+            @test isready(first_ar)
+            @test !isready(second_ar)
+            @test !LibPQ.iserror(first_ar)
+            @test conn.async_result === second_ar
+
+            wait(second_ar)
+            @test isready(first_ar)
+            @test isready(second_ar)
+            @test !LibPQ.iserror(first_ar)
+            @test !LibPQ.iserror(second_ar)
+            @test conn.async_result === nothing
+
+            second_result = fetch(second_ar)
+            @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+
+            first_result = fetch(first_ar)
+            @test status(first_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+
+            close(first_result)
+            close(second_result)
+            close(conn)
+        end
+
+        # Ensures queries wait for previous query completion before starting
+        @testset "Wait in line to complete" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            first_ar = async_execute(conn, "SELECT pg_sleep(4);")
+            second_ar = async_execute(conn, "SELECT pg_sleep(2);")
+            @test isready(first_ar)
+            @test !isready(second_ar)
+
+            second_result = fetch(second_ar)
+            @test isready(first_ar)
+            @test isready(second_ar)
+            @test !LibPQ.iserror(first_ar)
+            @test !LibPQ.iserror(second_ar)
+            @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test conn.async_result === nothing
+
+            first_result = fetch(first_ar)
+            @test isready(first_ar)
+            @test !LibPQ.iserror(first_ar)
+            @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test conn.async_result === nothing
+
+            close(second_result)
+            close(first_result)
+            close(conn)
+        end
+
+        @testset "Cancel" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            ar = async_execute(conn, "SELECT pg_sleep(4);")
+            @test !isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === ar
+
+            cancel(ar)
+            @test isready(ar)
+            @test LibPQ.iserror(ar)
+            @test conn.async_result === nothing
+
+            local err_msg = ""
+            try
+                wait(ar)
+            catch e
+                err_msg = sprint(showerror, e)
+            end
+
+            @test occursin("canceling statement due to user request", err_msg)
+
+            close(conn)
+        end
+
+        @testset "Canceled by closing connection" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            ar = async_execute(conn, "SELECT pg_sleep(4);")
+            @test !isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === ar
+
+            close(conn)
+            @test isready(ar)
+            @test LibPQ.iserror(ar)
+            @test conn.async_result === nothing
+
+            local err_msg = ""
+            try
+                wait(ar)
+            catch e
+                err_msg = sprint(showerror, e)
+            end
+
+            @test occursin("canceling statement due to user request", err_msg)
+        end
+    end
 end
 
 end

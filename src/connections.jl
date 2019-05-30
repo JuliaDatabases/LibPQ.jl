@@ -52,8 +52,11 @@ mutable struct Connection
     "True if the connection is closed and the PGconn object has been cleaned up"
     closed::Atomic{Bool}
 
-    "Lock for thread-safety"
-    lock::Mutex
+    "Semaphore for thread-safety (not thread-safe until Julia 1.2)"
+    semaphore::Semaphore
+
+    "Current AsyncResult, if active"
+    async_result  # ::Union{AsyncResult, Nothing}, would be a circular reference
 
     function Connection(
         conn::Ptr,
@@ -68,7 +71,8 @@ mutable struct Connection
             PQTypeMap(type_map),
             PQConversions(conversions),
             Atomic{Bool}(closed),
-            Mutex(),
+            Semaphore(1),
+            nothing,
         )
     end
 end
@@ -193,14 +197,19 @@ end
 
 # AbstractLock primitives:
 # https://github.com/JuliaLang/julia/blob/master/base/condition.jl#L18
-Base.lock(conn::Connection) = lock(conn.lock)
-Base.unlock(conn::Connection) = unlock(conn.lock)
-Base.trylock(conn::Connection) = trylock(conn.lock)
-Base.islocked(conn::Connection) = islocked(conn.lock)
+Base.lock(conn::Connection) = acquire(conn.semaphore)
+Base.unlock(conn::Connection) = release(conn.semaphore)
+Base.islocked(conn::Connection) = conn.semaphore.curr_cnt >= conn.semaphore.sem_size
 
-# AbstractLock conventions:
-Base.lock(f, conn::Connection) = lock(f, conn.lock)
-Base.trylock(f, conn::Connection) = trylock(f, conn.lock)
+# AbstractLock convention:
+function Base.lock(f, conn::Connection)
+    lock(conn)
+    try
+        f()
+    finally
+        unlock(conn)
+    end
+end
 
 """
     Connection(f, args...; kwargs...) -> Connection
@@ -410,6 +419,8 @@ but only if `jl_conn.closed` is `false`, to avoid a double-free.
 """
 function Base.close(jl_conn::Connection)
     if !atomic_cas!(jl_conn.closed, false, true)
+        async_result = jl_conn.async_result
+        async_result === nothing || cancel(async_result)
         lock(jl_conn) do
             libpq_c.PQfinish(jl_conn.conn)
             jl_conn.conn = C_NULL
@@ -440,6 +451,8 @@ See [`handle_new_connection`](@ref) for information on the `throw_error` argumen
 """
 function reset!(jl_conn::Connection; throw_error::Bool=true)
     if !atomic_cas!(jl_conn.closed, false, true)
+        async_result = jl_conn.async_result
+        async_result === nothing || cancel(async_result)
         lock(jl_conn) do
             jl_conn.closed[] = false
             libpq_c.PQreset(jl_conn.conn)
@@ -616,3 +629,5 @@ function Base.show(io::IO, jl_conn::Connection)
         end
     end
 end
+
+socket(jl_conn::Connection) = RawFD(libpq_c.PQsocket(jl_conn.conn))
