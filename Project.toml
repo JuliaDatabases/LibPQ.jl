@@ -1,13 +1,14 @@
 name = "LibPQ"
 uuid = "194296ae-ab2e-5f79-8cd4-7183a0a5a0d1"
 license = "MIT"
-version = "0.9.1"
+version = "0.10.0"
 
 [deps]
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Decimals = "abce61dc-4473-55a0-ba07-351d65e31d42"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+FileWatching = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 LayerDicts = "6f188dcb-512c-564b-bc01-e0f76e72f166"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
