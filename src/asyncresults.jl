@@ -83,11 +83,11 @@ Any errors produced by the queries will be thrown together in a `CompositeExcept
 function consume(async_result::AsyncResult; throw_error=true)
     @async begin
         try
-            debug(LOGGER, "getting our very own socket fd")
-            dup_fd = Libc.dup(socket(async_result.jl_conn))
+            debug(LOGGER, "getting the socket fd")
+            pqfd = socket(async_result.jl_conn)
             try
                 debug(LOGGER, "making an FDWatcher")
-                watcher = FDWatcher(dup_fd, true, false)  # readable, not writeable
+                watcher = FDWatcher(pqfd, true, false)  # readable, not writeable
                 try
                     last_result = @sync begin
                         result = nothing
@@ -120,7 +120,7 @@ function consume(async_result::AsyncResult; throw_error=true)
                     close(watcher)
                 end
             finally
-                # I should maybe close dup_fd here but I don't think that's possible since
+                # I should maybe close pqfd here but I don't think that's possible since
                 # it's a file descriptor not a handle and it's not technically open
             end
         finally
