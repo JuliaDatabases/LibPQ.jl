@@ -633,7 +633,7 @@ end
 function socket(jl_conn::Connection)
     socket_int = libpq_c.PQsocket(jl_conn.conn)
     @static if Sys.iswindows()
-        return Base.WindowsRawSocket(Ptr{Cvoid}(UInt64(socket_int)))
+        return Base.WindowsRawSocket(Ptr{Cvoid}(Int(socket_int)))
     else
         return RawFD(socket_int)
     end
