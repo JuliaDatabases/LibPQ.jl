@@ -630,4 +630,11 @@ function Base.show(io::IO, jl_conn::Connection)
     end
 end
 
-socket(jl_conn::Connection) = RawFD(libpq_c.PQsocket(jl_conn.conn))
+function socket(jl_conn::Connection)
+    socket_int = libpq_c.PQsocket(jl_conn.conn)
+    @static if Sys.iswindows()
+        Base.WindowsRawSocket(Ptr{Cvoid}(UInt64(socket_int)))
+    else
+        RawFD(socket_int)
+    end
+end
