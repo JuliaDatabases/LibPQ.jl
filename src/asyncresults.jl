@@ -81,6 +81,10 @@ Any errors produced by the queries will be thrown together in a `CompositeExcept
 `@sync`.
 """
 function consume(async_result::AsyncResult; throw_error=true)
+    if !islocked(async_result.jl_conn) || !async_result.conn_locked[]
+        error("The AsyncResult must lock the Connection before calling `consume`")
+    end
+
     @async begin
         try
             debug(LOGGER, "getting the socket fd")
@@ -132,6 +136,10 @@ function consume(async_result::AsyncResult; throw_error=true)
 end
 
 function cancel(async_result::AsyncResult)
+    if !islocked(async_result.jl_conn) || !async_result.conn_locked[]
+        return
+    end
+
     cancel_ptr = libpq_c.PQgetCancel(async_result.jl_conn.conn)
     try
         # https://www.postgresql.org/docs/10/libpq-cancel.html#LIBPQ-PQCANCEL
