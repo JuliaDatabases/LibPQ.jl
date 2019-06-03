@@ -532,7 +532,7 @@ end
 Construct a `ConnectionOption` from a `libpg_c.PQconninfoOption`.
 """
 function ConnectionOption(pq_opt::libpq_c.PQconninfoOption)
-    ConnectionOption(
+    return ConnectionOption(
         unsafe_string(pq_opt.keyword),
         unsafe_string_or_null(pq_opt.envvar),
         unsafe_string_or_null(pq_opt.compiled),
@@ -633,8 +633,8 @@ end
 function socket(jl_conn::Connection)
     socket_int = libpq_c.PQsocket(jl_conn.conn)
     @static if Sys.iswindows()
-        Base.WindowsRawSocket(Ptr{Cvoid}(UInt64(socket_int)))
+        return Base.WindowsRawSocket(Ptr{Cvoid}(UInt64(socket_int)))
     else
-        RawFD(socket_int)
+        return RawFD(socket_int)
     end
 end

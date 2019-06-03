@@ -20,11 +20,11 @@ mutable struct AsyncResult
 end
 
 function AsyncResult(jl_conn::Connection, conn_locked::Atomic{Bool}; kwargs...)
-    AsyncResult(jl_conn, conn_locked, Ref(kwargs))
+    return AsyncResult(jl_conn, conn_locked, Ref(kwargs))
 end
 
 function AsyncResult(jl_conn::Connection; kwargs...)
-    AsyncResult(jl_conn, Atomic{Bool}(true); kwargs...)
+    return AsyncResult(jl_conn, Atomic{Bool}(true); kwargs...)
 end
 
 function Base.show(io::IO, async_result::AsyncResult)
@@ -85,7 +85,7 @@ function consume(async_result::AsyncResult; throw_error=true)
         error("The AsyncResult must lock the Connection before calling `consume`")
     end
 
-    @async begin
+    async_task = @async begin
         try
             debug(LOGGER, "getting the socket fd")
             pqfd = socket(async_result.jl_conn)
@@ -133,6 +133,8 @@ function consume(async_result::AsyncResult; throw_error=true)
             debug(LOGGER, "finished the async block")
         end
     end
+
+    return async_task
 end
 
 function cancel(async_result::AsyncResult)
@@ -227,7 +229,7 @@ function async_execute(
 end
 
 function _async_execute(conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString)
-    libpq_c.PQsendQuery(conn_ptr, query) == 1
+    return libpq_c.PQsendQuery(conn_ptr, query) == 1
 end
 
 function _async_execute(
@@ -237,7 +239,7 @@ function _async_execute(
 )
     num_params = length(parameters)
 
-    libpq_c.PQsendQueryParams(
+    send_status = libpq_c.PQsendQueryParams(
         conn_ptr,
         query,
         num_params,
@@ -246,5 +248,7 @@ function _async_execute(
         C_NULL,  # paramLengths is ignored for text format parameters
         zeros(Cint, num_params),  # all parameters in text format
         zero(Cint),  # return result in text format
-    ) == 1
+    )
+
+    return send_status == 1
 end
