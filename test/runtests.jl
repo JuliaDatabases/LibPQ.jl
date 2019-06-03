@@ -377,7 +377,7 @@ end
             @test was_open
             @test !isopen(saved_conn)
 
-            @test_throws ErrorException LibPQ.Connection("dbname=123fake"; throw_error=true) do jl_conn
+            @test_throws ErrorException LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=true) do jl_conn
                 @test false
             end
         end
@@ -536,7 +536,7 @@ end
 
         @testset "Bad Connection" begin
             @testset "throw_error=false" begin
-                conn = LibPQ.Connection("dbname=123fake"; throw_error=false)
+                conn = LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=false)
                 @test conn isa LibPQ.Connection
                 @test status(conn) == LibPQ.libpq_c.CONNECTION_BAD
                 @test isopen(conn)
@@ -552,9 +552,9 @@ end
             end
 
             @testset "throw_error=true" begin
-                @test_throws ErrorException LibPQ.Connection("dbname=123fake"; throw_error=true)
+                @test_throws ErrorException LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=true)
 
-                conn = LibPQ.Connection("dbname=123fake"; throw_error=false)
+                conn = LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=false)
                 @test conn isa LibPQ.Connection
                 @test status(conn) == LibPQ.libpq_c.CONNECTION_BAD
                 @test isopen(conn)
