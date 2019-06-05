@@ -40,6 +40,13 @@ function Base.show(io::IO, async_result::AsyncResult)
     print(io, typeof(async_result), " (", status, ")")
 end
 
+"""
+    _ensure_unlocked(async_result::AsyncResult) -> Bool
+
+If this [`AsyncResult`](@ref) had locked its [`Connection`](@ref), unlock it.
+
+Return whether the connection had been locked by this `AsyncResult`.
+"""
 function _ensure_unlocked(async_result::AsyncResult)
     was_locked = atomic_xchg!(async_result.conn_locked, false)
     if was_locked
@@ -137,6 +144,11 @@ function consume(async_result::AsyncResult; throw_error=true)
     return async_task
 end
 
+"""
+    cancel(async_result::AsyncResult)
+
+If this [`AsyncResult`](@ref) represents a currently-executing query, cancel it.
+"""
 function cancel(async_result::AsyncResult)
     if !islocked(async_result.jl_conn) || !async_result.conn_locked[]
         return
