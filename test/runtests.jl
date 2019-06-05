@@ -1156,6 +1156,37 @@ end
             close(conn)
         end
 
+        @testset "Parameters" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            ar = async_execute(
+                conn,
+                "SELECT typname FROM pg_type WHERE oid = \$1",
+                [16];
+                throw_error=false,
+            )
+
+            wait(ar)
+            @test isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === nothing
+
+            result = fetch(ar)
+            @test result isa LibPQ.Result
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test isopen(result)
+            @test LibPQ.num_columns(result) == 1
+            @test LibPQ.num_rows(result) == 1
+            @test LibPQ.column_name(result, 1) == "typname"
+
+            data = columntable(result)
+
+            @test data[:typname][1] == "bool"
+
+            close(result)
+            close(conn)
+        end
+
         # Ensures multiple queries can be created without blocking
         @testset "Wait in line to start" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
