@@ -102,6 +102,7 @@ function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
             warn(LOGGER, err)
         end
     else
+        debug(LOGGER, "Connection established: $(jl_conn.conn)")
         # if connection is successful, set client_encoding
         reset_encoding!(jl_conn)
     end
@@ -173,6 +174,7 @@ function Connection(
     end
 
     # Make the connection
+    debug(LOGGER, "Connecting to $str")
     jl_conn = Connection(libpq_c.PQconnectdbParams(keywords, values, false); kwargs...)
 
     # If password needed and not entered, prompt the user
@@ -205,7 +207,7 @@ Base.islocked(conn::Connection) = conn.semaphore.curr_cnt >= conn.semaphore.sem_
 function Base.lock(f, conn::Connection)
     lock(conn)
     try
-        f()
+        return f()
     finally
         unlock(conn)
     end
@@ -419,12 +421,15 @@ but only if `jl_conn.closed` is `false`, to avoid a double-free.
 """
 function Base.close(jl_conn::Connection)
     if !atomic_cas!(jl_conn.closed, false, true)
+        debug(LOGGER, "Closing connection $(jl_conn.conn)")
         async_result = jl_conn.async_result
         async_result === nothing || cancel(async_result)
         lock(jl_conn) do
             libpq_c.PQfinish(jl_conn.conn)
             jl_conn.conn = C_NULL
         end
+    else
+        debug(LOGGER, "Tried to close a closed connection; doing nothing")
     end
     return nothing
 end
@@ -451,10 +456,12 @@ See [`handle_new_connection`](@ref) for information on the `throw_error` argumen
 """
 function reset!(jl_conn::Connection; throw_error::Bool=true)
     if !atomic_cas!(jl_conn.closed, false, true)
+        debug(LOGGER, "Closing connection $(jl_conn.conn)")
         async_result = jl_conn.async_result
         async_result === nothing || cancel(async_result)
         lock(jl_conn) do
             jl_conn.closed[] = false
+            debug(LOGGER, "Resetting connection $(jl_conn.conn)")
             libpq_c.PQreset(jl_conn.conn)
         end
 

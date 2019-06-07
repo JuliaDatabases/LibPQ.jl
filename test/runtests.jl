@@ -1187,48 +1187,17 @@ end
             close(conn)
         end
 
-        # Ensures multiple queries can be created without blocking
-        @testset "Wait in line to start" begin
-            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
-
-            first_ar = async_execute(conn, "SELECT pg_sleep(3);")
-            second_ar_task = @async async_execute(conn, "SELECT pg_sleep(1);")
-            @test !isready(first_ar)
-            @test conn.async_result === first_ar
-
-            second_ar = fetch(second_ar_task)
-            @test isready(first_ar)
-            @test !isready(second_ar)
-            @test !LibPQ.iserror(first_ar)
-            @test conn.async_result === second_ar
-
-            wait(second_ar)
-            @test isready(first_ar)
-            @test isready(second_ar)
-            @test !LibPQ.iserror(first_ar)
-            @test !LibPQ.iserror(second_ar)
-            @test conn.async_result === nothing
-
-            second_result = fetch(second_ar)
-            @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-
-            first_result = fetch(first_ar)
-            @test status(first_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-
-            close(first_result)
-            close(second_result)
-            close(conn)
-        end
-
         # Ensures queries wait for previous query completion before starting
         @testset "Wait in line to complete" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
             first_ar = async_execute(conn, "SELECT pg_sleep(4);")
+            yield()
             second_ar = async_execute(conn, "SELECT pg_sleep(2);")
-            @test isready(first_ar)
+            @test !isready(first_ar)
             @test !isready(second_ar)
 
+            # wait(first_ar)  # this is needed if I use @par for some reason
             second_result = fetch(second_ar)
             @test isready(first_ar)
             @test isready(second_ar)
@@ -1251,12 +1220,15 @@ end
         @testset "Cancel" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            ar = async_execute(conn, "SELECT pg_sleep(4);")
+            # second query needs to be one that actually does something
+            ar = async_execute(conn, "SELECT pg_sleep(3); SELECT * FROM pg_type;")
+            yield()
             @test !isready(ar)
             @test !LibPQ.iserror(ar)
             @test conn.async_result === ar
 
             cancel(ar)
+            LibPQ.trywait(ar)
             @test isready(ar)
             @test LibPQ.iserror(ar)
             @test conn.async_result === nothing
@@ -1276,12 +1248,15 @@ end
         @testset "Canceled by closing connection" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            ar = async_execute(conn, "SELECT pg_sleep(4);")
+            # second query needs to be one that actually does something
+            ar = async_execute(conn, "SELECT pg_sleep(3); SELECT * FROM pg_type;")
+            yield()
             @test !isready(ar)
             @test !LibPQ.iserror(ar)
             @test conn.async_result === ar
 
             close(conn)
+            LibPQ.trywait(ar)
             @test isready(ar)
             @test LibPQ.iserror(ar)
             @test conn.async_result === nothing
