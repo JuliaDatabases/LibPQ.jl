@@ -1220,8 +1220,12 @@ end
         @testset "Cancel" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            # second query needs to be one that actually does something
-            ar = async_execute(conn, "SELECT pg_sleep(3); SELECT * FROM pg_type;")
+            # final query needs to be one that actually does something
+            # on Windows, first query also needs to do something
+            ar = async_execute(
+                conn,
+                "SELECT * FROM pg_opclass; SELECT pg_sleep(3); SELECT * FROM pg_type;",
+            )
             yield()
             @test !isready(ar)
             @test !LibPQ.iserror(ar)
@@ -1248,8 +1252,12 @@ end
         @testset "Canceled by closing connection" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            # second query needs to be one that actually does something
-            ar = async_execute(conn, "SELECT pg_sleep(3); SELECT * FROM pg_type;")
+            # final query needs to be one that actually does something
+            # on Windows, first query also needs to do something
+            ar = async_execute(
+                conn,
+                "SELECT * FROM pg_opclass; SELECT pg_sleep(3); SELECT * FROM pg_type;",
+            )
             yield()
             @test !isready(ar)
             @test !LibPQ.iserror(ar)
