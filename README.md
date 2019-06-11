@@ -19,6 +19,7 @@ LibPQ.jl is a Julia wrapper for the PostgreSQL `libpq` C library.
   * UTF-8 client encoding
 * Queries
   * Create and execute queries with or without parameters
+  * Execute queries asynchronously
   * Stream results using [Tables](https://github.com/JuliaData/Tables.jl)
   * Configurably convert a variety of PostgreSQL types to corresponding Julia types (see the **Type Conversions** section of the docs)
 * Prepared Statements

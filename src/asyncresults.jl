@@ -165,6 +165,9 @@ Calling `fetch` on the `AsyncResult` will return a [`Result`](@ref).
 All keyword arguments are the same as [`execute`](@ref) and are passed to the created
 `Result`.
 
+Only one `AsyncResult` can be active on a [`Connection`](@ref) at once.
+If multiple `AsyncResult`s use the same `Connection`, they will execute serially.
+
 `async_execute` does not yet support [`Statement`](@ref)s.
 
 `async_execute` optionally takes a `parameters` vector which passes query parameters as

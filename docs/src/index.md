@@ -20,6 +20,12 @@ data = columntable(result)
 result = execute(conn, "SELECT typname FROM pg_type WHERE oid = \$1", ["16"])
 data = columntable(result)
 
+# the same but asynchronously
+async_result = async_execute(conn, "SELECT typname FROM pg_type WHERE oid = \$1", ["16"])
+# do other things
+result = fetch(async_result)
+data = columntable(result)
+
 close(conn)
 ```
 
