@@ -204,7 +204,7 @@ function async_execute(
 end
 
 function _async_execute(
-    submission_fn::Base.Callable, jl_conn::Connection; throw_error::Bool=true, kwargs...
+    submission_fn::Function, jl_conn::Connection; throw_error::Bool=true, kwargs...
 )
     async_result = AsyncResult(jl_conn; kwargs...)
 
