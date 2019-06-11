@@ -144,8 +144,6 @@ iserror(async_result::AsyncResult) = Base.istaskfailed(async_result.result_task)
 Base.isready(async_result::AsyncResult) = istaskdone(async_result.result_task)
 Base.wait(async_result::AsyncResult) = wait(async_result.result_task)
 Base.fetch(async_result::AsyncResult) = fetch(async_result.result_task)
-trywait(async_result::AsyncResult) = (try wait(async_result) catch end; nothing)
-trywait(::Nothing) = nothing
 Base.close(async_result::AsyncResult) = cancel(async_result)
 
 """

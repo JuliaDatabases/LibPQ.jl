@@ -1135,6 +1135,8 @@ end
     end
 
     @testset "AsyncResults" begin
+        trywait(ar::LibPQ.AsyncResult) = (try wait(ar) catch end; nothing)
+
         @testset "Basic" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
@@ -1233,7 +1235,7 @@ end
             @test conn.async_result === ar
 
             cancel(ar)
-            LibPQ.trywait(ar)
+            trywait(ar)
             @test isready(ar)
             @test LibPQ.iserror(ar)
             @test conn.async_result === nothing
@@ -1265,7 +1267,7 @@ end
             @test conn.async_result === ar
 
             close(conn)
-            LibPQ.trywait(ar)
+            trywait(ar)
             @test isready(ar)
             @test LibPQ.iserror(ar)
             @test conn.async_result === nothing
