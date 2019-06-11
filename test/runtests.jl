@@ -1139,6 +1139,7 @@ end
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
             ar = async_execute(conn, "SELECT pg_sleep(2);"; throw_error=false)
+            yield()
             @test !isready(ar)
             @test !LibPQ.iserror(ar)
             @test conn.async_result === ar

@@ -13,9 +13,7 @@ mutable struct AsyncResult
     result_task::Task
 
     function AsyncResult(jl_conn::Connection, result_kwargs::Ref)
-        async_result = new(jl_conn, result_kwargs, false)
-        jl_conn.async_result = async_result
-        return async_result
+        return new(jl_conn, result_kwargs, false)
     end
 end
 
