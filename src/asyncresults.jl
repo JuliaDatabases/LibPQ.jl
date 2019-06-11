@@ -119,6 +119,9 @@ end
 If this [`AsyncResult`](@ref) represents a currently-executing query, attempt to cancel it.
 """
 function cancel(async_result::AsyncResult)
+    # just sets the `should_cancel` flag
+    # the actual cancellation will be triggered in the main loop of _consume
+    # which will call `_cancel` on the `Connection`
     async_result.should_cancel = true
     return
 end
