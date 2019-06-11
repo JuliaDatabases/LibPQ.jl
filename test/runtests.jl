@@ -341,8 +341,15 @@ end
             result = execute(conn, copyin; throw_error=false)
             @test isopen(result)
             @test status(result) == LibPQ.libpq_c.PGRES_FATAL_ERROR
-            @test occursin("ERROR", LibPQ.error_message(result))
-            @test occursin("invalid input syntax for integer", LibPQ.error_message(result))
+
+            err_msg = LibPQ.error_message(result)
+            @test occursin("ERROR", err_msg)
+            if LibPQ.server_version(conn) >= v"12"
+                @test occursin("invalid input syntax for type bigint", err_msg)
+            else
+                @test occursin("invalid input syntax for integer", err_msg)
+            end
+
             close(result)
 
             result = execute(
