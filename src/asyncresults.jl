@@ -130,7 +130,7 @@ function _cancel(jl_conn::Connection)
     try
         # https://www.postgresql.org/docs/10/libpq-cancel.html#LIBPQ-PQCANCEL
         errbuf_size = 256
-        errbuf = fill(0x0, errbuf_size)
+        errbuf = zeros(UInt8, errbuf_size)
         success = libpq_c.PQcancel(cancel_ptr, pointer(errbuf), errbuf_size) == 1
         if !success
             warn(LOGGER, "Failed cancelling query: $(String(errbuf))")
