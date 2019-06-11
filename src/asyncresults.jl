@@ -208,16 +208,11 @@ function _async_execute(
         jl_conn.async_result = async_result
 
         try
-            success = submission_fn(jl_conn)
+            # error if submission fails
+            # does not respect `throw_error` as there's no result to return on this error
+            submission_fn(jl_conn) || error(LOGGER, error_message(async_result.jl_conn))
 
-            if !success
-                # does not respect `throw_error` as there's no result to return on this error
-                error(LOGGER, error_message(async_result.jl_conn))
-            end
-
-            result = handle_result(async_result; throw_error=throw_error)
-
-            return result::Result
+            return handle_result(async_result; throw_error=throw_error)::Result
         finally
             jl_conn.async_result = nothing
         end
