@@ -9,6 +9,12 @@ data = columntable(result)
 result = execute(conn, &quot;SELECT typname FROM pg_type WHERE oid = \$1&quot;, [&quot;16&quot;])
 data = columntable(result)
 
+# the same but asynchronously
+async_result = async_execute(conn, &quot;SELECT typname FROM pg_type WHERE oid = \$1&quot;, [&quot;16&quot;])
+# do other things
+result = fetch(async_result)
+data = columntable(result)
+
 close(conn)</code></pre><h3><a class="nav-anchor" id="Insertion-1" href="#Insertion-1">Insertion</a></h3><pre><code class="language-julia">using LibPQ
 
 conn = LibPQ.Connection(&quot;dbname=postgres user=$DATABASE_USER&quot;)
