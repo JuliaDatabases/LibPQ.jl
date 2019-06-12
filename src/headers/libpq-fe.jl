@@ -342,7 +342,7 @@ function PQfreeCancel(cancel)
     ccall((:PQfreeCancel, LIBPQ_HANDLE), Cvoid, (Ptr{PGcancel},), cancel)
 end
 
-function PQcancel(cancel, errbuf, errbufsize::Cint)
+function PQcancel(cancel, errbuf, errbufsize)
     ccall((:PQcancel, LIBPQ_HANDLE), Cint, (Ptr{PGcancel}, Cstring, Cint), cancel, errbuf, errbufsize)
 end
 

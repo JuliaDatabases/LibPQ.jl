@@ -54,6 +54,14 @@ LibPQ.CopyIn
 execute(::LibPQ.Connection, ::LibPQ.CopyIn)
 ```
 
+### Asynchronous
+
+```@docs
+async_execute
+LibPQ.AsyncResult
+cancel
+```
+
 ## Internals
 
 ### Connections

@@ -341,8 +341,15 @@ end
             result = execute(conn, copyin; throw_error=false)
             @test isopen(result)
             @test status(result) == LibPQ.libpq_c.PGRES_FATAL_ERROR
-            @test occursin("ERROR", LibPQ.error_message(result))
-            @test occursin("invalid input syntax for integer", LibPQ.error_message(result))
+
+            err_msg = LibPQ.error_message(result)
+            @test occursin("ERROR", err_msg)
+            if LibPQ.server_version(conn) >= v"12"
+                @test occursin("invalid input syntax for type bigint", err_msg)
+            else
+                @test occursin("invalid input syntax for integer", err_msg)
+            end
+
             close(result)
 
             result = execute(
@@ -377,7 +384,7 @@ end
             @test was_open
             @test !isopen(saved_conn)
 
-            @test_throws ErrorException LibPQ.Connection("dbname=123fake"; throw_error=true) do jl_conn
+            @test_throws ErrorException LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=true) do jl_conn
                 @test false
             end
         end
@@ -536,7 +543,7 @@ end
 
         @testset "Bad Connection" begin
             @testset "throw_error=false" begin
-                conn = LibPQ.Connection("dbname=123fake"; throw_error=false)
+                conn = LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=false)
                 @test conn isa LibPQ.Connection
                 @test status(conn) == LibPQ.libpq_c.CONNECTION_BAD
                 @test isopen(conn)
@@ -552,9 +559,9 @@ end
             end
 
             @testset "throw_error=true" begin
-                @test_throws ErrorException LibPQ.Connection("dbname=123fake"; throw_error=true)
+                @test_throws ErrorException LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=true)
 
-                conn = LibPQ.Connection("dbname=123fake"; throw_error=false)
+                conn = LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=false)
                 @test conn isa LibPQ.Connection
                 @test status(conn) == LibPQ.libpq_c.CONNECTION_BAD
                 @test isopen(conn)
@@ -1131,6 +1138,155 @@ end
             close(result)
 
             close(conn)
+        end
+    end
+
+    @testset "AsyncResults" begin
+        trywait(ar::LibPQ.AsyncResult) = (try wait(ar) catch end; nothing)
+
+        @testset "Basic" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            ar = async_execute(conn, "SELECT pg_sleep(2);"; throw_error=false)
+            yield()
+            @test !isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === ar
+
+            wait(ar)
+            @test isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === nothing
+
+            result = fetch(ar)
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test LibPQ.column_name(result, 1) == "pg_sleep"
+
+            close(result)
+            close(conn)
+        end
+
+        @testset "Parameters" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            ar = async_execute(
+                conn,
+                "SELECT typname FROM pg_type WHERE oid = \$1",
+                [16];
+                throw_error=false,
+            )
+
+            wait(ar)
+            @test isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === nothing
+
+            result = fetch(ar)
+            @test result isa LibPQ.Result
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test isopen(result)
+            @test LibPQ.num_columns(result) == 1
+            @test LibPQ.num_rows(result) == 1
+            @test LibPQ.column_name(result, 1) == "typname"
+
+            data = columntable(result)
+
+            @test data[:typname][1] == "bool"
+
+            close(result)
+            close(conn)
+        end
+
+        # Ensures queries wait for previous query completion before starting
+        @testset "Wait in line to complete" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            first_ar = async_execute(conn, "SELECT pg_sleep(4);")
+            yield()
+            second_ar = async_execute(conn, "SELECT pg_sleep(2);")
+            @test !isready(first_ar)
+            @test !isready(second_ar)
+
+            # wait(first_ar)  # this is needed if I use @par for some reason
+            second_result = fetch(second_ar)
+            @test isready(first_ar)
+            @test isready(second_ar)
+            @test !LibPQ.iserror(first_ar)
+            @test !LibPQ.iserror(second_ar)
+            @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test conn.async_result === nothing
+
+            first_result = fetch(first_ar)
+            @test isready(first_ar)
+            @test !LibPQ.iserror(first_ar)
+            @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test conn.async_result === nothing
+
+            close(second_result)
+            close(first_result)
+            close(conn)
+        end
+
+        @testset "Cancel" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            # final query needs to be one that actually does something
+            # on Windows, first query also needs to do something
+            ar = async_execute(
+                conn,
+                "SELECT * FROM pg_opclass; SELECT pg_sleep(3); SELECT * FROM pg_type;",
+            )
+            yield()
+            @test !isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === ar
+
+            cancel(ar)
+            trywait(ar)
+            @test isready(ar)
+            @test LibPQ.iserror(ar)
+            @test conn.async_result === nothing
+
+            local err_msg = ""
+            try
+                wait(ar)
+            catch e
+                err_msg = sprint(showerror, e)
+            end
+
+            @test occursin("canceling statement due to user request", err_msg)
+
+            close(conn)
+        end
+
+        @testset "Canceled by closing connection" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            # final query needs to be one that actually does something
+            # on Windows, first query also needs to do something
+            ar = async_execute(
+                conn,
+                "SELECT * FROM pg_opclass; SELECT pg_sleep(3); SELECT * FROM pg_type;",
+            )
+            yield()
+            @test !isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === ar
+
+            close(conn)
+            trywait(ar)
+            @test isready(ar)
+            @test LibPQ.iserror(ar)
+            @test conn.async_result === nothing
+
+            local err_msg = ""
+            try
+                wait(ar)
+            catch e
+                err_msg = sprint(showerror, e)
+            end
+
+            @test occursin("canceling statement due to user request", err_msg)
         end
     end
 end
