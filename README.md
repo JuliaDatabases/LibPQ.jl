@@ -12,7 +12,7 @@ LibPQ.jl is a Julia wrapper for the PostgreSQL `libpq` C library.
 ### Current
 
 * Build
-  * Installs `libpq` with Apt, Yum, or Homebrew
+  * Installs `libpq` via `BinaryProvider` for MacOS, GNU Linux, and Windows
 * Connections
   * Connect via DSN
   * Connect via PostgreSQL connection string
