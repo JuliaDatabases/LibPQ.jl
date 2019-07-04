@@ -420,16 +420,25 @@ This function calls [`PQfinish`](https://www.postgresql.org/docs/10/libpq-connec
 but only if `jl_conn.closed` is `false`, to avoid a double-free.
 """
 function Base.close(jl_conn::Connection)
+    close_request_id = rand(UInt)
     if !atomic_cas!(jl_conn.closed, false, true)
-        debug(LOGGER, "Closing connection $(jl_conn.conn)")
+        debug(LOGGER, "$close_request_id: Closing connection $(jl_conn.conn)")
         async_result = jl_conn.async_result
-        async_result === nothing || cancel(async_result)
+
+        if async_result !== nothing
+            debug(LOGGER, "$close_request_id: Cancelling the connection's async_result")
+            cancel(async_result)
+        end
+
+        debug(LOGGER, "$close_request_id: Acquiring connection lock")
         lock(jl_conn) do
+            debug(LOGGER, "$close_request_id: Acquired connection lock")
             libpq_c.PQfinish(jl_conn.conn)
             jl_conn.conn = C_NULL
         end
+        debug(LOGGER, "$close_request_id: Connection has been closed")
     else
-        debug(LOGGER, "Tried to close a closed connection; doing nothing")
+        debug(LOGGER, "$close_request_id: Tried to close a closed connection; doing nothing")
     end
     return nothing
 end
