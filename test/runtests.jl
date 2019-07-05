@@ -385,8 +385,11 @@ end
             @test !isopen(saved_conn)
 
             @test_throws ErrorException LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=true) do jl_conn
+                saved_conn = jl_conn
                 @test false
             end
+
+            @test !isopen(saved_conn)
         end
 
         @testset "Version Numbers" begin
