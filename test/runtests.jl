@@ -552,6 +552,37 @@ end
             sleep(1)
 
             @test all(closed -> closed[], closed_flags)
+
+            # with Results, which don't hold a reference to Connection
+            results = LibPQ.Result[]
+
+            closed_flags = map(1:50) do _
+                conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+                push!(results, execute(conn, "SELECT 1;"))
+                return conn.closed
+            end
+
+            GC.gc()
+            sleep(1)
+            GC.gc()
+            sleep(1)
+
+            @test all(closed -> closed[], closed_flags)
+            @test all(result -> LibPQ.num_rows(result) == 1, results)
+
+            # with AsyncResults, which hold a reference to Connection
+            closed_flags = asyncmap(1:50) do _
+                conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+                wait(async_execute(conn, "SELECT pg_sleep(1);"))
+                return conn.closed
+            end
+
+            GC.gc()
+            sleep(1)
+            GC.gc()
+            sleep(1)
+
+            @test all(closed -> closed[], closed_flags)
         end
 
         @testset "Bad Connection" begin
