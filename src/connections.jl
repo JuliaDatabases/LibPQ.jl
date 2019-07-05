@@ -181,6 +181,8 @@ function Connection(
     if libpq_c.PQconnectionNeedsPassword(jl_conn.conn) == 1
         push!(keywords, "password")
         user = unsafe_string(libpq_c.PQuser(jl_conn.conn))
+        # close this connection; will open another one below with the user-provided password
+        close(jl_conn)
         prompt = "Enter password for PostgreSQL user $user:"
         pass = Base.getpass(prompt)
         push!(values, read(pass, String))
