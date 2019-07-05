@@ -107,6 +107,24 @@ function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
         reset_encoding!(jl_conn)
     end
 
+    # keep a reference to `closed` so it's not cleaned up before the connection is
+    let closed = jl_conn.closed, conn_ptr = jl_conn.conn
+        finalizer(jl_conn) do _
+            # finalizers can't task swtich, but they can schedule tasks
+            @async begin
+                if !atomic_cas!(closed, false, true)
+                    debug(LOGGER, "Closing connection $(conn_ptr) in finalizer")
+                    # we don't need to acquire a lock, because if anyone else is holding a
+                    # lock on the connection (using lock(::Connection)) then it won't be
+                    # cleaned up by the gc yet
+                    libpq_c.PQfinish(conn_ptr)
+                end
+            end
+
+            return
+        end
+    end
+
     return jl_conn
 end
 

@@ -541,6 +541,19 @@ end
             end
         end
 
+        @testset "Finalizer" begin
+            closed_flags = map(1:50) do _
+                conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+                closed = conn.closed
+                finalize(conn)
+                return closed
+            end
+
+            sleep(1)
+
+            @test all(closed -> closed[], closed_flags)
+        end
+
         @testset "Bad Connection" begin
             @testset "throw_error=false" begin
                 conn = LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=false)
