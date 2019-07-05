@@ -64,7 +64,7 @@ mutable struct Connection
         type_map::AbstractDict=PQTypeMap(),
         conversions::AbstractDict=PQConversions(),
     )
-        return new(
+        this = new(
             conn,
             "UTF8",
             0,
@@ -74,6 +74,8 @@ mutable struct Connection
             Semaphore(1),
             nothing,
         )
+        finalizer(close, this)
+        return this
     end
 end
 
