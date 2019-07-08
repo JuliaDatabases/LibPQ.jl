@@ -1,7 +1,7 @@
 name = "LibPQ"
 uuid = "194296ae-ab2e-5f79-8cd4-7183a0a5a0d1"
 license = "MIT"
-version = "0.10.0"
+version = "0.10.1"
 
 [deps]
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
