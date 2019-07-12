@@ -79,6 +79,7 @@ const LIBPQ_CONVERSIONS = PQConversions()
 include("connections.jl")
 include("results.jl")
 include("statements.jl")
+include("exceptions.jl")
 
 include("parsing.jl")
 include("copy.jl")

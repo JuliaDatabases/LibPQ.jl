@@ -610,7 +610,7 @@ function PQresultVerboseErrorMessage(res, verbosity::PGVerbosity, show_context::
     ccall((:PQresultVerboseErrorMessage, LIBPQ_HANDLE), Cstring, (Ptr{PGresult}, PGVerbosity, PGContextVisibility), res, verbosity, show_context)
 end
 
-function PQresultErrorField(res, fieldcode::Cint)
+function PQresultErrorField(res, fieldcode)
     ccall((:PQresultErrorField, LIBPQ_HANDLE), Cstring, (Ptr{PGresult}, Cint), res, fieldcode)
 end
 

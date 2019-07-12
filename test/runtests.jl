@@ -35,7 +35,7 @@ end
     @test parse(LibPQ.ConninfoDisplay, "") == LibPQ.Normal
     @test parse(LibPQ.ConninfoDisplay, "*") == LibPQ.Password
     @test parse(LibPQ.ConninfoDisplay, "D") == LibPQ.Debug
-    @test_throws ErrorException parse(LibPQ.ConninfoDisplay, "N")
+    @test_throws LibPQ.JLConnectionError parse(LibPQ.ConninfoDisplay, "N")
 end
 
 @testset "Version Numbers" begin
@@ -366,7 +366,7 @@ end
             end
 
             copyin = LibPQ.CopyIn("COPY libpqjl_test FROM STDIN (FORMAT CSV);", row_strings)
-            @test_throws ErrorException execute(conn, copyin; throw_error=true)
+            @test_throws LibPQ.DataExceptionErrorClass execute(conn, copyin; throw_error=true)
 
             close(conn)
         end
@@ -384,7 +384,7 @@ end
             @test was_open
             @test !isopen(saved_conn)
 
-            @test_throws ErrorException LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=true) do jl_conn
+            @test_throws LibPQ.PQConnectionError LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=true) do jl_conn
                 saved_conn = jl_conn
                 @test false
             end
@@ -420,7 +420,7 @@ end
             LibPQ.reset_encoding!(conn)
             @test LibPQ.encoding(conn) == "SQL_ASCII"
 
-            @test_throws ErrorException LibPQ.set_encoding!(conn, "NOT A REAL ENCODING")
+            @test_throws LibPQ.JLConnectionError LibPQ.set_encoding!(conn, "NOT A REAL ENCODING")
 
             close(conn)
         end
@@ -606,14 +606,14 @@ end
             end
 
             @testset "throw_error=true" begin
-                @test_throws ErrorException LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=true)
+                @test_throws LibPQ.PQConnectionError LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=true)
 
                 conn = LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=false)
                 @test conn isa LibPQ.Connection
                 @test status(conn) == LibPQ.libpq_c.CONNECTION_BAD
                 @test isopen(conn)
 
-                @test_throws ErrorException reset!(conn; throw_error=true)
+                @test_throws LibPQ.PQConnectionError reset!(conn; throw_error=true)
                 @test !isopen(conn)
                 @test conn.closed[] == true
                 @test_throws ErrorException reset!(conn; throw_error=true)
@@ -1094,7 +1094,7 @@ end
                 close(result)
                 @test !isopen(result)
 
-                @test_throws ErrorException execute(conn, "SELORCT NUUL;"; throw_error=true)
+                @test_throws LibPQ.SyntaxError execute(conn, "SELORCT NUUL;"; throw_error=true)
 
                 close(conn)
                 @test !isopen(conn)
@@ -1112,7 +1112,7 @@ end
                 close(result)
                 @test !isopen(result)
 
-                @test_throws ErrorException execute(
+                @test_throws LibPQ.SyntaxError execute(
                     conn,
                     "SELORCT \$1;",
                     String[];
