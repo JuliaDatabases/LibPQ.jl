@@ -99,6 +99,66 @@ LibPQ.num_params(::LibPQ.Result)
 LibPQ.error_message(::LibPQ.Result)
 ```
 
+### Errors
+
+```@eval
+using InteractiveUtils
+using TikzGraphs
+using TikzPictures
+using LightGraphs
+using LibPQ
+
+function dograph()
+	g = SimpleDiGraph()
+	types = Any[LibPQ.LibPQException]
+
+	i = 1
+	add_vertex!(g)
+	while i <= length(types)
+		curr_length = length(types)
+		typ = types[i]
+		subtyps = subtypes(typ)
+		for (j, subtyp) in enumerate(subtyps)
+			push!(types, subtyp)
+			add_vertex!(g)
+			add_edge!(g, i, curr_length + j)
+		end
+		i += 1
+	end
+
+	TikzGraphs.plot(
+		g,
+		map(String∘nameof, types),
+		node_style="draw, rounded corners",
+		node_styles=Dict(enumerate((isabstracttype(t) ? "fill=blue!10" : "fill=green!10") for t in types)),
+	)
+end
+
+TikzPictures.save(SVG("error_types"), dograph())
+
+nothing
+```
+
+```@raw html
+<div style="text-align:center">
+	<figure>
+		<img src="error_types.svg" alt="Exception Type Hierarchy">
+		<figcaption>LibPQ Exception Type Hierarchy<figcaption>
+	</figure>
+</div>
+```
+
+```@docs
+LibPQ.LibPQException
+LibPQ.JLClientException
+LibPQ.PostgreSQLException
+LibPQ.JLConnectionError
+LibPQ.JLResultError
+LibPQ.ConninfoParseError
+LibPQ.PQConnectionError
+LibPQ.PQResultError
+```
+
 ### Type Conversions
 
 ```@docs

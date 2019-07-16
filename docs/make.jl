@@ -1,4 +1,6 @@
-using Documenter, LibPQ
+using Documenter, LibPQ, Memento
+
+setlevel!(getlogger(LibPQ), "critical")
 
 makedocs(;
     modules=[LibPQ],

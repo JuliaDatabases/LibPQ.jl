@@ -35,7 +35,7 @@ end
 
     ## Fields:
 
-    $(FIELDS)
+    $(TYPEDFIELDS)
     """
 
 include(joinpath(@__DIR__, "utils.jl"))

@@ -120,10 +120,11 @@ See also: [`error_message`](@ref)
 status(jl_result::Result) = libpq_c.PQresultStatus(jl_result.result)
 
 """
-    error_message(jl_result::Result) -> String
+    error_message(jl_result::Result; verbose=false) -> String
 
 Return the error message associated with the result, or an empty string if there was no
 error.
+If `verbose`, have libpq generate a more verbose version of the error message if possible.
 Includes a trailing newline.
 """
 function error_message(jl_result::Result; verbose=false)
@@ -147,13 +148,28 @@ function _verbose_error_message(jl_result::Result)
         )
     end
 
-    try
-        return unsafe_string(msg_ptr)
-    finally
-        libpq_c.PQfreemem(msg_ptr)
-    end
+    msg = unsafe_string(msg_ptr)
+    libpq_c.PQfreemem(msg_ptr)
+    return msg
 end
 
+"""
+    error_field(jl_result::Result, field_code::Char) -> Union{String, Nothing}
+
+Get an individual field from the error report in a [`Result`](@ref).
+Returns `nothing` if that field is not provided for this error, or if there is no error or
+warning in this `Result`.
+
+See [](https://www.postgresql.org/docs/10/libpq-exec.html#LIBPQ-PQRESULTERRORFIELD)
+for all available fields.
+
+## Example
+
+```
+julia> LibPQ.error_field(result, LibPQ.libpq_c.PG_DIAG_SEVERITY)
+"ERROR"
+```
+"""
 function error_field(jl_result::Result, field_code::Union{Char, Integer})
     ret = libpq_c.PQresultErrorField(jl_result.result, field_code)
     return ret == C_NULL ? nothing : unsafe_string(ret)

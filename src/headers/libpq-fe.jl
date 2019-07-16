@@ -607,7 +607,7 @@ function PQresultErrorMessage(res)
 end
 
 function PQresultVerboseErrorMessage(res, verbosity::PGVerbosity, show_context::PGContextVisibility)
-    ccall((:PQresultVerboseErrorMessage, LIBPQ_HANDLE), Cstring, (Ptr{PGresult}, PGVerbosity, PGContextVisibility), res, verbosity, show_context)
+    ccall((:PQresultVerboseErrorMessage, LIBPQ_HANDLE), Ptr{UInt8}, (Ptr{PGresult}, PGVerbosity, PGContextVisibility), res, verbosity, show_context)
 end
 
 function PQresultErrorField(res, fieldcode)

@@ -843,6 +843,32 @@ end
             close(conn)
         end
 
+        @testset "PQResultError" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            try
+                execute(conn, "SELECT log(-1);")
+                @test false
+            catch err
+                @test err isa LibPQ.InvalidArgumentForLogarithm
+                @test LibPQ.error_class(err) == LibPQ.c"22"
+                @test LibPQ.error_code(err) == LibPQ.e"2201E"
+            end
+
+            result = execute(conn, "SELECT log(-1);"; throw_error=false)
+            err = LibPQ.PQResultError(result; verbose=false)
+            verbose_err = LibPQ.PQResultError(result; verbose=true)
+            @test err isa LibPQ.InvalidArgumentForLogarithm
+            @test verbose_err isa LibPQ.InvalidArgumentForLogarithm
+            @test err.msg == verbose_err.msg
+            @test err.verbose_msg === nothing
+            @test verbose_err.verbose_msg !== nothing
+            @test length(verbose_err.verbose_msg) > length(err.msg)
+
+            close(result)
+            close(conn)
+        end
+
         @testset "Type Conversions" begin
             @testset "Automatic" begin
                 conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)

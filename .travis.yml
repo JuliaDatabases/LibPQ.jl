@@ -33,6 +33,11 @@ matrix:
     - stage: "Documentation"
       julia: 1.0
       os: linux
+      addons:
+        apt:
+          packages:
+            - pdf2svg
+            - texlive-pictures
       script:
         - julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.build()'
         - julia --project=docs/ docs/make.jl
