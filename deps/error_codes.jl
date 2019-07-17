@@ -35,9 +35,9 @@ function generate_error_codes(io, html=error_code_html())
     id_names = Set{String}()
 
     class_enum_io = IOBuffer()
-    println(class_enum_io, "@enum Class begin")
+    println(class_enum_io, "@cenum(Class,")
     error_enum_io = IOBuffer()
-    println(error_enum_io, "@enum ErrorCode begin")
+    println(error_enum_io, "@cenum(ErrorCode,")
     alias_io = IOBuffer()
     error_names_io = IOBuffer()
     println(error_names_io, "const ERROR_NAMES = Dict(")
@@ -52,7 +52,7 @@ function generate_error_codes(io, html=error_code_html())
         if endswith(code, "000")
             suffix = class in (SUCCESS_CLASS, WARNING_CLASSES...) ? "Class" : "ErrorClass"
 
-            println(class_enum_io, "    $class")
+            println(class_enum_io, "    $class,")
             println(alias_io, "\n\nconst $(id_name)$(suffix) = PQResultError{$class}\n")
         end
 
@@ -71,11 +71,11 @@ function generate_error_codes(io, html=error_code_html())
         push!(id_names, id_name)
 
         println(alias_io, "const $(id_name) = PQResultError{$class, $error_code}")
-        println(error_enum_io, "    $error_code")
+        println(error_enum_io, "    $error_code,")
         println(error_names_io, "    $id_name => \"$id_name\",")
     end
-    println(class_enum_io, "end")
-    println(error_enum_io, "end")
+    println(class_enum_io, ")")
+    println(error_enum_io, ")")
     println(error_names_io, ")")
 
     foreach(seekstart, (class_enum_io, error_enum_io, alias_io, error_names_io))

@@ -5,6 +5,7 @@ version = "0.10.1"
 
 [deps]
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
+CEnum = "fa961155-64e5-5f13-b03f-caf6b980ea82"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Decimals = "abce61dc-4473-55a0-ba07-351d65e31d42"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
@@ -19,6 +20,7 @@ TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 
 [compat]
 BinaryProvider = "0.4, 0.5"
+CEnum = "0.1.1"
 DataFrames = "0.14, 0.15, 0.16, 0.17, 0.18"
 Decimals = "0.3.1, 0.4"
 DocStringExtensions = "0.8.0"

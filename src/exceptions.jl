@@ -1,5 +1,8 @@
 module Errors
 
+# use Cenum for error codes because it allows overriding show, unlike Base.Enum
+using CEnum
+
 using ..LibPQ: Connection, Result, libpq_c, error_message, error_field
 
 "Base abstract type for all custom exceptions thrown by LibPQ.jl"
@@ -70,6 +73,10 @@ struct PQResultError{Class, Code} <: PostgreSQLException
 end
 
 include("error_codes.jl")
+
+# use enum_name to get "C42" rather than "C42(31)"
+Base.show(io::IO, class::Class) = print(io, CEnum.enum_name(class))
+Base.show(io::IO, code::ErrorCode) = print(io, CEnum.enum_name(code))
 
 Base.parse(::Type{Class}, str::AbstractString) = getfield(Errors, Symbol("C", str))
 Base.parse(::Type{ErrorCode}, str::AbstractString) = getfield(Errors, Symbol("E", str))
