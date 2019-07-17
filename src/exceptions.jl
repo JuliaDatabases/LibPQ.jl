@@ -71,6 +71,9 @@ end
 
 include("error_codes.jl")
 
+Base.parse(::Type{Class}, str::AbstractString) = getfield(Errors, Symbol("C", str))
+Base.parse(::Type{ErrorCode}, str::AbstractString) = getfield(Errors, Symbol("E", str))
+
 function PQResultError{Class, Code}(msg::String) where {Class, Code}
     return PQResultError{Class, Code}(msg, nothing)
 end
@@ -79,8 +82,8 @@ function PQResultError(result::Result; verbose=false)
     msg = error_message(result; verbose=false)
     verbose_msg = verbose ? error_message(result; verbose=true) : nothing
     code_str = error_field(result, libpq_c.PG_DIAG_SQLSTATE)
-    class = getfield(Errors, Symbol("C", code_str[1:2]))
-    code = getfield(Errors, Symbol("E", code_str))
+    class = parse(Class, code_str[1:2])
+    code = parse(ErrorCode, code_str)
 
     return PQResultError{class, code}(msg, verbose_msg)
 end
