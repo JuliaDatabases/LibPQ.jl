@@ -851,8 +851,8 @@ end
                 @test false
             catch err
                 @test err isa LibPQ.InvalidArgumentForLogarithm
-                @test LibPQ.error_class(err) == LibPQ.c"22"
-                @test LibPQ.error_code(err) == LibPQ.e"2201E"
+                @test LibPQ.error_class(err) == LibPQ.C22
+                @test LibPQ.error_code(err) == LibPQ.E2201E
             end
 
             result = execute(conn, "SELECT log(-1);"; throw_error=false)

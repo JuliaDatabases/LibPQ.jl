@@ -74,9 +74,11 @@ end
 function PQResultError(result::Result; verbose=false)
     msg = error_message(result; verbose=false)
     verbose_msg = verbose ? error_message(result; verbose=true) : nothing
-    code = error_field(result, libpq_c.PG_DIAG_SQLSTATE)
+    code_str = error_field(result, libpq_c.PG_DIAG_SQLSTATE)
+    class = getfield(LibPQ, Symbol("C", code_str[1:2]))
+    code = getfield(LibPQ, Symbol("E", code_str))
 
-    return PQResultError{Class(code), ErrorCode(code)}(msg, verbose_msg)
+    return PQResultError{class, code}(msg, verbose_msg)
 end
 
 error_class(err::PQResultError{Class_}) where {Class_} = Class_::Class
