@@ -93,7 +93,7 @@ returned `Connection`.
 """
 function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
     if status(jl_conn) == libpq_c.CONNECTION_BAD
-        err = PQConnectionError(jl_conn)
+        err = Errors.PQConnectionError(jl_conn)
 
         if throw_error
             close(jl_conn)
@@ -351,7 +351,7 @@ function encoding(jl_conn::Connection)
     encoding_id::Cint = libpq_c.PQclientEncoding(jl_conn.conn)
 
     if encoding_id == -1
-        error(LOGGER, JLConnectionError(
+        error(LOGGER, Errors.JLConnectionError(
             "libpq could not retrieve the connection's client encoding. " *
             "Something is wrong with the connection."
         ))
@@ -378,7 +378,7 @@ function set_encoding!(jl_conn::Connection, encoding::String)
         status = libpq_c.PQsetClientEncoding(jl_conn.conn, encoding)
 
         if status == -1
-            error(LOGGER, JLConnectionError(
+            error(LOGGER, Errors.JLConnectionError(
                 "libpq could not set the connection's client encoding to $encoding"
             ))
         else
@@ -490,7 +490,9 @@ function reset!(jl_conn::Connection; throw_error::Bool=true)
 
         handle_new_connection(jl_conn; throw_error=throw_error)
     else
-        error(LOGGER, "Cannot reset a connection that has been closed")
+        error(LOGGER, Errors.JLConnectionError(
+            "Cannot reset a connection that has been closed"
+        ))
     end
 
     return nothing
@@ -528,7 +530,9 @@ function Base.parse(::Type{ConninfoDisplay}, str::AbstractString)::ConninfoDispl
     elseif first(str) == 'D'
         Debug
     else
-        error(LOGGER, JLConnectionError("Unexpected dispchar '$str' in PQconninfoOption"))
+        error(LOGGER, Errors.JLConnectionError(
+            "Unexpected dispchar '$str' in PQconninfoOption"
+        ))
     end
 end
 
@@ -583,11 +587,11 @@ function conninfo(jl_conn::Connection)
 
     if ci_ptr == C_NULL
         if !isopen(jl_conn)
-            error(LOGGER, JLConnectionError(
+            error(LOGGER, Errors.JLConnectionError(
                 "Cannot get connection info as the connection is closed."
             ))
         else
-            error(LOGGER, JLConnectionError(
+            error(LOGGER, Errors.JLConnectionError(
                 "libpq could not allocate memory for connection info"
             ))
         end

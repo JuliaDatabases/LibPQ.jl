@@ -71,7 +71,7 @@ function handle_result(async_result::AsyncResult; throw_error=true)
     if throw_error && !isempty(errors)
         throw(CompositeException(errors))
     elseif result === nothing
-        error(LOGGER, "Async query did not return result")
+        error(LOGGER, Errors.JLResultError("Async query did not return result"))
     else
         return result
     end
@@ -134,7 +134,9 @@ function _cancel(jl_conn::Connection)
         errbuf = zeros(UInt8, errbuf_size)
         success = libpq_c.PQcancel(cancel_ptr, pointer(errbuf), errbuf_size) == 1
         if !success
-            warn(LOGGER, "Failed cancelling query: $(String(errbuf))")
+            warn(LOGGER, Errors.JLConnectionError(
+                "Failed cancelling query: $(String(errbuf))"
+            ))
         else
             debug(LOGGER, "Cancelled query for connection $(jl_conn.conn)")
         end
@@ -216,7 +218,9 @@ function _async_execute(
         try
             # error if submission fails
             # does not respect `throw_error` as there's no result to return on this error
-            submission_fn(jl_conn) || error(LOGGER, error_message(async_result.jl_conn))
+            if !submission_fn(jl_conn)
+                error(LOGGER, Errors.PQConnectionError(async_result.jl_conn))
+            end
 
             return handle_result(async_result; throw_error=throw_error)::Result
         finally

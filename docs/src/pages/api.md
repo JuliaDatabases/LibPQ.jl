@@ -110,7 +110,7 @@ using LibPQ
 
 function dograph()
     g = SimpleDiGraph()
-    types = Any[LibPQ.LibPQException]
+    types = Any[LibPQ.Errors.LibPQException]
 
     i = 1
     add_vertex!(g)
@@ -149,14 +149,14 @@ nothing
 ```
 
 ```@docs
-LibPQ.LibPQException
-LibPQ.JLClientException
-LibPQ.PostgreSQLException
-LibPQ.JLConnectionError
-LibPQ.JLResultError
-LibPQ.ConninfoParseError
-LibPQ.PQConnectionError
-LibPQ.PQResultError
+LibPQ.Errors.LibPQException
+LibPQ.Errors.JLClientException
+LibPQ.Errors.PostgreSQLException
+LibPQ.Errors.JLConnectionError
+LibPQ.Errors.JLResultError
+LibPQ.Errors.ConninfoParseError
+LibPQ.Errors.PQConnectionError
+LibPQ.Errors.PQResultError
 ```
 
 ### Type Conversions

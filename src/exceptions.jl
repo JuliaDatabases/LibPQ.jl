@@ -1,3 +1,7 @@
+module Errors
+
+using ..LibPQ: Connection, Result, libpq_c, error_message, error_field
+
 "Base abstract type for all custom exceptions thrown by LibPQ.jl"
 abstract type LibPQException <: Exception end
 
@@ -20,7 +24,7 @@ function PQConnectionError(jl_conn::Connection)
     return PQConnectionError(error_message(jl_conn))
 end
 
-"An error regarding a connection reported by PostgreSQL"
+"An error from parsing connection parameter strings reported by PostgreSQL"
 struct ConninfoParseError <: PostgreSQLException
     msg::String
 end
@@ -47,10 +51,10 @@ which was generated using the PostgreSQL documentation linked above.
 
 ```jldoctest
 julia> try execute(conn, "SELORCT NUUL;") catch err println(err) end
-LibPQ.SyntaxError("ERROR:  syntax error at or near \\"SELORCT\\"\\nLINE 1: SELORCT NUUL;\\n        ^\\n")
+LibPQ.Errors.SyntaxError("ERROR:  syntax error at or near \\"SELORCT\\"\\nLINE 1: SELORCT NUUL;\\n        ^\\n")
 
-julia> LibPQ.SyntaxError
-LibPQ.PQResultError{c"42",e"42601"}
+julia> LibPQ.Errors.SyntaxError
+LibPQ.Errors.PQResultError{C42,E42601}
 ```
 """
 struct PQResultError{Class, Code} <: PostgreSQLException
@@ -58,7 +62,7 @@ struct PQResultError{Class, Code} <: PostgreSQLException
     verbose_msg::Union{String, Nothing}
 
     function PQResultError{Class_, Code_}(msg, verbose_msg) where {Class_, Code_}
-        return new{Class_::Class, Code_::ErrorCode}(
+        return new{Class_::Errors.Class, Code_::Errors.ErrorCode}(
             convert(String, msg),
             convert(Union{String, Nothing}, verbose_msg),
         )
@@ -75,8 +79,8 @@ function PQResultError(result::Result; verbose=false)
     msg = error_message(result; verbose=false)
     verbose_msg = verbose ? error_message(result; verbose=true) : nothing
     code_str = error_field(result, libpq_c.PG_DIAG_SQLSTATE)
-    class = getfield(LibPQ, Symbol("C", code_str[1:2]))
-    code = getfield(LibPQ, Symbol("E", code_str))
+    class = getfield(Errors, Symbol("C", code_str[1:2]))
+    code = getfield(Errors, Symbol("E", code_str))
 
     return PQResultError{class, code}(msg, verbose_msg)
 end
@@ -91,11 +95,13 @@ function Base.showerror(io::IO, err::T) where T <: PQResultError
 end
 
 function Base.show(io::IO, err::T) where T <: PQResultError
-    print(io, "LibPQ.", ERROR_NAMES[T], '(', repr(err.msg))
+    print(io, "LibPQ.Errors.", ERROR_NAMES[T], '(', repr(err.msg))
 
     if err.verbose_msg !== nothing
         print(io, ", ", repr(err.verbose_msg))
     end
 
     print(io, ')')
+end
+
 end
