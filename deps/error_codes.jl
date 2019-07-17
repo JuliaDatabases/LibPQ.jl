@@ -1,3 +1,10 @@
+# used to generate error codes in src/error_codes.jl
+# if run with no args, prints the generated code to stdout
+# with a file argument, write the code to that file
+# e.g., julia deps/error_codes.jl src/error_codes.jl
+#
+# only needs to be re-run if the Travis diff job fails
+
 using EzXML
 using HTTP
 
