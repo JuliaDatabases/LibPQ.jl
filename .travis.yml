@@ -30,9 +30,27 @@ matrix:
         - PGPORT=5432 LIBPQJL_DATABASE_USER=travis
       before_install:
         - brew services start postgresql
+    - julia: 1.0
+      os: linux
+      before_script:
+        - julia -e 'using Pkg; Pkg.add("EzXML"); Pkg.add("HTTP")'
+      script:
+        - julia deps/error_codes.jl error_codes_generated.jl
+        - diff error_codes_generated.jl src/error_codes.jl
+      after_success: skip
     - stage: "Documentation"
       julia: 1.0
       os: linux
+      dist: xenial
+      addons:
+        apt:
+          packages:
+            - fonts-lmodern
+            - pdf2svg
+            - texlive-latex-extra
+            - texlive-luatex
+            - texlive-pictures
+            - texlive-xetex
       script:
         - julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.build()'
         - julia --project=docs/ docs/make.jl

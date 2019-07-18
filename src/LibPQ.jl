@@ -35,7 +35,7 @@ end
 
     ## Fields:
 
-    $(FIELDS)
+    $(TYPEDFIELDS)
     """
 
 include(joinpath(@__DIR__, "utils.jl"))
@@ -79,6 +79,7 @@ const LIBPQ_CONVERSIONS = PQConversions()
 include("connections.jl")
 include("results.jl")
 include("statements.jl")
+include("exceptions.jl")
 
 include("parsing.jl")
 include("copy.jl")

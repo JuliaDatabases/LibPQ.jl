@@ -93,7 +93,7 @@ returned `Connection`.
 """
 function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
     if status(jl_conn) == libpq_c.CONNECTION_BAD
-        err = error_message(jl_conn)
+        err = Errors.PQConnectionError(jl_conn)
 
         if throw_error
             close(jl_conn)
@@ -351,7 +351,10 @@ function encoding(jl_conn::Connection)
     encoding_id::Cint = libpq_c.PQclientEncoding(jl_conn.conn)
 
     if encoding_id == -1
-        error(LOGGER, "libpq could not retrieve the connection's client encoding")
+        error(LOGGER, Errors.JLConnectionError(
+            "libpq could not retrieve the connection's client encoding. " *
+            "Something is wrong with the connection."
+        ))
     end
 
     return unsafe_string(libpq_c.pg_encoding_to_char(encoding_id))
@@ -375,9 +378,9 @@ function set_encoding!(jl_conn::Connection, encoding::String)
         status = libpq_c.PQsetClientEncoding(jl_conn.conn, encoding)
 
         if status == -1
-            error(LOGGER,
+            error(LOGGER, Errors.JLConnectionError(
                 "libpq could not set the connection's client encoding to $encoding"
-            )
+            ))
         else
             jl_conn.encoding = encoding
         end
@@ -487,7 +490,9 @@ function reset!(jl_conn::Connection; throw_error::Bool=true)
 
         handle_new_connection(jl_conn; throw_error=throw_error)
     else
-        error(LOGGER, "Cannot reset a connection that has been closed")
+        error(LOGGER, Errors.JLConnectionError(
+            "Cannot reset a connection that has been closed"
+        ))
     end
 
     return nothing
@@ -525,7 +530,9 @@ function Base.parse(::Type{ConninfoDisplay}, str::AbstractString)::ConninfoDispl
     elseif first(str) == 'D'
         Debug
     else
-        error(LOGGER, "Unexpected dispchar '$str' in PQconninfoOption")
+        error(LOGGER, Errors.JLConnectionError(
+            "Unexpected dispchar '$str' in PQconninfoOption"
+        ))
     end
 end
 
@@ -580,9 +587,13 @@ function conninfo(jl_conn::Connection)
 
     if ci_ptr == C_NULL
         if !isopen(jl_conn)
-            error(LOGGER, "Connection is closed")
+            error(LOGGER, Errors.JLConnectionError(
+                "Cannot get connection info as the connection is closed."
+            ))
         else
-            error(LOGGER, "libpq could not allocate memory for connection info")
+            error(LOGGER, Errors.JLConnectionError(
+                "libpq could not allocate memory for connection info"
+            ))
         end
     end
 
@@ -618,13 +629,15 @@ function conninfo(str::AbstractString)
     ci_ptr = libpq_c.PQconninfoParse(str, err_ref)
 
     if ci_ptr == C_NULL && err_ref[] == C_NULL
-        error(LOGGER, "libpq could not allocate memory for connection info")
+        error(LOGGER, JLConnectionError(
+            "libpq could not allocate memory for connection info"
+        ))
     end
 
     if err_ref[] != C_NULL
         err_msg = unsafe_string(err_ref[])
         libpq_c.PQfreemem(err_ref[])
-        error(err_msg)
+        error(LOGGER, ConninfoParseError(err_msg))
     end
 
     ci_array = conninfo(ci_ptr)

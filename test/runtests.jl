@@ -35,7 +35,7 @@ end
     @test parse(LibPQ.ConninfoDisplay, "") == LibPQ.Normal
     @test parse(LibPQ.ConninfoDisplay, "*") == LibPQ.Password
     @test parse(LibPQ.ConninfoDisplay, "D") == LibPQ.Debug
-    @test_throws ErrorException parse(LibPQ.ConninfoDisplay, "N")
+    @test_throws LibPQ.Errors.JLConnectionError parse(LibPQ.ConninfoDisplay, "N")
 end
 
 @testset "Version Numbers" begin
@@ -366,7 +366,7 @@ end
             end
 
             copyin = LibPQ.CopyIn("COPY libpqjl_test FROM STDIN (FORMAT CSV);", row_strings)
-            @test_throws ErrorException execute(conn, copyin; throw_error=true)
+            @test_throws LibPQ.Errors.DataExceptionErrorClass execute(conn, copyin; throw_error=true)
 
             close(conn)
         end
@@ -384,7 +384,7 @@ end
             @test was_open
             @test !isopen(saved_conn)
 
-            @test_throws ErrorException LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=true) do jl_conn
+            @test_throws LibPQ.Errors.PQConnectionError LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=true) do jl_conn
                 saved_conn = jl_conn
                 @test false
             end
@@ -420,7 +420,7 @@ end
             LibPQ.reset_encoding!(conn)
             @test LibPQ.encoding(conn) == "SQL_ASCII"
 
-            @test_throws ErrorException LibPQ.set_encoding!(conn, "NOT A REAL ENCODING")
+            @test_throws LibPQ.Errors.JLConnectionError LibPQ.set_encoding!(conn, "NOT A REAL ENCODING")
 
             close(conn)
         end
@@ -602,21 +602,21 @@ end
                 close(conn)
                 @test !isopen(conn)
                 @test conn.closed[] == true
-                @test_throws ErrorException reset!(conn; throw_error=false)
+                @test_throws LibPQ.Errors.JLConnectionError reset!(conn; throw_error=false)
             end
 
             @testset "throw_error=true" begin
-                @test_throws ErrorException LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=true)
+                @test_throws LibPQ.Errors.PQConnectionError LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=true)
 
                 conn = LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=false)
                 @test conn isa LibPQ.Connection
                 @test status(conn) == LibPQ.libpq_c.CONNECTION_BAD
                 @test isopen(conn)
 
-                @test_throws ErrorException reset!(conn; throw_error=true)
+                @test_throws LibPQ.Errors.PQConnectionError reset!(conn; throw_error=true)
                 @test !isopen(conn)
                 @test conn.closed[] == true
-                @test_throws ErrorException reset!(conn; throw_error=true)
+                @test_throws LibPQ.Errors.JLConnectionError reset!(conn; throw_error=true)
             end
         end
     end
@@ -838,6 +838,32 @@ end
             row = first(Tables.rows(result))
             @test row[1] == 1
             @test row[2] == 2
+
+            close(result)
+            close(conn)
+        end
+
+        @testset "PQResultError" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            try
+                execute(conn, "SELECT log(-1);")
+                @test false
+            catch err
+                @test err isa LibPQ.Errors.InvalidArgumentForLogarithm
+                @test LibPQ.Errors.error_class(err) == LibPQ.Errors.C22
+                @test LibPQ.Errors.error_code(err) == LibPQ.Errors.E2201E
+            end
+
+            result = execute(conn, "SELECT log(-1);"; throw_error=false)
+            err = LibPQ.Errors.PQResultError(result; verbose=false)
+            verbose_err = LibPQ.Errors.PQResultError(result; verbose=true)
+            @test err isa LibPQ.Errors.InvalidArgumentForLogarithm
+            @test verbose_err isa LibPQ.Errors.InvalidArgumentForLogarithm
+            @test err.msg == verbose_err.msg
+            @test err.verbose_msg === nothing
+            @test verbose_err.verbose_msg !== nothing
+            @test length(verbose_err.verbose_msg) > length(err.msg)
 
             close(result)
             close(conn)
@@ -1094,7 +1120,7 @@ end
                 close(result)
                 @test !isopen(result)
 
-                @test_throws ErrorException execute(conn, "SELORCT NUUL;"; throw_error=true)
+                @test_throws LibPQ.Errors.SyntaxError execute(conn, "SELORCT NUUL;"; throw_error=true)
 
                 close(conn)
                 @test !isopen(conn)
@@ -1112,7 +1138,7 @@ end
                 close(result)
                 @test !isopen(result)
 
-                @test_throws ErrorException execute(
+                @test_throws LibPQ.Errors.SyntaxError execute(
                     conn,
                     "SELORCT \$1;",
                     String[];

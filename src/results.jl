@@ -114,22 +114,65 @@ end
     status(jl_result::Result) -> libpq_c.ExecStatusType
 
 Return the status of a result's corresponding database query according to libpq.
-Only `CONNECTION_OK` and `CONNECTION_BAD` are valid for blocking connections, and only
-blocking connections are supported right now.
 
 See also: [`error_message`](@ref)
 """
 status(jl_result::Result) = libpq_c.PQresultStatus(jl_result.result)
 
 """
-    error_message(jl_result::Result) -> String
+    error_message(jl_result::Result; verbose=false) -> String
 
 Return the error message associated with the result, or an empty string if there was no
 error.
+If `verbose`, have libpq generate a more verbose version of the error message if possible.
 Includes a trailing newline.
 """
-function error_message(jl_result::Result)
-    unsafe_string(libpq_c.PQresultErrorMessage(jl_result.result))
+function error_message(jl_result::Result; verbose=false)
+    return verbose ? _verbose_error_message(jl_result) : _error_message(jl_result)
+end
+
+function _error_message(jl_result::Result)
+    return unsafe_string(libpq_c.PQresultErrorMessage(jl_result.result))
+end
+
+function _verbose_error_message(jl_result::Result)
+    msg_ptr = libpq_c.PQresultVerboseErrorMessage(
+        jl_result.result,
+        libpq_c.PQERRORS_VERBOSE,
+        libpq_c.PQSHOW_CONTEXT_ALWAYS,
+    )
+
+    if msg_ptr == C_NULL
+        error(LOGGER, Errors.JLResultError(
+            "libpq could not allocate memory for the result error message"
+        ))
+    end
+
+    msg = unsafe_string(msg_ptr)
+    libpq_c.PQfreemem(msg_ptr)
+    return msg
+end
+
+"""
+    error_field(jl_result::Result, field_code::Char) -> Union{String, Nothing}
+
+Get an individual field from the error report in a [`Result`](@ref).
+Returns `nothing` if that field is not provided for this error, or if there is no error or
+warning in this `Result`.
+
+See [](https://www.postgresql.org/docs/10/libpq-exec.html#LIBPQ-PQRESULTERRORFIELD)
+for all available fields.
+
+## Example
+
+```
+julia> LibPQ.error_field(result, LibPQ.libpq_c.PG_DIAG_SEVERITY)
+"ERROR"
+```
+"""
+function error_field(jl_result::Result, field_code::Union{Char, Integer})
+    ret = libpq_c.PQresultErrorField(jl_result.result, field_code)
+    return ret == C_NULL ? nothing : unsafe_string(ret)
 end
 
 """
@@ -166,19 +209,20 @@ Otherwise a warning is shown.
 Also print an info message about the result.
 """
 function handle_result(jl_result::Result; throw_error::Bool=true)
-    err_msg = error_message(jl_result)
     result_status = status(jl_result)
 
     if result_status in (libpq_c.PGRES_BAD_RESPONSE, libpq_c.PGRES_FATAL_ERROR)
+        err = Errors.PQResultError(jl_result)
+
         if throw_error
             close(jl_result)
-            error(LOGGER, err_msg)
+            error(LOGGER, err)
         else
-            warn(LOGGER, err_msg)
+            warn(LOGGER, err)
         end
     else
         if result_status == libpq_c.PGRES_NONFATAL_ERROR
-            warn(LOGGER, err_msg)
+            warn(LOGGER, Errors.PQResultError(jl_result))
         end
 
         debug(LOGGER, unsafe_string(libpq_c.PQcmdStatus(jl_result.result)))

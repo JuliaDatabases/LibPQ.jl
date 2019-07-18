@@ -1,4 +1,6 @@
-using Documenter, LibPQ
+using Documenter, LibPQ, Memento
+
+setlevel!(getlogger(LibPQ), "critical")
 
 makedocs(;
     modules=[LibPQ],
@@ -13,6 +15,7 @@ makedocs(;
     sitename="LibPQ.jl",
     checkdocs=:exports,
     linkcheck=true,
+    strict=true,
     authors="Eric Davies",
 )
 
