@@ -49,8 +49,8 @@ The `Code` parameter represents the PostgreSQL error code as defined in
 [Appendix A. PostgreSQL Error Codes](https://www.postgresql.org/docs/devel/errcodes-appendix.html).
 The `Class` parameter is the first two characters of that code, also listed on that page.
 
-For a list of all error aliases, see [src/error_codes.jl](https://github.com/invenia/LibPQ.jl/blob/master/src/error_codes.jl),
-which was generated using the PostgreSQL documentation linked above.
+For a list of all error aliases, see `src/error_codes.jl`, which was generated using the
+PostgreSQL documentation linked above.
 
 ```jldoctest
 julia> try execute(conn, "SELORCT NUUL;") catch err println(err) end

@@ -15,6 +15,12 @@ git-tree-sha1 = "c7361ce8a2129f20b0e05a89f7070820cfed6648"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
 version = "0.5.6"
 
+[[CEnum]]
+deps = ["Test"]
+git-tree-sha1 = "68ec26437107fabd8bf4a420e0f9c38ce0e71978"
+uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
+version = "0.1.1"
+
 [[CSTParser]]
 deps = ["Tokenize"]
 git-tree-sha1 = "376a39f1862000442011390f1edf5e7f4dcc7142"
@@ -75,10 +81,10 @@ uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 version = "0.8.0"
 
 [[Documenter]]
-deps = ["Base64", "DocStringExtensions", "InteractiveUtils", "JSON", "LibGit2", "Logging", "Markdown", "Pkg", "REPL", "Random", "Test", "Unicode"]
-git-tree-sha1 = "13a6d15102410d8e70146533b759fc48d844a1d0"
+deps = ["Base64", "DocStringExtensions", "InteractiveUtils", "JSON", "LibGit2", "Logging", "Markdown", "REPL", "Unicode"]
+git-tree-sha1 = "580155ffaeb175f37dc0bd31ed6c127663efbc60"
 uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-version = "0.22.3"
+version = "0.22.6"
 
 [[EzXML]]
 deps = ["BinaryProvider", "Libdl", "Printf"]
@@ -134,7 +140,7 @@ version = "1.0.0"
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 
 [[LibPQ]]
-deps = ["BinaryProvider", "Dates", "Decimals", "DocStringExtensions", "FileWatching", "IterTools", "LayerDicts", "Libdl", "Memento", "OffsetArrays", "Tables", "TimeZones"]
+deps = ["BinaryProvider", "CEnum", "Dates", "Decimals", "DocStringExtensions", "FileWatching", "IterTools", "LayerDicts", "Libdl", "Memento", "OffsetArrays", "Tables", "TimeZones"]
 path = ".."
 uuid = "194296ae-ab2e-5f79-8cd4-7183a0a5a0d1"
 version = "0.10.1"
@@ -241,10 +247,10 @@ deps = ["Distributed", "Mmap", "Random", "Serialization"]
 uuid = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
 
 [[SimpleTraits]]
-deps = ["InteractiveUtils", "MacroTools", "Test"]
-git-tree-sha1 = "c0a542b8d5e369b179ccd296b2ca987f6da5da0a"
+deps = ["InteractiveUtils", "MacroTools"]
+git-tree-sha1 = "05bbf4484b975782e5e54bb0750f21f7f2f66171"
 uuid = "699a6c99-e7fa-54fc-8d76-47d257e15c1d"
-version = "0.8.0"
+version = "0.9.0"
 
 [[Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
@@ -316,9 +322,9 @@ uuid = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 version = "0.9.1"
 
 [[Tokenize]]
-git-tree-sha1 = "0de343efc07da00cd449d5b04e959ebaeeb3305d"
+git-tree-sha1 = "c8a8b00ae44a94950814ff77850470711a360225"
 uuid = "0796e94c-ce3b-5d07-9a54-7f471281c624"
-version = "0.5.4"
+version = "0.5.5"
 
 [[UUIDs]]
 deps = ["Random", "SHA"]
