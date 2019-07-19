@@ -108,6 +108,15 @@ function _consume(jl_conn::Connection)
                 end
             end
         end
+    catch err
+        if err isa Base.IOError && err.code == -9  # EBADF
+            debug(() -> sprint(showerror, err), LOGGER)
+            error(LOGGER, Errors.JLConnectionError(
+                "PostgreSQL connection socket was unexpectedly closed"
+            ))
+        else
+            rethrow(err)
+        end
     finally
         close(watcher)
     end

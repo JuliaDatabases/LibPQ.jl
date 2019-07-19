@@ -1360,6 +1360,22 @@ end
             end
 
             @test occursin("canceling statement due to user request", err_msg)
+
+            close(conn)
+        end
+
+        @testset "FDWatcher: bad file descriptor (EBADF)" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            ar = async_execute(conn, "SELECT pg_sleep(3); SELECT * FROM pg_type;")
+            yield()
+            @async Base.throwto(
+                ar.result_task,
+                Base.IOError("FDWatcher: bad file descriptor (EBADF)", -9),
+            )
+            @test_throws LibPQ.Errors.JLConnectionError wait(ar)
+
+            close(conn)
         end
     end
 end
