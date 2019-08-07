@@ -430,6 +430,7 @@ end
                 "dbname=postgres user=$DATABASE_USER";
                 options=Dict("IntervalStyle" => "postgres_verbose"),
                 throw_error=true,
+                type_map=Dict(:interval => String),
             )
 
             conn_info = LibPQ.conninfo(conn)

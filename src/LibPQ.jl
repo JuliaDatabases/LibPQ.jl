@@ -23,6 +23,7 @@ const Parameter = Union{String, Missing}
 const LOGGER = getlogger(@__MODULE__)
 
 function __init__()
+    INTERVAL_REGEX[] = _interval_regex()
     Memento.register(LOGGER)
 end
 
