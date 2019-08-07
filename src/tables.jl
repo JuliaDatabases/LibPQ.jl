@@ -88,7 +88,7 @@ end
 
 function Column(jl_result::Result, col::Integer, name=Symbol(column_name(jl_result, col)))
     @boundscheck if !checkindex(Bool, Base.OneTo(num_columns(jl_result)), col)
-        throw(BoundsError(Columns(jl_result)), col)
+        throw(BoundsError(Columns(jl_result), col))
     end
 
     oid = column_oids(jl_result)[col]
