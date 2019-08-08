@@ -256,6 +256,85 @@ function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
     TimeZones.unix2zdt(parse(Int64, pqv))
 end
 
+## intervals
+# iso_8601
+_DEFAULT_TYPE_MAP[:interval] = Dates.CompoundPeriod
+const INTERVAL_REGEX = Ref{Regex}()  # set at __init__
+
+function _interval_regex()
+    function _field_match(period_type, number_match="-?\\d+")
+        name = nameof(period_type)
+        letter = first(String(name))
+        return "(?:(?<$name>$number_match)$letter)?"
+    end
+
+    io = IOBuffer()
+    print(io, "^P")
+    for long_type in (Year, Month, Day)
+        print(io, _field_match(long_type))
+    end
+    print(io, "(?:T")
+    for long_type in (Hour, Minute)
+        print(io, _field_match(long_type))
+    end
+    print(io,
+        _field_match(Second, "(?<whole_seconds>-?\\d+)(?:\\.(?<frac_seconds>\\d{1,9}))?"),
+    )
+    print(io, ")?\$")
+
+    return Regex(String(take!(io)))
+end
+
+# parse the iso_8601 interval output format
+# https://www.postgresql.org/docs/10/datatype-datetime.html#DATATYPE-INTERVAL-OUTPUT
+function Base.parse(::Type{Dates.CompoundPeriod}, pqv::PQValue{PQ_SYSTEM_TYPES[:interval]})
+    interval_regex = INTERVAL_REGEX[]
+    matched = match(interval_regex, string_view(pqv))
+
+    if matched === nothing
+        error("Couldn't parse $(string_view(pqv)) as interval using regex $interval_regex")
+    end
+
+    periods = Period[]
+    sizehint!(periods, 7)
+    for period_type in (Year, Month, Day, Hour, Minute)
+        period_str = matched[nameof(period_type)]
+        if period_str !== nothing
+            push!(periods, period_type(parse(Int, period_str)))
+        end
+    end
+
+    if matched["Second"] !== nothing
+        whole_seconds_str = matched["whole_seconds"]
+        whole_seconds = parse(Int, whole_seconds_str)
+        if whole_seconds != 0
+            push!(periods, Second(whole_seconds))
+        end
+
+        #=
+        We need to parse the fractional seconds as a period.
+        Here we try to keep to the largest period type possible for representing the
+        fractional seconds.
+
+        For example, 1 is 100 Milliseconds, but 0001 is 100 Microseconds
+        =#
+        frac_seconds_str = matched["frac_seconds"]
+        if frac_seconds_str !== nothing
+            len = length(frac_seconds_str)
+            frac_periods = [Millisecond, Microsecond, Nanosecond]
+            period_coeff = fld1(len, 3)
+            period_type = frac_periods[period_coeff]  # field regex prevents BoundsError
+
+            frac_seconds = parse(Int, frac_seconds_str) * 10 ^ (3 * period_coeff - len)
+            if frac_seconds != 0
+                push!(periods, period_type(frac_seconds))
+            end
+        end
+    end
+
+    return Dates.CompoundPeriod(periods)
+end
+
 ## arrays
 # numeric arrays never have double quotes and always use ',' as a separator
 parse_numeric_element(::Type{T}, str) where T = parse(T, str)
