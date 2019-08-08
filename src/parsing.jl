@@ -244,6 +244,37 @@ function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timesta
     return parse(ZonedDateTime, str, TIMESTAMPTZ_FORMATS[end])
 end
 
+_DEFAULT_TYPE_MAP[:date] = Date
+function Base.parse(::Type{Date}, pqv::PQValue{PQ_SYSTEM_TYPES[:date]})
+    str = string_view(pqv)
+
+    if str == "infinity"
+        return typemax(Date)
+    elseif str == "-infinity"
+        return typemin(Date)
+    end
+
+    return parse(Date, str)
+end
+
+_DEFAULT_TYPE_MAP[:time] = Time
+function Base.parse(::Type{Time}, pqv::PQValue{PQ_SYSTEM_TYPES[:time]})
+    str = string_view(pqv)
+
+    try
+        return parse(Time, str)
+    catch err
+        if !(err isa InexactError)
+            rethrow(err)
+        end
+    end
+
+    # Cut off digits after the third after the decimal point,
+    # since Time in Julia currently handles only milliseconds, see Issue #33
+    str = replace(str, r"(\.[\d]{3})\d+" => s"\g<1>")
+    return parse(Time, str)
+end
+
 # UNIX timestamps
 function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
     unix2datetime(parse(Int64, pqv))
