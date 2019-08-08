@@ -285,6 +285,8 @@ function _interval_regex()
     return Regex(String(take!(io)))
 end
 
+# parse the iso_8601 interval output format
+# https://www.postgresql.org/docs/10/datatype-datetime.html#DATATYPE-INTERVAL-OUTPUT
 function Base.parse(::Type{Dates.CompoundPeriod}, pqv::PQValue{PQ_SYSTEM_TYPES[:interval]})
     interval_regex = INTERVAL_REGEX[]
     matched = match(interval_regex, string_view(pqv))
