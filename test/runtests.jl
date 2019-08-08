@@ -1080,6 +1080,24 @@ end
 
                     close(conn)
                 end
+
+                @testset "Interval Regex" begin
+                    regex = LibPQ.INTERVAL_REGEX[]
+                    inputs = [
+                        "P1Y2M3DT4H5M6S",
+                        "PT6.1S",
+                        "PT6.01S",
+                        "PT6.001S",
+                        "PT6.0001S",
+                        "PT6.1001S",
+                        "P100Y49D",
+                        "P1DT-1H",
+                        "P-1M1D",
+                    ]
+                    for input in inputs
+                        @test match(regex, input) !== nothing
+                    end
+                end
             end
         end
 
