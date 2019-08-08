@@ -44,6 +44,7 @@
     CHV,
     CP0,
     CXX,
+    CUN,
 )
 
 @cenum(ErrorCode,
@@ -288,6 +289,7 @@
     EXX000,
     EXX001,
     EXX002,
+    EUNOWN,
 )
 
 
@@ -703,6 +705,11 @@ const InternalError = PQResultError{CXX, EXX000}
 const DataCorrupted = PQResultError{CXX, EXX001}
 const IndexCorrupted = PQResultError{CXX, EXX002}
 
+
+const UnknownErrorClass = PQResultError{CUN}
+
+const UnknownError = PQResultError{CUN, EUNOWN}
+
 const ERROR_NAMES = Dict(
     SuccessfulCompletion => "SuccessfulCompletion",
     WarningWarning => "WarningWarning",
@@ -945,4 +952,5 @@ const ERROR_NAMES = Dict(
     InternalError => "InternalError",
     DataCorrupted => "DataCorrupted",
     IndexCorrupted => "IndexCorrupted",
+    UnknownError => "UnknownError",
 )

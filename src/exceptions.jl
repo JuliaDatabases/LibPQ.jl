@@ -88,7 +88,7 @@ end
 function PQResultError(result::Result; verbose=false)
     msg = error_message(result; verbose=false)
     verbose_msg = verbose ? error_message(result; verbose=true) : nothing
-    code_str = error_field(result, libpq_c.PG_DIAG_SQLSTATE)
+    code_str = something(error_field(result, libpq_c.PG_DIAG_SQLSTATE), "UNOWN")
     class = parse(Class, code_str[1:2])
     code = parse(ErrorCode, code_str)
 

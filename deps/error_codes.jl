@@ -74,6 +74,16 @@ function generate_error_codes(io, html=error_code_html())
         println(error_enum_io, "    $error_code,")
         println(error_names_io, "    $id_name => \"$id_name\",")
     end
+
+    # unknown error
+    class = "CUN"
+    error_code = "EUNOWN"
+    println(class_enum_io, "    $class,")
+    println(alias_io, "\n\nconst UnknownErrorClass = PQResultError{$class}\n")
+    println(alias_io, "const UnknownError = PQResultError{$class, $error_code}")
+    println(error_enum_io, "    $error_code,")
+    println(error_names_io, "    UnknownError => \"UnknownError\",")
+
     println(class_enum_io, ")")
     println(error_enum_io, ")")
     println(error_names_io, ")")
