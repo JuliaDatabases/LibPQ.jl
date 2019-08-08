@@ -18,6 +18,9 @@ mutable struct Result
     "Conversions from PostgreSQL data to Julia types for each column in the result"
     column_funcs::Vector{Base.Callable}
 
+    "Name of each column in the result"
+    column_names::Vector{String}
+
     # TODO: attach encoding per https://wiki.postgresql.org/wiki/Driver_development#Result_object_and_client_encoding
     function Result(
         result::Ptr{libpq_c.PGresult},
@@ -63,6 +66,10 @@ mutable struct Result
         jl_result.column_funcs = collect(Base.Callable, imap(col_oids, col_types) do oid, typ
             func_lookup[(oid, typ)]
         end)
+
+        jl_result.column_names = map(1:num_columns(jl_result)) do col_num
+            unsafe_string(libpq_c.PQfname(jl_result.result, col_num - 1))
+        end
 
         # figure out which columns the user says may contain nulls
         if not_null isa Bool
@@ -423,8 +430,7 @@ end
 Return the name of the column at index `column_number` (1-based).
 """
 function column_name(jl_result::Result, column_number::Integer)
-    # todo: check cleared?
-    unsafe_string(libpq_c.PQfname(jl_result.result, column_number - 1))
+    return jl_result.column_names[column_number]
 end
 
 """
@@ -432,9 +438,7 @@ end
 
 Return the names of all the columns in the query result.
 """
-function column_names(jl_result::Result)
-    return [column_name(jl_result, i) for i in 1:num_columns(jl_result)]
-end
+column_names(jl_result::Result) = copy(jl_result.column_names)
 
 """
     column_number(jl_result::Result, column_name::Union{AbstractString, Symbol}) -> Int
@@ -442,8 +446,7 @@ end
 Return the index (1-based) of the column named `column_name`.
 """
 function column_number(jl_result::Result, column_name::Union{AbstractString, Symbol})::Int
-    # todo: check cleared?
-    return libpq_c.PQfnumber(jl_result.result, String(column_name)) + 1
+    return something(findfirst(isequal(String(column_name)), jl_result.column_names), 0)
 end
 
 """

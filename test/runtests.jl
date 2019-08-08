@@ -843,6 +843,24 @@ end
             close(conn)
         end
 
+        @testset "Uppercase Columns" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+            result = execute(conn, "SELECT 1 AS \"Column\";")
+            @test num_columns(result) == 1
+            @test LibPQ.column_name(result, 1) == "Column"
+            @test LibPQ.column_number(result, :Column) == 1
+
+            table = Tables.columntable(result)
+            @test :Column in propertynames(table)
+
+            table = Tables.rowtable(result)
+            @test :Column in propertynames(table[1])
+
+            close(result)
+            close(conn)
+        end
+
         @testset "PQResultError" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
