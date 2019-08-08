@@ -852,10 +852,10 @@ end
             @test LibPQ.column_number(result, :Column) == 1
 
             table = Tables.columntable(result)
-            @test hasproperty(table, :Column)
+            @test :Column in propertynames(table)
 
             table = Tables.rowtable(result)
-            @test hasproperty(table[1], :Column)
+            @test :Column in propertynames(table[1])
 
             close(result)
             close(conn)
