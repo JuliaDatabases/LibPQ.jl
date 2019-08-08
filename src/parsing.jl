@@ -317,18 +317,20 @@ function Base.parse(::Type{Dates.CompoundPeriod}, pqv::PQValue{PQ_SYSTEM_TYPES[:
         For example, 1 is 100 Milliseconds, but 0001 is 100 Microseconds
         =#
         frac_seconds_str = matched["frac_seconds"]
-        len = length(frac_seconds_str)
-        frac_periods = [Millisecond, Microsecond, Nanosecond]
-        period_coeff = fld1(len, 3)
-        period_type = frac_periods[period_coeff]  # field regex prevents BoundsError
+        if frac_seconds_str !== nothing
+            len = length(frac_seconds_str)
+            frac_periods = [Millisecond, Microsecond, Nanosecond]
+            period_coeff = fld1(len, 3)
+            period_type = frac_periods[period_coeff]  # field regex prevents BoundsError
 
-        frac_seconds = parse(Int, frac_seconds_str) * 10 ^ (3 * period_coeff - len)
-        if frac_seconds != 0
-            push!(periods, period_type(frac_seconds))
+            frac_seconds = parse(Int, frac_seconds_str) * 10 ^ (3 * period_coeff - len)
+            if frac_seconds != 0
+                push!(periods, period_type(frac_seconds))
+            end
         end
     end
 
-    return periods
+    return Dates.CompoundPeriod(periods)
 end
 
 ## arrays
