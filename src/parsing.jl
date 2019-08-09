@@ -200,6 +200,12 @@ end
 
 ## dates and times
 # ISO, YMD
+
+# Cut off digits after the third after the decimal point,
+# since DateTime in Julia currently handles only milliseconds
+# see https://github.com/invenia/LibPQ.jl/issues/33
+_trunc_seconds(str) = replace(str, r"(\.[\d]{3})\d+" => s"\g<1>")
+
 _DEFAULT_TYPE_MAP[:timestamp] = DateTime
 const TIMESTAMP_FORMAT = dateformat"y-m-d HH:MM:SS.s"  # .s is optional here
 function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timestamp]})
@@ -235,16 +241,39 @@ function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timesta
     end
 
     for fmt in TIMESTAMPTZ_FORMATS[1:end-1]
-        try
-            return parse(ZonedDateTime, str, fmt)
-        catch
-            continue
+        parsed = tryparse(ZonedDateTime, str, fmt)
+        parsed !== nothing && return parsed
+    end
+
+    return parse(ZonedDateTime, _trunc_seconds(str), TIMESTAMPTZ_FORMATS[end])
+end
+
+_DEFAULT_TYPE_MAP[:date] = Date
+function Base.parse(::Type{Date}, pqv::PQValue{PQ_SYSTEM_TYPES[:date]})
+    str = string_view(pqv)
+
+    if str == "infinity"
+        return typemax(Date)
+    elseif str == "-infinity"
+        return typemin(Date)
+    end
+
+    return parse(Date, str)
+end
+
+_DEFAULT_TYPE_MAP[:time] = Time
+function Base.parse(::Type{Time}, pqv::PQValue{PQ_SYSTEM_TYPES[:time]})
+    str = string_view(pqv)
+
+    try
+        return parse(Time, str)
+    catch err
+        if !(err isa InexactError)
+            rethrow(err)
         end
     end
-    # Cut off digits after the third after the decimal point,
-    # since DateTime in Julia currently handles only milliseconds, see Issue #33
-    str = replace(str, r"(\.[\d]{3})\d+" => s"\g<1>")
-    return parse(ZonedDateTime, str, TIMESTAMPTZ_FORMATS[end])
+
+    return parse(Time, _trunc_seconds(str))
 end
 
 # UNIX timestamps
