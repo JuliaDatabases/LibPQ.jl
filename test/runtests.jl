@@ -885,6 +885,14 @@ end
             @test length(verbose_err.verbose_msg) > length(err.msg)
 
             close(result)
+
+            result = execute(conn, "SELECT 1;")
+            unknown_error = LibPQ.Errors.PQResultError(result; verbose=true)
+            @test unknown_error isa LibPQ.Errors.UnknownErrorClass
+            @test unknown_error isa LibPQ.Errors.UnknownError
+            @test occursin("PGresult is not an error result", unknown_error.verbose_msg)
+            close(result)
+
             close(conn)
         end
 
