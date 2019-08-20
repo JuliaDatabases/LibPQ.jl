@@ -32,11 +32,6 @@ mutable struct Result
     )
         jl_result = new(result, Atomic{Bool}(result == C_NULL))
 
-        column_type_map = ColumnTypeMap()
-        for (k, v) in pairs(column_types)
-            column_type_map[column_number(jl_result, k)] = v
-        end
-
         type_lookup = LayerDict(
             PQTypeMap(type_map),
             jl_conn.type_map,
@@ -56,6 +51,15 @@ mutable struct Result
             libpq_c.PQftype(jl_result.result, col_num - 1)
         end
 
+        jl_result.column_names = map(1:num_columns(jl_result)) do col_num
+            unsafe_string(libpq_c.PQfname(jl_result.result, col_num - 1))
+        end
+
+        column_type_map = ColumnTypeMap()
+        for (k, v) in pairs(column_types)
+            column_type_map[column_number(jl_result, k)] = v
+        end
+
         jl_result.column_types = col_types = collect(Type, imap(enumerate(col_oids)) do itr
             col_num, col_oid = itr
             get(column_type_map, col_num) do
@@ -66,10 +70,6 @@ mutable struct Result
         jl_result.column_funcs = collect(Base.Callable, imap(col_oids, col_types) do oid, typ
             func_lookup[(oid, typ)]
         end)
-
-        jl_result.column_names = map(1:num_columns(jl_result)) do col_num
-            unsafe_string(libpq_c.PQfname(jl_result.result, col_num - 1))
-        end
 
         # figure out which columns the user says may contain nulls
         if not_null isa Bool
