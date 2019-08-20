@@ -937,6 +937,13 @@ end
                 result = execute(conn, "SELECT 4::bigint;", type_map=Dict("int8"=>UInt8))
                 @test first(first(result)) === 0x4
 
+                result = execute(
+                    conn,
+                    "SELECT 4::bigint as foo;",
+                    column_types=Dict(:foo=>UInt8),
+                )
+                @test first(first(result)) === 0x4
+
                 result = execute(conn, "SELECT 'deadbeef';")
                 @test first(first(result)) == "deadbeef"
 
