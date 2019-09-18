@@ -1,7 +1,7 @@
 name = "LibPQ"
 uuid = "194296ae-ab2e-5f79-8cd4-7183a0a5a0d1"
 license = "MIT"
-version = "0.11.2"
+version = "0.11.3"
 
 [deps]
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
@@ -29,7 +29,7 @@ LayerDicts = "1"
 Memento = "0.10, 0.11, 0.12"
 OffsetArrays = "0.9.1, 0.10, 0.11"
 Tables = "0.2"
-TimeZones = "0.9.2"
+TimeZones = "0.9.2, 0.10"
 julia = "1"
 
 [extras]
