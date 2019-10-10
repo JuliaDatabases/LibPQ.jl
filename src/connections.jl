@@ -12,7 +12,7 @@ const CONNECTION_OPTION_DEFAULTS = Dict{String, String}(
 function _connection_parameter_dict(;
     client_encoding::String="UTF8",
     application_name::String="LibPQ.jl",
-    connect_timeout::String="2",
+    connect_timeout::String="10",
     connection_options::Dict{String, String}=Dict{String, String}(),
 )
     keep_option((k, v)) = !(k == "TimeZone" && v == "")
