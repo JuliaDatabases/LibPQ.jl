@@ -130,6 +130,21 @@
     E2200N,
     E2200S,
     E2200T,
+    E22030,
+    E22032,
+    E22033,
+    E22034,
+    E22035,
+    E22036,
+    E22037,
+    E22038,
+    E22039,
+    E2203A,
+    E2203B,
+    E2203C,
+    E2203D,
+    E2203E,
+    E2203F,
     E23000,
     E23001,
     E23502,
@@ -241,6 +256,7 @@
     E55006,
     E55P02,
     E55P03,
+    E55P04,
     E57000,
     E57014,
     E57P01,
@@ -433,6 +449,21 @@ const InvalidXmlDocument = PQResultError{C22, E2200M}
 const InvalidXmlContent = PQResultError{C22, E2200N}
 const InvalidXmlComment = PQResultError{C22, E2200S}
 const InvalidXmlProcessingInstruction = PQResultError{C22, E2200T}
+const DuplicateJsonObjectKeyValue = PQResultError{C22, E22030}
+const InvalidJsonText = PQResultError{C22, E22032}
+const InvalidSqlJsonSubscript = PQResultError{C22, E22033}
+const MoreThanOneSqlJsonItem = PQResultError{C22, E22034}
+const NoSqlJsonItem = PQResultError{C22, E22035}
+const NonNumericSqlJsonItem = PQResultError{C22, E22036}
+const NonUniqueKeysInAJsonObject = PQResultError{C22, E22037}
+const SingletonSqlJsonItemRequired = PQResultError{C22, E22038}
+const SqlJsonArrayNotFound = PQResultError{C22, E22039}
+const SqlJsonMemberNotFound = PQResultError{C22, E2203A}
+const SqlJsonNumberNotFound = PQResultError{C22, E2203B}
+const SqlJsonObjectNotFound = PQResultError{C22, E2203C}
+const TooManyJsonArrayElements = PQResultError{C22, E2203D}
+const TooManyJsonObjectMembers = PQResultError{C22, E2203E}
+const SqlJsonScalarRequired = PQResultError{C22, E2203F}
 
 
 const IntegrityConstraintViolationErrorClass = PQResultError{C23}
@@ -628,6 +659,7 @@ const ObjectNotInPrerequisiteState = PQResultError{C55, E55000}
 const ObjectInUse = PQResultError{C55, E55006}
 const CantChangeRuntimeParam = PQResultError{C55, E55P02}
 const LockNotAvailable = PQResultError{C55, E55P03}
+const UnsafeNewEnumValueUsage = PQResultError{C55, E55P04}
 
 
 const OperatorInterventionErrorClass = PQResultError{C57}
@@ -793,6 +825,21 @@ const ERROR_NAMES = Dict(
     InvalidXmlContent => "InvalidXmlContent",
     InvalidXmlComment => "InvalidXmlComment",
     InvalidXmlProcessingInstruction => "InvalidXmlProcessingInstruction",
+    DuplicateJsonObjectKeyValue => "DuplicateJsonObjectKeyValue",
+    InvalidJsonText => "InvalidJsonText",
+    InvalidSqlJsonSubscript => "InvalidSqlJsonSubscript",
+    MoreThanOneSqlJsonItem => "MoreThanOneSqlJsonItem",
+    NoSqlJsonItem => "NoSqlJsonItem",
+    NonNumericSqlJsonItem => "NonNumericSqlJsonItem",
+    NonUniqueKeysInAJsonObject => "NonUniqueKeysInAJsonObject",
+    SingletonSqlJsonItemRequired => "SingletonSqlJsonItemRequired",
+    SqlJsonArrayNotFound => "SqlJsonArrayNotFound",
+    SqlJsonMemberNotFound => "SqlJsonMemberNotFound",
+    SqlJsonNumberNotFound => "SqlJsonNumberNotFound",
+    SqlJsonObjectNotFound => "SqlJsonObjectNotFound",
+    TooManyJsonArrayElements => "TooManyJsonArrayElements",
+    TooManyJsonObjectMembers => "TooManyJsonObjectMembers",
+    SqlJsonScalarRequired => "SqlJsonScalarRequired",
     IntegrityConstraintViolation => "IntegrityConstraintViolation",
     RestrictViolation => "RestrictViolation",
     NotNullViolation => "NotNullViolation",
@@ -904,6 +951,7 @@ const ERROR_NAMES = Dict(
     ObjectInUse => "ObjectInUse",
     CantChangeRuntimeParam => "CantChangeRuntimeParam",
     LockNotAvailable => "LockNotAvailable",
+    UnsafeNewEnumValueUsage => "UnsafeNewEnumValueUsage",
     OperatorIntervention => "OperatorIntervention",
     QueryCanceled => "QueryCanceled",
     AdminShutdown => "AdminShutdown",
