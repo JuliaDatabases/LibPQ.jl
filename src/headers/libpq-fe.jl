@@ -286,7 +286,7 @@ function PQconnectStart(conninfo)
     ccall((:PQconnectStart, LIBPQ_HANDLE), Ptr{PGconn}, (Cstring,), conninfo)
 end
 
-function PQconnectStartParams(keywords, values, expand_dbname::Cint)
+function PQconnectStartParams(keywords, values, expand_dbname)
     ccall((:PQconnectStartParams, LIBPQ_HANDLE), Ptr{PGconn}, (Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Cint), keywords, values, expand_dbname)
 end
 

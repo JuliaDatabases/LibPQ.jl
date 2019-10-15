@@ -32,6 +32,21 @@ const CONNECTION_PARAMETER_DEFAULTS = _connection_parameter_dict(
     connection_options=CONNECTION_OPTION_DEFAULTS
 )
 
+# https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-PQCONNECTSTARTPARAMS
+const CONNECTION_STATUS_MESSAGES = Dict{libpq_c.ConnStatusType, String}(
+    libpq_c.CONNECTION_OK => "Connection is ready",
+    libpq_c.CONNECTION_BAD => "Connection failed",
+    libpq_c.CONNECTION_STARTED => "Waiting for connection to be made",
+    libpq_c.CONNECTION_MADE => "Connection OK; waiting to send",
+    libpq_c.CONNECTION_AWAITING_RESPONSE => "Waiting for a response from the server",
+    libpq_c.CONNECTION_AUTH_OK => "Received authentication; waiting for backend start-up to finish",
+    libpq_c.CONNECTION_SETENV => "Negotiating environment-driven parameter settings",
+    libpq_c.CONNECTION_SSL_STARTUP => "Negotiating SSL encryption",
+    libpq_c.CONNECTION_CHECK_WRITABLE => "Checking if connection is able to handle write transactions",
+    libpq_c.CONNECTION_CONSUME => "Consuming any remaining response messages on connection",
+    libpq_c.CONNECTION_GSS_STARTUP => "Negotiating GSSAPI",
+)
+
 "A connection to a PostgreSQL database."
 mutable struct Connection
     "A pointer to a libpq PGconn object (C_NULL if closed)"
@@ -95,7 +110,7 @@ function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
     if status(jl_conn) == libpq_c.CONNECTION_BAD
         if jl_conn.conn == C_NULL
             err = Errors.JLConnectionError(
-                "libpq ould not allocate memory for the connection struct"
+                "libpq could not allocate memory for the connection struct"
             )
         else
             err = Errors.PQConnectionError(jl_conn)
@@ -132,6 +147,44 @@ function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
     end
 
     return jl_conn
+end
+
+# Perform the connection loop as specified in
+# https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-PQCONNECTSTARTPARAMS
+# NOTE: this uses the non-blocking interface but this function does block!
+function _connect_nonblocking(keywords, values, expand_dbname)
+    conn = libpq_c.PQconnectStartParams(keywords, values, expand_dbname)
+    c_state = libpq_c.PQstatus(conn)
+
+    # This is also true when `conn == C_NULL`
+    c_state == libpq_c.CONNECTION_BAD && return conn
+
+    # Log initial state
+    msg = get(CONNECTION_STATUS_MESSAGES, c_state, "Connecting")
+    debug(LOGGER, "Connection $conn: $msg")
+
+    p_state = libpq_c.PGRES_POLLING_WRITING
+    while p_state != libpq_c.PGRES_POLLING_FAILED && p_state != libpq_c.PGRES_POLLING_OK
+        # PostgreSQL docs say we can't assume that the socket will remain the same while
+        # connecting
+        if p_state == libpq_c.PGRES_POLLING_WRITING
+            wait(socket(conn); writable=true)
+        elseif p_state == libpq_c.PGRES_POLLING_READING
+            wait(socket(conn); readable=true)
+        end
+
+        p_state = libpq_c.PQconnectPoll(conn)
+
+        # Only print connection status when it changes
+        new_c_state = libpq_c.PQstatus(conn)
+        if new_c_state != c_state
+            c_state = new_c_state
+            msg = get(CONNECTION_STATUS_MESSAGES, c_state, "Connecting")
+            debug(LOGGER, "Connection $conn: $msg")
+        end
+    end
+
+    return conn
 end
 
 """
@@ -199,7 +252,7 @@ function Connection(
 
     # Make the connection
     debug(LOGGER, "Connecting to $str")
-    jl_conn = Connection(libpq_c.PQconnectdbParams(keywords, values, false); kwargs...)
+    jl_conn = Connection(_connect_nonblocking(keywords, values, false); kwargs...)
 
     # If password needed and not entered, prompt the user
     if libpq_c.PQconnectionNeedsPassword(jl_conn.conn) == 1
@@ -212,7 +265,7 @@ function Connection(
         push!(values, read(pass, String))
         Base.shred!(pass)
         return handle_new_connection(
-            Connection(libpq_c.PQconnectdbParams(keywords, values, false); kwargs...);
+            Connection(_connect_nonblocking(keywords, values, false); kwargs...);
             throw_error=throw_error,
         )
     else
@@ -676,11 +729,13 @@ function Base.show(io::IO, jl_conn::Connection)
     end
 end
 
-function socket(jl_conn::Connection)
-    socket_int = libpq_c.PQsocket(jl_conn.conn)
+function socket(conn::Ptr{libpq_c.PGconn})
+    socket_int = libpq_c.PQsocket(conn)
     @static if Sys.iswindows()
         return Base.WindowsRawSocket(Ptr{Cvoid}(Int(socket_int)))
     else
         return RawFD(socket_int)
     end
 end
+
+socket(jl_conn::Connection) = socket(jl_conn.conn)
