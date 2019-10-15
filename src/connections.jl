@@ -93,7 +93,13 @@ returned `Connection`.
 """
 function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
     if status(jl_conn) == libpq_c.CONNECTION_BAD
-        err = Errors.PQConnectionError(jl_conn)
+        if jl_conn.conn == C_NULL
+            err = Errors.JLConnectionError(
+                "libpq ould not allocate memory for the connection struct"
+            )
+        else
+            err = Errors.PQConnectionError(jl_conn)
+        end
 
         if throw_error
             close(jl_conn)
