@@ -162,6 +162,10 @@ InvalidOid() = Oid(0)
     CONNECTION_SETENV,
     CONNECTION_SSL_STARTUP,
     CONNECTION_NEEDED,
+    CONNECTION_CHECK_WRITABLE,
+    CONNECTION_CONSUME,
+    CONNECTION_GSS_STARTUP,
+    CONNECTION_CHECK_TARGET,
 )
 
 @enum(PostgresPollingStatusType::Cuint,
@@ -282,7 +286,7 @@ function PQconnectStart(conninfo)
     ccall((:PQconnectStart, LIBPQ_HANDLE), Ptr{PGconn}, (Cstring,), conninfo)
 end
 
-function PQconnectStartParams(keywords, values, expand_dbname::Cint)
+function PQconnectStartParams(keywords, values, expand_dbname)
     ccall((:PQconnectStartParams, LIBPQ_HANDLE), Ptr{PGconn}, (Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Cint), keywords, values, expand_dbname)
 end
 
