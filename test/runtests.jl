@@ -590,6 +590,18 @@ end
         end
 
         @testset "Bad Connection" begin
+            @testset "timeout" begin
+                try
+                    # could be any SSL connection, just need to get through one stage of
+                    # processing successfully so it has an opportunity to time out
+                    LibPQ.Connection("host=enterprisedb.com port=443"; connect_timeout=0.01)
+                    @test false
+                catch err
+                    @test err isa LibPQ.Errors.JLConnectionError
+                    @test occursin("timed out", sprint(showerror, err))
+                end
+            end
+
             @testset "throw_error=false" begin
                 conn = LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=false)
                 @test conn isa LibPQ.Connection
