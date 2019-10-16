@@ -107,13 +107,19 @@ Otherwise, a warning will be shown and the user should call `close` or `reset!` 
 returned `Connection`.
 """
 function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
-    if status(jl_conn) == libpq_c.CONNECTION_BAD
-        if jl_conn.conn == C_NULL
-            err = Errors.JLConnectionError(
-                "libpq could not allocate memory for the connection struct"
-            )
+    conn_status = status(jl_conn)
+    if conn_status != libpq_c.CONNECTION_OK
+        if conn_status == libpq_c.CONNECTION_BAD
+            if jl_conn.conn == C_NULL
+                err = Errors.JLConnectionError(
+                    "libpq could not allocate memory for the connection struct"
+                )
+            else
+                err = Errors.PQConnectionError(jl_conn)
+            end
         else
-            err = Errors.PQConnectionError(jl_conn)
+            # all other states happen during the connection process
+            err = Errors.JLConnectionError("Connection process timed out")
         end
 
         if throw_error
@@ -152,7 +158,9 @@ end
 # Perform the connection loop as specified in
 # https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-PQCONNECTSTARTPARAMS
 # NOTE: this uses the non-blocking interface but this function does block!
-function _connect_nonblocking(keywords, values, expand_dbname)
+# If the connection times out, handle_new_connection will log/throw the error
+function _connect_nonblocking(keywords, values, expand_dbname; timeout=0)
+    timer = Timer(timeout)
     conn = libpq_c.PQconnectStartParams(keywords, values, expand_dbname)
     c_state = libpq_c.PQstatus(conn)
 
@@ -182,6 +190,9 @@ function _connect_nonblocking(keywords, values, expand_dbname)
             msg = get(CONNECTION_STATUS_MESSAGES, c_state, "Connecting")
             debug(LOGGER, "Connection $conn: $msg")
         end
+
+        # connection timed out
+        timeout > 0 && !isopen(timer) && break
     end
 
     return conn
@@ -191,6 +202,7 @@ end
     Connection(
         str::AbstractString;
         throw_error::Bool=true,
+        connect_timeout::Real=0,
         type_map::AbstractDict=LibPQ.PQTypeMap(),
         conversions::AbstractDict=LibPQ.PQConversions(),
         options::Dict{String, String}=LibPQ.CONNECTION_OPTION_DEFAULTS,
@@ -198,6 +210,9 @@ end
 
 Create a `Connection` from a connection string as specified in the PostgreSQL
 documentation ([33.1.1. Connection Strings](https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-CONNSTRING)).
+
+If `connect_timeout > 0` and that amount of seconds elapses without succesfully connecting,
+give up and log throw an error (depending on `throw_error`).
 
 For information on the `type_map` and `conversions` arguments, see [Type Conversions](@ref typeconv).
 
@@ -223,6 +238,7 @@ To use the defaults provided by the server, use
 function Connection(
     str::AbstractString;
     throw_error::Bool=true,
+    connect_timeout::Real=0,
     options::Dict{String, String}=CONNECTION_OPTION_DEFAULTS,
     kwargs...
 )
@@ -252,7 +268,9 @@ function Connection(
 
     # Make the connection
     debug(LOGGER, "Connecting to $str")
-    jl_conn = Connection(_connect_nonblocking(keywords, values, false); kwargs...)
+    jl_conn = Connection(
+        _connect_nonblocking(keywords, values, false; timeout=connect_timeout); kwargs...
+    )
 
     # If password needed and not entered, prompt the user
     if libpq_c.PQconnectionNeedsPassword(jl_conn.conn) == 1
@@ -265,7 +283,10 @@ function Connection(
         push!(values, read(pass, String))
         Base.shred!(pass)
         return handle_new_connection(
-            Connection(_connect_nonblocking(keywords, values, false); kwargs...);
+            Connection(
+                _connect_nonblocking(keywords, values, false; timeout=connect_timeout);
+                kwargs...
+            );
             throw_error=throw_error,
         )
     else
