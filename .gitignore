@@ -5,6 +5,7 @@
 /docs/build/
 /docs/site/
 /deps/deps.jl
+/deps/deps_OpenSSL.jl
 /deps/usr/
 /deps/build.log
 /Manifest.toml
