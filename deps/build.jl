@@ -41,7 +41,7 @@ if any(!satisfied(p; verbose=verbose) for p in products)
         url, tarball_hash = choose_download(download_info)
         install(url, tarball_hash; prefix=prefix, force=true, verbose=true)
     catch e
-        if typeof(e) <: ArgumentError
+        if e isa ArgumentError
             error("Your platform $(Sys.MACHINE) is not supported by this package!")
         else
             rethrow(e)
