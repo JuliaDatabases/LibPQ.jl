@@ -1453,7 +1453,17 @@ end
                 ar.result_task,
                 Base.IOError("FDWatcher: bad file descriptor (EBADF)", -9),
             )
-            @test_throws LibPQ.Errors.JLConnectionError wait(ar)
+            try
+                wait(ar)
+                @test false
+            catch err
+                if VERSION >= v"1.3.0-alpha.110"
+                    while err isa TaskFailedException
+                        err = err.task.exception
+                    end
+                end
+                @test err isa LibPQ.Errors.JLConnectionError
+            end
 
             close(conn)
         end
