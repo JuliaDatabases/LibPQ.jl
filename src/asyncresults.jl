@@ -91,7 +91,7 @@ function _consume(jl_conn::Connection)
             wait(watcher)
             debug(LOGGER, "Consuming input from connection $(jl_conn.conn)")
             success = libpq_c.PQconsumeInput(jl_conn.conn) == 1
-            !success && error(LOGGER, error_message(jl_conn))
+            !success && error(LOGGER, Errors.PQConnectionError(jl_conn))
 
             while libpq_c.PQisBusy(jl_conn.conn) == 0
                 debug(LOGGER, "Checking the result from connection $(jl_conn.conn)")
