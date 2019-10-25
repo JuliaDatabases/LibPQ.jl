@@ -159,9 +159,13 @@ end
 # https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-PQCONNECTSTARTPARAMS
 # NOTE: this uses the non-blocking interface but this function does block!
 # If the connection times out, handle_new_connection will log/throw the error
-function _connect_nonblocking(keywords, values, expand_dbname; timeout=0)
+function _connect_nonblocking(keywords, values, expand_dbname; timeout::Real=0)
     timer = Timer(timeout)
     conn = libpq_c.PQconnectStartParams(keywords, values, expand_dbname)
+    return _connect_poll(conn, timer, timeout)
+end
+
+function _connect_poll(conn::Ptr{libpq_c.PGconn}, timer::Timer, timeout::Real)
     c_state = libpq_c.PQstatus(conn)
 
     # This is also true when `conn == C_NULL`
