@@ -602,6 +602,29 @@ end
                 end
             end
 
+            # I don't think it's actually possible to hit this error condition on Windows
+            # I also don't know if it's possible to reproduce this, given how sockets seem
+            # to work on Windows
+            @static if !Sys.iswindows()
+                @testset "closed socket (EBADF)" begin
+                    conn = LibPQ.libpq_c.PQconnectStart("dbname=123fake user=$DATABASE_USER")
+                    close(Base.Libc.FILE(LibPQ.socket(conn), "r"))  # close socket
+                    LibPQ._connect_poll(conn, Timer(0), 0)
+
+                    errs = map(LibPQ.Errors.PQConnectionError, [
+                        "could not receive data from server: Bad file descriptor\n",
+                        "could not get socket error status: Bad file descriptor\n",
+                    ])
+
+                    try
+                        LibPQ.handle_new_connection(LibPQ.Connection(conn))
+                        @test false
+                    catch err
+                        @test err in errs
+                    end
+                end
+            end
+
             @testset "throw_error=false" begin
                 conn = LibPQ.Connection("dbname=123fake user=$DATABASE_USER"; throw_error=false)
                 @test conn isa LibPQ.Connection

@@ -159,9 +159,13 @@ end
 # https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-PQCONNECTSTARTPARAMS
 # NOTE: this uses the non-blocking interface but this function does block!
 # If the connection times out, handle_new_connection will log/throw the error
-function _connect_nonblocking(keywords, values, expand_dbname; timeout=0)
+function _connect_nonblocking(keywords, values, expand_dbname; timeout::Real=0)
     timer = Timer(timeout)
     conn = libpq_c.PQconnectStartParams(keywords, values, expand_dbname)
+    return _connect_poll(conn, timer, timeout)
+end
+
+function _connect_poll(conn::Ptr{libpq_c.PGconn}, timer::Timer, timeout::Real)
     c_state = libpq_c.PQstatus(conn)
 
     # This is also true when `conn == C_NULL`
@@ -175,10 +179,22 @@ function _connect_nonblocking(keywords, values, expand_dbname; timeout=0)
     while p_state != libpq_c.PGRES_POLLING_FAILED && p_state != libpq_c.PGRES_POLLING_OK
         # PostgreSQL docs say we can't assume that the socket will remain the same while
         # connecting
-        if p_state == libpq_c.PGRES_POLLING_WRITING
-            wait(socket(conn); writable=true)
-        elseif p_state == libpq_c.PGRES_POLLING_READING
-            wait(socket(conn); readable=true)
+        try
+            if p_state == libpq_c.PGRES_POLLING_WRITING
+                wait(socket(conn); writable=true)
+            elseif p_state == libpq_c.PGRES_POLLING_READING
+                wait(socket(conn); readable=true)
+            end
+        catch err
+            # catch the scenario when the socket is closed while we're waiting for it
+            # the loop may repeat in order to get to the libpq_c.PGRES_POLLING_FAILED state
+            if err isa Base.IOError && err.code == -9  # EBADF
+                debug(() -> sprint(showerror, err), LOGGER)
+                # handle_new_connection should see CONNECTION_BAD and report:
+                # "could not receive data from server: Bad file descriptor"
+            else
+                rethrow(err)
+            end
         end
 
         p_state = libpq_c.PQconnectPoll(conn)
