@@ -83,6 +83,8 @@ function _consume(jl_conn::Connection)
     watcher = FDWatcher(socket(jl_conn), true, false)  # can wait for reads
     try
         while true
+            start = time()
+
             if async_result.should_cancel
                 debug(LOGGER, "Received cancel signal for connection $(jl_conn.conn)")
                 _cancel(jl_conn)
@@ -107,6 +109,10 @@ function _consume(jl_conn::Connection)
                     push!(result_ptrs, result_ptr)
                 end
             end
+
+            # Wait at least a second between polling
+            duration = time() - start
+            sleep(max(1 - duration, 0))
         end
     catch err
         if err isa Base.IOError && err.code == -9  # EBADF
