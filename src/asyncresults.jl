@@ -110,7 +110,7 @@ function _consume(jl_conn::Connection)
                 end
             end
 
-            # Wait at least a second between polling
+            # Wait at least a half-second between polling
             duration = time() - start
             sleep(max(0.5 - duration, 0.0))
         end
