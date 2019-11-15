@@ -112,7 +112,7 @@ function _consume(jl_conn::Connection)
 
             # Wait at least a second between polling
             duration = time() - start
-            sleep(max(1 - duration, 0))
+            sleep(max(0.5 - duration, 0.0))
         end
     catch err
         if err isa Base.IOError && err.code == -9  # EBADF
