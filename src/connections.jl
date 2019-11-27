@@ -166,6 +166,10 @@ function _connect_nonblocking(keywords, values, expand_dbname; timeout::Real=0)
 end
 
 function _connect_poll(conn::Ptr{libpq_c.PGconn}, timer::Timer, timeout::Real)
+    if timeout == 0
+        timeout = -1  # disables timeout for poll_fd
+    end
+
     c_state = libpq_c.PQstatus(conn)
 
     # This is also true when `conn == C_NULL`
@@ -183,13 +187,9 @@ function _connect_poll(conn::Ptr{libpq_c.PGconn}, timer::Timer, timeout::Real)
             wait_write = p_state == libpq_c.PGRES_POLLING_WRITING
             wait_read = p_state == libpq_c.PGRES_POLLING_READING
 
-            # poll_fd disables timeout at <0, so if we have 0 make sure it's actually less
             if wait_write || wait_read
                 event = poll_fd(
-                    socket(conn),
-                    timeout - 0.001;
-                    writable=wait_write,
-                    readable=wait_read,
+                    socket(conn), timeout; writable=wait_write, readable=wait_read
                 )
 
                 if event.timedout
