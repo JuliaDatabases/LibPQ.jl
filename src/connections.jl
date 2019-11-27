@@ -180,10 +180,15 @@ function _connect_poll(conn::Ptr{libpq_c.PGconn}, timer::Timer, timeout::Real)
         # PostgreSQL docs say we can't assume that the socket will remain the same while
         # connecting
         try
+            # poll_fd disables timeout at <0, so if we have 0 make sure it's actually less
             if p_state == libpq_c.PGRES_POLLING_WRITING
-                wait(socket(conn); writable=true)
+                event = poll_fd(socket(conn), timeout - 0.001; writable=true)
             elseif p_state == libpq_c.PGRES_POLLING_READING
-                wait(socket(conn); readable=true)
+                event = poll_fd(socket(conn), timeout - 0.001; readable=true)
+            end
+
+            if event.timedout
+                debug(LOGGER, "Connection $conn: timed out while waiting for socket")
             end
         catch err
             # catch the scenario when the socket is closed while we're waiting for it
