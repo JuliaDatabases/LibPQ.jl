@@ -133,6 +133,14 @@ function Base.iterate(pqv::PQValue, state)
     return (c, (sv, (new_sv_state,)))
 end
 
+"""
+    LibPQ.pqparse(::Type{T}, str::AbstractString) -> T
+
+Parse a value of type `T` from any `AbstractString`.
+This is used to parse PostgreSQL's output format
+"""
+function pqparse end
+
 ## integers
 _DEFAULT_TYPE_MAP[:int2] = Int16
 _DEFAULT_TYPE_MAP[:int4] = Int32
@@ -208,9 +216,7 @@ _trunc_seconds(str) = replace(str, r"(\.[\d]{3})\d+" => s"\g<1>")
 
 _DEFAULT_TYPE_MAP[:timestamp] = DateTime
 const TIMESTAMP_FORMAT = dateformat"y-m-d HH:MM:SS.s"  # .s is optional here
-function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timestamp]})
-    str = string_view(pqv)
-
+function pqparse(::Type{DateTime}, str::AbstractString)
     if str == "infinity"
         return typemax(DateTime)
     elseif str == "-infinity"
@@ -221,6 +227,9 @@ function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timestamp]})
     # since DateTime in Julia currently handles only milliseconds, see Issue #33
     str = replace(str, r"(\.[\d]{3})\d+" => s"\g<1>")
     return parse(DateTime, str, TIMESTAMP_FORMAT)
+end
+function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timestamp]})
+    pqparse(DateTime, string_view(pqv))
 end
 
 # ISO, YMD
@@ -363,6 +372,9 @@ function Base.parse(::Type{Dates.CompoundPeriod}, pqv::PQValue{PQ_SYSTEM_TYPES[:
 
     return Dates.CompoundPeriod(periods)
 end
+
+## ranges
+function Base.parse(::Type{})
 
 ## arrays
 # numeric arrays never have double quotes and always use ',' as a separator

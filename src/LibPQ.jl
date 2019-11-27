@@ -13,6 +13,7 @@ using DocStringExtensions
 using Decimals
 using FileWatching
 using Tables
+using Intervals
 using IterTools: imap
 using LayerDicts
 using Memento: Memento, getlogger, warn, info, error, debug

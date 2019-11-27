@@ -357,6 +357,18 @@ _array_element(el::AbstractString) = "\"$el\""
 _array_element(el::Missing) = "NULL"
 _array_element(el) = string_parameter(el)
 
+function string_parameter(interval::AbstractInterval)
+    inc = inclusivity(interval)
+
+    io = IOBuffer()
+    print(io, first(inc) ? '[' : '(')
+    print(io, string_parameter(first(interval)), ", ")
+    print(io, string_parameter(last(interval)))
+    print(io, last(inc) ? ']' : ')')
+
+    return String(take!(io))
+end
+
 """
     parameter_pointers(parameters::AbstractVector{<:Parameter}) -> Vector{Ptr{UInt8}}
 
