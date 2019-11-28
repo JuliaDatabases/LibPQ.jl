@@ -166,6 +166,10 @@ function _connect_nonblocking(keywords, values, expand_dbname; timeout::Real=0)
 end
 
 function _connect_poll(conn::Ptr{libpq_c.PGconn}, timer::Timer, timeout::Real)
+    if timeout == 0
+        timeout = -1  # disables timeout for poll_fd
+    end
+
     c_state = libpq_c.PQstatus(conn)
 
     # This is also true when `conn == C_NULL`
@@ -180,10 +184,17 @@ function _connect_poll(conn::Ptr{libpq_c.PGconn}, timer::Timer, timeout::Real)
         # PostgreSQL docs say we can't assume that the socket will remain the same while
         # connecting
         try
-            if p_state == libpq_c.PGRES_POLLING_WRITING
-                wait(socket(conn); writable=true)
-            elseif p_state == libpq_c.PGRES_POLLING_READING
-                wait(socket(conn); readable=true)
+            wait_write = p_state == libpq_c.PGRES_POLLING_WRITING
+            wait_read = p_state == libpq_c.PGRES_POLLING_READING
+
+            if wait_write || wait_read
+                event = poll_fd(
+                    socket(conn), timeout; writable=wait_write, readable=wait_read
+                )
+
+                if event.timedout
+                    debug(LOGGER, "Connection $conn: timed out while waiting for socket")
+                end
             end
         catch err
             # catch the scenario when the socket is closed while we're waiting for it
