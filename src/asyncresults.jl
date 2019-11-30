@@ -82,16 +82,21 @@ function _consume(jl_conn::Connection)
     result_ptrs = Ptr{libpq_c.PGresult}[]
     watcher = FDWatcher(socket(jl_conn), true, false)  # can wait for reads
     try
+        # Wait at least 5 seconds between emitting wait or consume log messages
+        last_log = time()
+
         while true
-            start = time()
+            curr = time()
+            last_log = curr - last_log > 5.0 ? curr : last_log
 
             if async_result.should_cancel
                 debug(LOGGER, "Received cancel signal for connection $(jl_conn.conn)")
                 _cancel(jl_conn)
             end
-            debug(LOGGER, "Waiting to read from connection $(jl_conn.conn)")
+
+            last_log == curr && debug(LOGGER, "Waiting to read from connection $(jl_conn.conn)")
             wait(watcher)
-            debug(LOGGER, "Consuming input from connection $(jl_conn.conn)")
+            last_log == curr && debug(LOGGER, "Consuming input from connection $(jl_conn.conn)")
             success = libpq_c.PQconsumeInput(jl_conn.conn) == 1
             !success && error(LOGGER, Errors.PQConnectionError(jl_conn))
 
@@ -109,10 +114,6 @@ function _consume(jl_conn::Connection)
                     push!(result_ptrs, result_ptr)
                 end
             end
-
-            # Wait at least a half-second between polling
-            duration = time() - start
-            sleep(max(0.5 - duration, 0.0))
         end
     catch err
         if err isa Base.IOError && err.code == -9  # EBADF
