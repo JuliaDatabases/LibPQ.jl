@@ -78,6 +78,14 @@ function handle_result(async_result::AsyncResult; throw_error=true)
 end
 
 function _consume(jl_conn::Connection)
+    # libpq does this to "give the data a push" and I don't know what that means but maybe
+    # this is important?
+    # https://github.com/postgres/postgres/blob/master/src/interfaces/libpq/fe-exec.c#L1266
+    # if we used non-blocking connections we would need to check for `1` as well
+    if libpq_c.PQflush(jl_conn.conn) < 0
+        error(LOGGER, Errors.PQConnectionError(jl_conn))
+    end
+
     async_result = jl_conn.async_result
     result_ptrs = Ptr{libpq_c.PGresult}[]
     watcher = FDWatcher(socket(jl_conn), true, false)  # can wait for reads
