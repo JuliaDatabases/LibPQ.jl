@@ -905,6 +905,18 @@ end
                 @test LibPQ.Errors.error_code(err) == LibPQ.Errors.E2201E
             end
 
+            @test sprint(show, LibPQ.Errors.C22) == "LibPQ.Errors.C22"
+            @test string(LibPQ.Errors.C22) == "C22"
+            @test sprint(LibPQ.Errors.C22) do io, class
+                show(io, MIME"text/plain"(), class)
+            end == "C22::LibPQ.Errors.Class"
+
+            @test sprint(show, LibPQ.Errors.E2201E) == "LibPQ.Errors.E2201E"
+            @test string(LibPQ.Errors.E2201E) == "E2201E"
+            @test sprint(LibPQ.Errors.E2201E) do io, code
+                show(io, MIME"text/plain"(), code)
+            end == "E2201E::LibPQ.Errors.ErrorCode"
+
             result = execute(conn, "SELECT log(-1);"; throw_error=false)
             err = LibPQ.Errors.PQResultError(result; verbose=false)
             verbose_err = LibPQ.Errors.PQResultError(result; verbose=true)
