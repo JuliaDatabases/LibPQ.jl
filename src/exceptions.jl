@@ -57,7 +57,7 @@ julia> try execute(conn, "SELORCT NUUL;") catch err println(err) end
 LibPQ.Errors.SyntaxError("ERROR:  syntax error at or near \\"SELORCT\\"\\nLINE 1: SELORCT NUUL;\\n        ^\\n")
 
 julia> LibPQ.Errors.SyntaxError
-LibPQ.Errors.PQResultError{C42,E42601}
+LibPQ.Errors.PQResultError{LibPQ.Errors.C42,LibPQ.Errors.E42601}
 ```
 """
 struct PQResultError{Class, Code} <: PostgreSQLException
