@@ -57,7 +57,7 @@ julia> try execute(conn, "SELORCT NUUL;") catch err println(err) end
 LibPQ.Errors.SyntaxError("ERROR:  syntax error at or near \\"SELORCT\\"\\nLINE 1: SELORCT NUUL;\\n        ^\\n")
 
 julia> LibPQ.Errors.SyntaxError
-LibPQ.Errors.PQResultError{C42,E42601}
+LibPQ.Errors.PQResultError{LibPQ.Errors.C42,LibPQ.Errors.E42601}
 ```
 """
 struct PQResultError{Class, Code} <: PostgreSQLException
@@ -74,9 +74,13 @@ end
 
 include("error_codes.jl")
 
-# use enum_name to get "C42" rather than "C42(31)"
-Base.show(io::IO, class::Class) = print(io, CEnum.enum_name(class))
-Base.show(io::IO, code::ErrorCode) = print(io, CEnum.enum_name(code))
+# avoid exposing the meaningless integer value of the enum
+function Base.show(io::IO, ::MIME"text/plain", class::Class)
+    print(io, class, "::", typeof(class))
+end
+function Base.show(io::IO, ::MIME"text/plain", code::ErrorCode)
+    print(io, code, "::", typeof(code))
+end
 
 Base.parse(::Type{Class}, str::AbstractString) = getfield(Errors, Symbol("C", str))
 Base.parse(::Type{ErrorCode}, str::AbstractString) = getfield(Errors, Symbol("E", str))
