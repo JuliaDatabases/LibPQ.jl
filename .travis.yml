@@ -58,7 +58,13 @@ matrix:
         - julia --project=docs/ docs/make.jl
       after_success: skip
 notifications:
-  email: false
+  email:
+    recipients:
+      - nightly-dev@invenia.ca
+    on_success: never
+    on_failure: always
+    if: type = cron
+
 # before_script:
 #   - psql -U postgres -tc 'SHOW server_version'
 #   - psql -U postgres -c '\conninfo'
