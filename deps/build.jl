@@ -34,6 +34,7 @@ download_info = Dict(
     Windows(:i686)          => ("$bin_prefix.i686-w64-mingw32.tar.gz", "a4bee02c6055b32bda872655e96c8605acd0d5c95dcf4d989a34d75064670cbd"),
     Windows(:x86_64)        => ("$bin_prefix.x86_64-w64-mingw32.tar.gz", "afc675e48772e772bef040c4b86227994f6bef9bc208b3ed9c4dc80b2570940c"),
 )
+
 # First, check to see if we're all satisfied
 if any(!satisfied(p; verbose=verbose) for p in products)
     try
@@ -47,7 +48,7 @@ if any(!satisfied(p; verbose=verbose) for p in products)
             rethrow(e)
         end
     end
-
-    # Finally, write out a deps.jl file
-    write_deps_file(joinpath(@__DIR__, "deps.jl"), products)
 end
+
+# Finally, write out a deps.jl file
+write_deps_file(joinpath(@__DIR__, "deps.jl"), products)
