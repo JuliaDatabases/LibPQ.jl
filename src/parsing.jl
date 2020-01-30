@@ -368,7 +368,11 @@ _DEFAULT_TYPE_MAP[:tsrange] = Interval{DateTime}
 _DEFAULT_TYPE_MAP[:tstzrange] = Interval{ZonedDateTime}
 _DEFAULT_TYPE_MAP[:daterange] = Interval{Date}
 
-const RANGE_REGEX = r"^([\[\(])([^\[\(\]\),]+),([^\[\(\]\),]+)([\]\)])$"
+# Matches anything but the start or end of an interval or a comma
+const RANGE_ITEM = "[^\\[\\(\\]\\),]+"
+# Makes sure the string starts and ends with a bracket or parentheses, has two items in the
+# interval, and a comma to separate the two items.
+const RANGE_REGEX = Regex("^([\\[\\(])($RANGE_ITEM),($RANGE_ITEM)([\\]\\)])\$")
 get_inclusivity(ch) = ch in ("[", "]") ? true : false
 
 function pqparse(::Type{Interval{T}}, str::AbstractString) where {T}
@@ -376,11 +380,11 @@ function pqparse(::Type{Interval{T}}, str::AbstractString) where {T}
         return Interval{T}()
     end
 
-    matched = eachmatch(RANGE_REGEX, str)
+    matched = match(RANGE_REGEX, str)
     if matched === nothing
         error("Couldn't parse $str as range using regex $RANGE_REGEX")
     else
-        matched = collect(matched)[1].captures
+        matched = matched.captures
     end
 
     start_inclusivity = get_inclusivity(matched[1])
