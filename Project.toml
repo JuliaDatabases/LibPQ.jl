@@ -1,7 +1,7 @@
 name = "LibPQ"
 uuid = "194296ae-ab2e-5f79-8cd4-7183a0a5a0d1"
 license = "MIT"
-version = "1.0.7"
+version = "1.1.0"
 
 [deps]
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
@@ -25,6 +25,7 @@ CEnum = "0.2"
 DataFrames = "0.14, 0.15, 0.16, 0.17, 0.18, 0.19"
 Decimals = "0.4.1"
 DocStringExtensions = "0.8.0"
+Intervals = "1"
 IterTools = "1"
 LayerDicts = "1"
 Memento = "0.10, 0.11, 0.12, 0.13, 1"
