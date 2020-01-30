@@ -1104,9 +1104,16 @@ end
                         ("'(3,7)'::int4range", Interval(Int32(4), Int32(7), true, false)),
                         ("'[4,4]'::int4range", Interval(Int32(4), Int32(5), true, false)),
                         ("'[4,4)'::int4range", Interval{Int32}()),  # Empty interval
+                        ("'[3,7)'::int8range", Interval(Int64(3), Int64(7), true, false)),
+                        ("'(3,7)'::int8range", Interval(Int64(4), Int64(7), true, false)),
+                        ("'[4,4]'::int8range", Interval(Int64(4), Int64(5), true, false)),
+                        ("'[4,4)'::int8range", Interval{Int64}()),  # Empty interval
+                        ("'[11.1,22.2)'::numrange", Interval(Decimal(11.1), Decimal(22.2), true, false)),
                         ("'[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange", Interval(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30), true, false)),
                         ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"), true, false)),
                         ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(2004, 10, 19, 13, 23, 54, tz"UTC"), true, false)),
+                        ("'[2004-10-19 10:23:54-02, Infinity)'::tstzrange", Interval(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"), true, false)),
+                        ("'(-Infinity, Infinity)'::tstzrange", Interval(ZonedDateTime(typemin(DateTime), tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"), false, false)),
                         ("'[2018/01/01, 2018/02/02)'::daterange", Interval(Date(2018, 1, 1), Date(2018, 2, 2), true, false)),
                     ]
 
@@ -1236,6 +1243,10 @@ end
                 close(result)
 
                 result = execute(conn, "SELECT '[4, 4]' = \$1", [Interval(Int32(4), Int32(4), true, true)])
+                @test first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT '[11.1, 22.2]' = \$1", [Interval(Decimal(11.1), Decimal(22.2), true, true)])
                 @test first(first(result))
                 close(result)
 

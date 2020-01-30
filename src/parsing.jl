@@ -112,8 +112,11 @@ Base.lastindex(pqv::PQValue) = lastindex(string_view(pqv))
     parse(::Type{T}, pqv::PQValue) -> T
 
 Parse a value of type `T` from a `PQValue`.
-By default, this uses any existing `pqparse` method for parsing a value of type `T` from a
+By default, this uses any existing `parse` method for parsing a value of type `T` from a
 `String`.
+
+You can implement default PostgreSQL-specific parsing for a given type by overriding
+`pqparse`.
 """
 Base.parse(::Type{T}, pqv::PQValue) where {T} = pqparse(T, string_view(pqv))
 
@@ -360,48 +363,34 @@ end
 ## ranges
 _DEFAULT_TYPE_MAP[:int4range] = Interval{Int32}
 _DEFAULT_TYPE_MAP[:int8range] = Interval{Int64}
+_DEFAULT_TYPE_MAP[:numrange] = Interval{Decimal}
 _DEFAULT_TYPE_MAP[:tsrange] = Interval{DateTime}
 _DEFAULT_TYPE_MAP[:tstzrange] = Interval{ZonedDateTime}
 _DEFAULT_TYPE_MAP[:daterange] = Interval{Date}
 
-const RANGE_REGEX = r"[^\[\(\]\),]+"
+const RANGE_REGEX = r"^([\[\(])([^\[\(\]\),]+),([^\[\(\]\),]+)([\]\)])$"
+get_inclusivity(ch) = ch in ("[", "]") ? true : false
 
 function pqparse(::Type{Interval{T}}, str::AbstractString) where {T}
     if str == "empty"
         return Interval{T}()
     end
 
-    start_inclusivity, end_inclusivity = get_inclusivity(str)
-
     matched = eachmatch(RANGE_REGEX, str)
     if matched === nothing
         error("Couldn't parse $str as range using regex $RANGE_REGEX")
     else
-        matched = collect(matched)
+        matched = collect(matched)[1].captures
     end
-    if length(matched) !=  2
-        error("Couldn't parse $str as range using regex $RANGE_REGEX")
-    end
+
+    start_inclusivity = get_inclusivity(matched[1])
+    end_inclusivity = get_inclusivity(matched[4])
 
     # Datetime formats have quotes around them so we strip those out
-    start = pqparse(T, strip(matched[1].match, ['"']))
-    endpoint = pqparse(T, strip(matched[2].match, ['"']))
+    start = pqparse(T, strip(matched[2], ['"']))
+    endpoint = pqparse(T, strip(matched[3], ['"']))
 
     return Interval(start, endpoint, start_inclusivity, end_inclusivity)
-end
-
-function get_inclusivity(str::AbstractString)
-    if match(r"\(.*\)", str) !== nothing
-        return false, false
-    elseif match(r"\[.*\]", str) !== nothing
-        return true, true
-    elseif match(r"\[.*\)", str) !== nothing
-        return true, false
-    elseif match(r"\(.*\]", str) !== nothing
-        return false, true
-    else
-        error("Couldn't parse $str as range: invalid inclusivity.")
-    end
 end
 
 ## arrays
