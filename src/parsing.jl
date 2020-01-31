@@ -101,7 +101,6 @@ is not in UTF-8.
 bytes_view(pqv::PQValue) = unsafe_wrap(Vector{UInt8}, data_pointer(pqv), num_bytes(pqv) + 1)
 
 Base.String(pqv::PQValue) = unsafe_string(pqv)
-Base.parse(::Type{String}, pqv::PQValue) = unsafe_string(pqv)
 Base.convert(::Type{String}, pqv::PQValue) = String(pqv)
 Base.length(pqv::PQValue) = length(string_view(pqv))
 Base.lastindex(pqv::PQValue) = lastindex(string_view(pqv))
@@ -115,23 +114,25 @@ Base.lastindex(pqv::PQValue) = lastindex(string_view(pqv))
 Parse a value of type `T` from a `PQValue`.
 By default, this uses any existing `parse` method for parsing a value of type `T` from a
 `String`.
+
+You can implement default PostgreSQL-specific parsing for a given type by overriding
+`pqparse`.
 """
-Base.parse(::Type{T}, pqv::PQValue) where {T} = parse(T, string_view(pqv))
+Base.parse(::Type{T}, pqv::PQValue) where {T} = pqparse(T, string_view(pqv))
+
+"""
+    LibPQ.pqparse(::Type{T}, str::AbstractString) -> T
+
+Parse a value of type `T` from any `AbstractString`.
+This is used to parse PostgreSQL's output format.
+"""
+function pqparse end
+
+# Fallback method
+pqparse(::Type{T}, str::AbstractString) where {T} = parse(T, str)
 
 # allow parsing as a Symbol anything which works as a String
-Base.parse(::Type{Symbol}, pqv::PQValue) = Symbol(string_view(pqv))
-
-function Base.iterate(pqv::PQValue)
-    sv = string_view(pqv)
-    iterate(pqv, (sv, ()))
-end
-function Base.iterate(pqv::PQValue, state)
-    sv, i = state
-    iter = iterate(sv, i...)
-    iter === nothing && return nothing
-    c, new_sv_state = iter
-    return (c, (sv, (new_sv_state,)))
-end
+pqparse(::Type{Symbol}, str::AbstractString) = Symbol(str)
 
 ## integers
 _DEFAULT_TYPE_MAP[:int2] = Int16
@@ -152,21 +153,26 @@ _DEFAULT_TYPE_MAP[:numeric] = Decimal
 
 ## character
 # bpchar is char(n)
-function Base.parse(::Type{String}, pqv::PQValue{PQ_SYSTEM_TYPES[:bpchar]})
-    return String(rstrip(string_view(pqv), ' '))
+function pqparse(::Type{String}, str::AbstractString)
+    return String(rstrip(str, ' '))
 end
 # char is "char"
 _DEFAULT_TYPE_MAP[:char] = PQChar
-Base.parse(::Type{PQChar}, pqv::PQValue{PQ_SYSTEM_TYPES[:char]}) = PQChar(first(pqv))
-Base.parse(::Type{Char}, pqv::PQValue{PQ_SYSTEM_TYPES[:char]}) = Char(parse(PQChar, pqv))
+pqparse(::Type{PQChar}, str::AbstractString) = PQChar(first(str))
+pqparse(::Type{Char}, str::AbstractString) = Char(pqparse(PQChar, str))
 # varchar, text, and name are all String
 
 ## binary data
 
 _DEFAULT_TYPE_MAP[:bytea] = Vector{UInt8}
+
+# Needs it's own `parse` method as it uses bytes_view instead of string_view
 function Base.parse(::Type{Vector{UInt8}}, pqv::PQValue{PQ_SYSTEM_TYPES[:bytea]})
+    pqparse(Vector{UInt8}, bytes_view(pqv))
+end
+
+function pqparse(::Type{Vector{UInt8}}, bytes::Array{UInt8,1})
     byte_length = Ref{Csize_t}(0)
-    bytes = bytes_view(pqv)
 
     unescaped_ptr = libpq_c.PQunescapeBytea(bytes, byte_length)
 
@@ -186,9 +192,7 @@ end
 _DEFAULT_TYPE_MAP[:bool] = Bool
 const BOOL_TRUE = r"^\s*(t|true|y|yes|on|1)\s*$"i
 const BOOL_FALSE = r"^\s*(f|false|n|no|off|0)\s*$"i
-function Base.parse(::Type{Bool}, pqv::PQValue{PQ_SYSTEM_TYPES[:bool]})
-    str = string_view(pqv)
-
+function pqparse(::Type{Bool}, str::AbstractString)
     if occursin(BOOL_TRUE, str)
         return true
     elseif occursin(BOOL_FALSE, str)
@@ -208,9 +212,7 @@ _trunc_seconds(str) = replace(str, r"(\.[\d]{3})\d+" => s"\g<1>")
 
 _DEFAULT_TYPE_MAP[:timestamp] = DateTime
 const TIMESTAMP_FORMAT = dateformat"y-m-d HH:MM:SS.s"  # .s is optional here
-function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timestamp]})
-    str = string_view(pqv)
-
+function pqparse(::Type{DateTime}, str::AbstractString)
     if str == "infinity"
         return typemax(DateTime)
     elseif str == "-infinity"
@@ -231,9 +233,7 @@ const TIMESTAMPTZ_FORMATS = (
     dateformat"y-m-d HH:MM:SS.ssz",
     dateformat"y-m-d HH:MM:SS.sssz",
 )
-function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timestamptz]})
-    str = string_view(pqv)
-
+function pqparse(::Type{ZonedDateTime}, str::AbstractString)
     if str == "infinity"
         return ZonedDateTime(typemax(DateTime), tz"UTC")
     elseif str == "-infinity"
@@ -249,9 +249,7 @@ function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:timesta
 end
 
 _DEFAULT_TYPE_MAP[:date] = Date
-function Base.parse(::Type{Date}, pqv::PQValue{PQ_SYSTEM_TYPES[:date]})
-    str = string_view(pqv)
-
+function pqparse(::Type{Date}, str::AbstractString)
     if str == "infinity"
         return typemax(Date)
     elseif str == "-infinity"
@@ -262,9 +260,7 @@ function Base.parse(::Type{Date}, pqv::PQValue{PQ_SYSTEM_TYPES[:date]})
 end
 
 _DEFAULT_TYPE_MAP[:time] = Time
-function Base.parse(::Type{Time}, pqv::PQValue{PQ_SYSTEM_TYPES[:time]})
-    str = string_view(pqv)
-
+function pqparse(::Type{Time}, str::AbstractString)
     try
         return parse(Time, str)
     catch err
@@ -316,12 +312,12 @@ end
 
 # parse the iso_8601 interval output format
 # https://www.postgresql.org/docs/10/datatype-datetime.html#DATATYPE-INTERVAL-OUTPUT
-function Base.parse(::Type{Dates.CompoundPeriod}, pqv::PQValue{PQ_SYSTEM_TYPES[:interval]})
+function pqparse(::Type{Dates.CompoundPeriod}, str::AbstractString)
     interval_regex = INTERVAL_REGEX[]
-    matched = match(interval_regex, string_view(pqv))
+    matched = match(interval_regex, str)
 
     if matched === nothing
-        error("Couldn't parse $(string_view(pqv)) as interval using regex $interval_regex")
+        error("Couldn't parse $str as interval using regex $interval_regex")
     end
 
     periods = Period[]
@@ -362,6 +358,43 @@ function Base.parse(::Type{Dates.CompoundPeriod}, pqv::PQValue{PQ_SYSTEM_TYPES[:
     end
 
     return Dates.CompoundPeriod(periods)
+end
+
+## ranges
+_DEFAULT_TYPE_MAP[:int4range] = Interval{Int32}
+_DEFAULT_TYPE_MAP[:int8range] = Interval{Int64}
+_DEFAULT_TYPE_MAP[:numrange] = Interval{Decimal}
+_DEFAULT_TYPE_MAP[:tsrange] = Interval{DateTime}
+_DEFAULT_TYPE_MAP[:tstzrange] = Interval{ZonedDateTime}
+_DEFAULT_TYPE_MAP[:daterange] = Interval{Date}
+
+# Matches anything but the start or end of an interval or a comma
+const RANGE_ITEM = "[^\\[\\(\\]\\),]+"
+# Makes sure the string starts and ends with a bracket or parentheses, has two items in the
+# interval, and a comma to separate the two items.
+const RANGE_REGEX = Regex("^([\\[\\(])($RANGE_ITEM),($RANGE_ITEM)([\\]\\)])\$")
+get_inclusivity(ch) = ch in ("[", "]") ? true : false
+
+function pqparse(::Type{Interval{T}}, str::AbstractString) where {T}
+    if str == "empty"
+        return Interval{T}()
+    end
+
+    matched = match(RANGE_REGEX, str)
+    if matched === nothing
+        error("Couldn't parse $str as range using regex $RANGE_REGEX")
+    else
+        matched = matched.captures
+    end
+
+    start_inclusivity = get_inclusivity(matched[1])
+    end_inclusivity = get_inclusivity(matched[4])
+
+    # Datetime formats have quotes around them so we strip those out
+    start = pqparse(T, strip(matched[2], ['"']))
+    endpoint = pqparse(T, strip(matched[3], ['"']))
+
+    return Interval(start, endpoint, start_inclusivity, end_inclusivity)
 end
 
 ## arrays
@@ -443,10 +476,10 @@ for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
     _DEFAULT_TYPE_MAP[array_oid] = AbstractArray{jl_missingtype}
 
     for jl_eltype in (jl_type, jl_missingtype)
-        @eval function Base.parse(
-            ::Type{A}, pqv::PQValue{$array_oid}
+        @eval function pqparse(
+            ::Type{A}, str::AbstractString
         ) where A <: AbstractArray{$jl_eltype}
-            parse_numeric_array($jl_eltype, string_view(pqv))::A
+            parse_numeric_array($jl_eltype, str)::A
         end
     end
 end

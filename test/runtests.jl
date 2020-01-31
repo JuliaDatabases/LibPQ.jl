@@ -4,6 +4,7 @@ using Dates
 using DataFrames
 using DataFrames: eachrow
 using Decimals
+using Intervals
 using IterTools: imap
 using Memento
 using Memento.TestUtils
@@ -1099,6 +1100,21 @@ end
                         ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copyto!(OffsetArray{Union{Missing, Float64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                         ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copyto!(OffsetArray{Union{Missing, LibPQ.Oid}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                         ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copyto!(OffsetArray{Union{Missing, Decimal}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                        ("'[3,7)'::int4range", Interval(Int32(3), Int32(7), true, false)),
+                        ("'(3,7)'::int4range", Interval(Int32(4), Int32(7), true, false)),
+                        ("'[4,4]'::int4range", Interval(Int32(4), Int32(5), true, false)),
+                        ("'[4,4)'::int4range", Interval{Int32}()),  # Empty interval
+                        ("'[3,7)'::int8range", Interval(Int64(3), Int64(7), true, false)),
+                        ("'(3,7)'::int8range", Interval(Int64(4), Int64(7), true, false)),
+                        ("'[4,4]'::int8range", Interval(Int64(4), Int64(5), true, false)),
+                        ("'[4,4)'::int8range", Interval{Int64}()),  # Empty interval
+                        ("'[11.1,22.2)'::numrange", Interval(Decimal(11.1), Decimal(22.2), true, false)),
+                        ("'[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange", Interval(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30), true, false)),
+                        ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"), true, false)),
+                        ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(2004, 10, 19, 13, 23, 54, tz"UTC"), true, false)),
+                        ("'[2004-10-19 10:23:54-02, Infinity)'::tstzrange", Interval(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"), true, false)),
+                        ("'(-Infinity, Infinity)'::tstzrange", Interval(ZonedDateTime(typemin(DateTime), tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"), false, false)),
+                        ("'[2018/01/01, 2018/02/02)'::daterange", Interval(Date(2018, 1, 1), Date(2018, 2, 2), true, false)),
                     ]
 
                     for (test_str, data) in test_data
@@ -1187,33 +1203,69 @@ end
         @testset "Parameters" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            result = execute(conn, "SELECT 'foo' = ANY(\$1)", [["bar", "foo"]])
-            @test first(first(result))
-            close(result)
+            @testset "Arrays" begin
+                result = execute(conn, "SELECT 'foo' = ANY(\$1)", [["bar", "foo"]])
+                @test first(first(result))
+                close(result)
 
-            result = execute(conn, "SELECT 'foo' = ANY(\$1)", (["bar", "foo"],))
-            @test first(first(result))
-            close(result)
+                result = execute(conn, "SELECT 'foo' = ANY(\$1)", (["bar", "foo"],))
+                @test first(first(result))
+                close(result)
 
-            result = execute(conn, "SELECT 'foo' = ANY(\$1)", [Any["bar", "foo"]])
-            @test first(first(result))
-            close(result)
+                result = execute(conn, "SELECT 'foo' = ANY(\$1)", [Any["bar", "foo"]])
+                @test first(first(result))
+                close(result)
 
-            result = execute(conn, "SELECT 'foo' = ANY(\$1)", Any[Any["bar", "foo"]])
-            @test first(first(result))
-            close(result)
+                result = execute(conn, "SELECT 'foo' = ANY(\$1)", Any[Any["bar", "foo"]])
+                @test first(first(result))
+                close(result)
 
-            result = execute(conn, "SELECT 'foo' = ANY(\$1)", [["bar", "foobar"]])
-            @test !first(first(result))
-            close(result)
+                result = execute(conn, "SELECT 'foo' = ANY(\$1)", [["bar", "foobar"]])
+                @test !first(first(result))
+                close(result)
 
-            result = execute(conn, "SELECT ARRAY[1, 2] = \$1", [[1, 2]])
-            @test first(first(result))
-            close(result)
+                result = execute(conn, "SELECT ARRAY[1, 2] = \$1", [[1, 2]])
+                @test first(first(result))
+                close(result)
 
-            result = execute(conn, "SELECT ARRAY[1, 2] = \$1", Any[Any[1, 2]])
-            @test first(first(result))
-            close(result)
+                result = execute(conn, "SELECT ARRAY[1, 2] = \$1", Any[Any[1, 2]])
+                @test first(first(result))
+                close(result)
+            end
+
+            @testset "Intervals" begin
+                result = execute(conn, "SELECT '[3, 7)' = \$1", [Interval(Int32(3), Int32(7), true, false)])
+                @test first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT '(3, 7)' = \$1", [Interval(Int32(3), Int32(7), false, false)])
+                @test first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT '[4, 4]' = \$1", [Interval(Int32(4), Int32(4), true, true)])
+                @test first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT '[11.1, 22.2]' = \$1", [Interval(Decimal(11.1), Decimal(22.2), true, true)])
+                @test first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT '[2010-01-01T14:30:00, 2010-01-01T15:30:00)' = \$1", [Interval(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30), true, false)])
+                @test first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT '[2010-01-01T14:30:00+00:00, 2010-01-01T15:30:00+00:00)' = \$1", [Interval(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"), true, false)])
+                @test first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT '[2010-01-01T14:30:00-02:00, 2010-01-01T15:30:00-02:00)' = \$1", [Interval(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC-2"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC-2"), true, false)])
+                @test first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT '(2018-01-01, 2018-02-02]' = \$1", [Interval(Date(2018, 1, 1), Date(2018, 2, 2), false, true)])
+                @test first(first(result))
+                close(result)
+            end
 
             close(conn)
         end
