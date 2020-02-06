@@ -744,7 +744,7 @@ function conninfo(str::AbstractString)
     if err_ref[] != C_NULL
         err_msg = unsafe_string(err_ref[])
         libpq_c.PQfreemem(err_ref[])
-        error(LOGGER, ConninfoParseError(err_msg))
+        error(LOGGER, Errors.ConninfoParseError(err_msg))
     end
 
     ci_array = conninfo(ci_ptr)

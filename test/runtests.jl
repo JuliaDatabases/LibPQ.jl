@@ -443,6 +443,9 @@ end
             results = columntable(execute(conn, "SELECT '1 12:59:10'::interval;"))
             @test results[1][1] == "@ 1 day 12 hours 59 mins 10 secs"
             close(conn)
+
+            # ERROR: missing "=" after "barf" in connection info string
+            @test_throws LibPQ.Errors.ConninfoParseError LibPQ.conninfo("wrong")
         end
 
         @testset "Time Zone" begin
