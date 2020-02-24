@@ -16,8 +16,8 @@ env:
     - PGHOST=localhost
     - PGPORT=5440
 before_install:
+  - sudo service restart docker
   - docker run --name libpqjl-postgresql -p $PGPORT:5432 -d postgres:$POSTGRESQL_VERSION-alpine
-  - sleep 5
 matrix:
   allow_failures:
     - julia: nightly
