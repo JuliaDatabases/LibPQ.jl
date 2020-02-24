@@ -15,8 +15,8 @@ env:
   global:
     - PGHOST=localhost
     - PGPORT=5440
+    - POSTGRES_HOST_AUTH_METHOD=trust
 before_install:
-  - sudo service restart docker
   - docker run --name libpqjl-postgresql -p $PGPORT:5432 -d postgres:$POSTGRESQL_VERSION-alpine
 matrix:
   allow_failures:
