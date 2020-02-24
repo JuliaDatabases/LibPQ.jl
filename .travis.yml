@@ -32,8 +32,7 @@ matrix:
       env:
         - PGPORT=5432 LIBPQJL_DATABASE_USER=travis
       before_install:
-        - brew update
-        - brew services start postgresql
+        - brew services start postgresql || brew update && brew services start postgresql
     - julia: 1.0
       os: linux
       before_script:
