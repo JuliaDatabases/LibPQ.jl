@@ -803,6 +803,52 @@ end
                 ) AS temp (no_nulls, yes_nulls)
                 ORDER BY no_nulls DESC;
                 """;
+                not_null=["no_nulls"],
+                throw_error=true,
+            )
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
+
+            data = columntable(result)
+
+            @test data[:no_nulls] == ["foo", "baz"]
+            @test data[:no_nulls] isa AbstractVector{String}
+            @test data[:yes_nulls][1] == "bar"
+            @test data[:yes_nulls][2] === missing
+            @test data[:yes_nulls] isa AbstractVector{Union{String, Missing}}
+
+            close(result)
+
+            result = execute(conn, """
+                SELECT no_nulls, yes_nulls FROM (
+                    VALUES ('foo', 'bar'), ('baz', NULL)
+                ) AS temp (no_nulls, yes_nulls)
+                ORDER BY no_nulls DESC;
+                """;
+                not_null=[:fake_column, :no_nulls],
+                throw_error=true,
+            )
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
+
+            data = columntable(result)
+
+            @test data[:no_nulls] == ["foo", "baz"]
+            @test data[:no_nulls] isa AbstractVector{String}
+            @test data[:yes_nulls][1] == "bar"
+            @test data[:yes_nulls][2] === missing
+            @test data[:yes_nulls] isa AbstractVector{Union{String, Missing}}
+
+            close(result)
+
+            result = execute(conn, """
+                SELECT no_nulls, yes_nulls FROM (
+                    VALUES ('foo', 'bar'), ('baz', NULL)
+                ) AS temp (no_nulls, yes_nulls)
+                ORDER BY no_nulls DESC;
+                """;
                 not_null=false,
                 throw_error=true,
             )
