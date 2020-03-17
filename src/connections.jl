@@ -130,8 +130,6 @@ function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
         end
     else
         debug(LOGGER, "Connection established: $(jl_conn.conn)")
-        # if connection is successful, set client_encoding
-        reset_encoding!(jl_conn)
     end
 
     # keep a reference to `closed` so it's not cleaned up before the connection is
@@ -596,6 +594,17 @@ function reset!(jl_conn::Connection; throw_error::Bool=true)
         end
 
         handle_new_connection(jl_conn; throw_error=throw_error)
+        if isopen(jl_conn)
+            try
+                reset_encoding!(jl_conn)
+            catch err
+                if throw_error
+                    rethrow(err)
+                else
+                    warn(LOGGER, err)
+                end
+            end
+        end
     else
         error(LOGGER, Errors.JLConnectionError(
             "Cannot reset a connection that has been closed"
