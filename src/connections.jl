@@ -504,7 +504,9 @@ Reset the client encoding for the current connection to `jl_conn.encoding`.
 See also: [`encoding`](@ref), [`set_encoding!`](@ref)
 """
 function reset_encoding!(jl_conn::Connection)
-    set_encoding!(jl_conn, jl_conn.encoding)
+    if encoding(jl_conn) != jl_conn.encoding
+        set_encoding!(jl_conn, jl_conn.encoding)
+    end
 end
 
 """
