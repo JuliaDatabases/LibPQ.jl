@@ -89,7 +89,9 @@ mutable struct Result
 
                 for col_name in not_null
                     col_num = column_number(jl_result, col_name)
-                    jl_result.not_null[col_num] = true
+                    if col_num > 0
+                        jl_result.not_null[col_num] = true
+                    end
                 end
             end
         else
