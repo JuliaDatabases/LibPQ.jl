@@ -21,7 +21,7 @@ To set the database user used to connect to the database, use the `LIBPQJL_DATAB
 A simple way to set up a server for testing is to use [Docker](https://hub.docker.com/search/?type=edition&offering=community):
 
 ```sh
-docker run --detach --name test-libpqjl -p 5432:5432 postgres
+docker run --detach --name test-libpqjl -p 5432:5432 -e POSTGRES_PASSWORD=Password12! postgres
 ```
 
 To set any other client options for connecting to the test database, use the [PostgreSQL environment variables](https://www.postgresql.org/docs/11/libpq-envars.html).
