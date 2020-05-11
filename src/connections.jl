@@ -450,7 +450,7 @@ Return the client encoding name for the current connection (see
 for possible values).
 
 Currently all Julia connections are set to use `UTF8` as this makes conversion to and from
-`String` straighforward.
+`String` straightforward.
 
 See also: [`set_encoding!`](@ref), [`reset_encoding!`](@ref)
 """
