@@ -60,7 +60,7 @@ it's possible to assert that columns do not contain `NULL` using the `not_null` 
 [`execute`](@ref).
 This will result in data retrieved as `T`/`Vector{T}` instead.
 `not_null` accepts a list of column names or column positions, or a `Bool` asserting that all
-columns do or do not have the possiblity of `NULL`.
+columns do or do not have the possibility of `NULL`.
 
 The type-related interfaces described below only deal with the `T` part of the `Union{T, Missing}`,
 and there is currently no way to use an alternate `NULL` representation.
