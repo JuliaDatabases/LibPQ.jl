@@ -25,3 +25,4 @@ docker run --detach --name test-libpqjl -e POSTGRES_HOST_AUTH_METHOD=trust -p 54
 ```
 
 To set any other client options for connecting to the test database, use the [PostgreSQL environment variables](https://www.postgresql.org/docs/12/libpq-envars.html).
+You will likely need to set `PGHOST=localhost` to connect using the TCP socket instead of the UNIX domain socket.
