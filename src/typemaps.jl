@@ -1,5 +1,5 @@
 """
-    const PQ_SYSTEM_TYPES::Dict{Symbol, Oid}
+    const PQ_SYSTEM_TYPES::NamedTuple{L, NTuple{N, Oid}} where {L, N}
 
 Internal mapping of PostgreSQL's default types from PostgreSQL internal name to Oid.
 The names may not correspond well to the common names, e.g., "char(n)" is :bpchar.
@@ -8,7 +8,7 @@ PostgreSQL's system-defined types.
 It is expected (but might not be guaranteed) that these are the same across versions and
 installations.
 """
-const PQ_SYSTEM_TYPES = Dict{Symbol, Oid}(
+const PQ_SYSTEM_TYPES = (;
     :bool => 16, :bytea => 17, :char => 18, :name => 19, :int8 => 20, :int2 => 21,
     :int2vector => 22, :int4 => 23, :regproc => 24, :text => 25, :oid => 26, :tid => 27,
     :xid => 28, :cid => 29, :oidvector => 30, :pg_ddl_command => 32, :pg_type => 71,
@@ -124,7 +124,7 @@ const PQ_SYSTEM_TYPES = Dict{Symbol, Oid}(
 )
 
 # If we ever need the reverse mapping:
-# const PQ_SYSTEM_OIDS = Dict{Oid, Symbol}((v => k) for (k, v) in PQ_SYSTEM_TYPES)
+# const PQ_SYSTEM_OIDS = Dict{Oid, Symbol}((v => k) for (k, v) in pairs(PQ_SYSTEM_TYPES))
 
 """
     oid(typ::Union{Symbol, String, Integer}) -> LibPQ.Oid
