@@ -369,11 +369,11 @@ _DEFAULT_TYPE_MAP[:tstzrange] = Interval{ZonedDateTime}
 _DEFAULT_TYPE_MAP[:daterange] = Interval{Date}
 
 # Matches anything but the start or end of an interval or a comma
-const RANGE_ITEM = "[^\\[\\(\\]\\),]+"
-# Makes sure the string starts and ends with a bracket or parentheses, has two items in the
-# interval, and a comma to separate the two items.
+const RANGE_ITEM = "[^\\[\\(\\]\\),]*"
+# Makes sure the string starts and ends with a bracket or parentheses and a comma separates
+# the items in the interval
 const RANGE_REGEX = Regex("^([\\[\\(])($RANGE_ITEM),($RANGE_ITEM)([\\]\\)])\$")
-get_inclusivity(ch) = ch in ("[", "]") ? true : false
+get_inclusivity(ch) = ch in ("[", "]") ? Closed : Open
 
 function pqparse(::Type{Interval{T}}, str::AbstractString) where {T}
     if str == "empty"
@@ -387,14 +387,24 @@ function pqparse(::Type{Interval{T}}, str::AbstractString) where {T}
         matched = matched.captures
     end
 
-    start_inclusivity = get_inclusivity(matched[1])
-    end_inclusivity = get_inclusivity(matched[4])
+    start_bounds = get_inclusivity(matched[1])
+    end_bounds = get_inclusivity(matched[4])
 
     # Datetime formats have quotes around them so we strip those out
-    start = pqparse(T, strip(matched[2], ['"']))
-    endpoint = pqparse(T, strip(matched[3], ['"']))
+    start = strip(matched[2], ['"'])
+    endpoint =strip(matched[3], ['"'])
 
-    return Interval(start, endpoint, start_inclusivity, end_inclusivity)
+    start = start == "" ? nothing : pqparse(T, start)
+    endpoint = endpoint == "" ? nothing : pqparse(T, endpoint)
+
+    if start === nothing
+        start_bounds = Unbounded
+    end
+    if endpoint === nothing
+        end_bounds = Unbounded
+    end
+
+    return Interval{T, start_bounds, end_bounds}(start, endpoint)
 end
 
 ## arrays

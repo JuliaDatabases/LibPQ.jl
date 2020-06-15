@@ -362,10 +362,22 @@ _array_element(el) = string_parameter(el)
 function string_parameter(interval::AbstractInterval)
     inc = inclusivity(interval)
 
+    start = string_parameter(first(interval))
+    endpoint = string_parameter(last(interval))
+
     io = IOBuffer()
     print(io, first(inc) ? '[' : '(')
-    print(io, string_parameter(first(interval)), ", ")
-    print(io, string_parameter(last(interval)))
+    if start != "nothing"
+        print(io, start)
+    end
+    print(io, ",")
+    if endpoint != "nothing"
+        if start == "nothing"
+            print(io, endpoint)
+        else
+            print(io, " ", endpoint)
+        end
+    end
     print(io, last(inc) ? ']' : ')')
 
     return String(take!(io))

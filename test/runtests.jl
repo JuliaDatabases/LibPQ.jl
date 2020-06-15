@@ -1164,6 +1164,17 @@ end
                         ("'[2004-10-19 10:23:54-02, Infinity)'::tstzrange", Interval(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"), true, false)),
                         ("'(-Infinity, Infinity)'::tstzrange", Interval(ZonedDateTime(typemin(DateTime), tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"), false, false)),
                         ("'[2018/01/01, 2018/02/02)'::daterange", Interval(Date(2018, 1, 1), Date(2018, 2, 2), true, false)),
+                        # Unbounded ranges
+                        ("'[3,)'::int4range", Interval(Int32(3), nothing)),
+                        ("'[3,]'::int4range", Interval(Int32(3), nothing)),
+                        ("'(3,)'::int4range", Interval{Closed, Unbounded}(Int32(4), nothing)),
+                        ("'(,3)'::int4range", Interval{Unbounded, Open}(nothing, Int32(3))),
+                        ("'(,3]'::int4range", Interval{Unbounded, Open}(nothing, Int32(4))),
+                        ("'[,]'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
+                        ("'(,)'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
+                        ("'[2010-01-01 14:30,)'::tsrange", Interval{Closed, Unbounded}(DateTime(2010, 1, 1, 14, 30), nothing)),
+                        ("'[,2010-01-01 15:30-00)'::tstzrange", Interval{Unbounded, Open}(nothing, ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
+                        ("'[2018/01/01,]'::daterange", Interval{Closed, Unbounded}(Date(2018, 1, 1), nothing)),
                     ]
 
                     for (test_str, data) in test_data
@@ -1314,6 +1325,44 @@ end
                 result = execute(conn, "SELECT '(2018-01-01, 2018-02-02]' = \$1", [Interval(Date(2018, 1, 1), Date(2018, 2, 2), false, true)])
                 @test first(first(result))
                 close(result)
+
+                @testset "Unbounded Ranges" begin
+                    result = execute(conn, "SELECT '[3,)'::int4range = \$1", [Interval(Int32(3), nothing)])
+                    @test first(first(result))
+                    close(result)
+
+                    result = execute(conn, "SELECT '(3,]'::int4range = \$1", [Interval{Closed, Unbounded}(Int32(4), nothing)])
+                    @test first(first(result))
+                    close(result)
+
+                    result = execute(conn, "SELECT '(,2)'::int4range = \$1", [Interval{Unbounded, Open}(nothing, Int32(2))])
+                    @test first(first(result))
+                    close(result)
+
+                    result = execute(conn, "SELECT '(,2]'::int4range = \$1", [Interval{Unbounded, Open}(nothing, Int32(3))])
+                    @test first(first(result))
+                    close(result)
+
+                    result = execute(conn, "SELECT '(,)'::int4range = \$1", [Interval{Unbounded, Unbounded}(nothing, nothing)])
+                    @test first(first(result))
+                    close(result)
+
+                    result = execute(conn, "SELECT '[,]'::int4range = \$1", [Interval{Unbounded, Unbounded}(nothing, nothing)])
+                    @test first(first(result))
+                    close(result)
+
+                    result = execute(conn, "SELECT '[2010-01-01T14:30:00,)'::tsrange = \$1", [Interval(DateTime(2010, 1, 1, 14, 30), nothing)])
+                    @test first(first(result))
+                    close(result)
+
+                    result = execute(conn, "SELECT '[2010-01-01T14:30:00+00:00,)'::tstzrange = \$1", [Interval(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), nothing)])
+                    @test first(first(result))
+                    close(result)
+
+                    result = execute(conn, "SELECT '(2018-01-01,]'::daterange = \$1", [Interval(Date(2018, 1, 2), nothing)])
+                    @test first(first(result))
+                    close(result)
+                end
             end
 
             close(conn)
