@@ -392,7 +392,7 @@ function pqparse(::Type{Interval{T}}, str::AbstractString) where {T}
 
     # Datetime formats have quotes around them so we strip those out
     start = strip(matched[2], ['"'])
-    endpoint =strip(matched[3], ['"'])
+    endpoint = strip(matched[3], ['"'])
 
     start = start == "" ? nothing : pqparse(T, start)
     endpoint = endpoint == "" ? nothing : pqparse(T, endpoint)

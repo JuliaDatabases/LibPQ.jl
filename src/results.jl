@@ -360,13 +360,13 @@ _array_element(el::Missing) = "NULL"
 _array_element(el) = string_parameter(el)
 
 function string_parameter(interval::AbstractInterval)
-    inc = inclusivity(interval)
+    start_bounds, end_bounds = bounds_types(interval)
 
     start = string_parameter(first(interval))
     endpoint = string_parameter(last(interval))
 
     io = IOBuffer()
-    print(io, first(inc) ? '[' : '(')
+    print(io, start_bounds == Closed ? '[' : '(')
     if start != "nothing"
         print(io, start)
     end
@@ -378,7 +378,7 @@ function string_parameter(interval::AbstractInterval)
             print(io, " ", endpoint)
         end
     end
-    print(io, last(inc) ? ']' : ')')
+    print(io, end_bounds == Closed ? ']' : ')')
 
     return String(take!(io))
 end
