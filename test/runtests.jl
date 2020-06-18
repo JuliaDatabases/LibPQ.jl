@@ -1108,18 +1108,18 @@ end
                         ("TIMESTAMP '2004-10-19 10:23:54'", DateTime(2004, 10, 19, 10, 23, 54)),
                         ("TIMESTAMP '2004-10-19 10:23:54.123'", DateTime(2004, 10, 19, 10, 23, 54,123)),
                         ("TIMESTAMP '2004-10-19 10:23:54.1234'", DateTime(2004, 10, 19, 10, 23, 54,123)),
-                        ("'infinity'::timestamp", InfExtendedTime{DateTime}(∞)),
-                        ("'-infinity'::timestamp", InfExtendedTime{DateTime}(-∞)),
+                        ("'infinity'::timestamp", typemax(DateTime)),
+                        ("'-infinity'::timestamp", typemin(DateTime)),
                         ("'epoch'::timestamp", DateTime(1970, 1, 1, 0, 0, 0)),
                         ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-00'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC")),
                         ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-02'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC-2")),
                         ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54+10'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC+10")),
-                        ("'infinity'::timestamptz", InfExtendedTime{ZonedDateTime}(∞)),
-                        ("'-infinity'::timestamptz", InfExtendedTime{ZonedDateTime}(-∞)),
+                        ("'infinity'::timestamptz", ZonedDateTime(typemax(DateTime), tz"UTC")),
+                        ("'-infinity'::timestamptz", ZonedDateTime(typemin(DateTime), tz"UTC")),
                         ("'epoch'::timestamptz", ZonedDateTime(1970, 1, 1, 0, 0, 0, tz"UTC")),
                         ("DATE '2017-01-31'", Date(2017, 1, 31)),
-                        ("'infinity'::date", InfExtendedTime{Date}(∞)),
-                        ("'-infinity'::date", InfExtendedTime{Date}(-∞)),
+                        ("'infinity'::date", typemax(Date)),
+                        ("'-infinity'::date", typemin(Date)),
                         ("TIME '13:13:13.131'", Time(13, 13, 13, 131)),
                         ("TIME '13:13:13.131242'", Time(13, 13, 13, 131)),
                         ("TIME '01:01:01'", Time(1, 1, 1)),
@@ -1213,7 +1213,31 @@ end
                         ("'foobar'", Symbol, :foobar),
                         ("0::int8", DateTime, DateTime(1970, 1, 1, 0)),
                         ("0::int8", ZonedDateTime, ZonedDateTime(1970, 1, 1, 0, tz"UTC")),
-                        ("'{{{1,2,3},{4,5,6}}}'::int2[]", AbstractArray{Int16}, reshape(Int16[1 2 3; 4 5 6], 1, 2, 3))
+                        ("'{{{1,2,3},{4,5,6}}}'::int2[]", AbstractArray{Int16}, reshape(Int16[1 2 3; 4 5 6], 1, 2, 3)),
+                        ("'infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(∞)),
+                        ("'-infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(-∞)),
+                        ("'infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(∞)),
+                        ("'-infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(-∞)),
+                        (
+                            "'[2004-10-19 10:23:54-02, infinity)'::tstzrange",
+                            Interval{InfExtendedTime{ZonedDateTime}},
+                            Interval(
+                                ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"),
+                                ∞,
+                                true,
+                                false
+                            )
+                        ),
+                        (
+                            "'(-infinity, infinity)'::tstzrange",
+                            Interval{InfExtendedTime{ZonedDateTime}},
+                            Interval(
+                                InfExtendedTime{ZonedDateTime}(-∞),
+                                InfExtendedTime{ZonedDateTime}(∞),
+                                false,
+                                false
+                            )
+                        ),
                     ]
 
                     for (test_str, typ, data) in test_data
@@ -1329,6 +1353,25 @@ end
                         @test first(first(result))
                         close(result)
                     end
+            end
+
+            @testset "InfExtendedTime" begin
+                tests = (
+                    ("'infinity'::date", InfExtendedTime{Date}(∞)),
+                    ("'-infinity'::date", InfExtendedTime{Date}(-∞)),
+                    ("'infinity'::timestamp", InfExtendedTime{DateTime}(∞)),
+                    ("'-infinity'::timestamp", InfExtendedTime{DateTime}(-∞)),
+                    ("'infinity'::timestamptz", InfExtendedTime{ZonedDateTime}(∞)),
+                    ("'-infinity'::timestamptz", InfExtendedTime{ZonedDateTime}(-∞)),
+                    ("'(-infinity, 2012-01-01]'::daterange", Interval{Open, Closed}(-∞, Date(2012, 1, 1))),
+                    ("'(2012-01-01, infinity]'::daterange", Interval{Open, Closed}(Date(2012, 1, 1), ∞)),
+                    ("'(-infinity, infinity)'::tstzrange", Interval{Open, Open}(InfExtendedTime{ZonedDateTime}(-∞), InfExtendedTime{ZonedDateTime}(∞)))
+                   )
+
+                for (pq_str, obj) in tests
+                    result = execute(conn, "SELECT $pq_str = \$1", [obj])
+                    @test first(first(result))
+                    close(result)
                 end
             end
 
