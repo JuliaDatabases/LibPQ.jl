@@ -371,6 +371,14 @@ function string_parameter(interval::AbstractInterval)
     return String(take!(io))
 end
 
+function string_parameter(parameter::InfExtendedTime{T}) where {T<:Dates.TimeType}
+    if isinf(parameter)
+        return isposinf(parameter) ? "infinity" : "-infinity"
+    else
+        return string_parameter(parameter.finitevalue)
+    end
+end
+
 """
     parameter_pointers(parameters::AbstractVector{<:Parameter}) -> Vector{Ptr{UInt8}}
 

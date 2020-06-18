@@ -214,9 +214,9 @@ _DEFAULT_TYPE_MAP[:timestamp] = DateTime
 const TIMESTAMP_FORMAT = dateformat"y-m-d HH:MM:SS.s"  # .s is optional here
 function pqparse(::Type{DateTime}, str::AbstractString)
     if str == "infinity"
-        return typemax(DateTime)
+        return InfExtendedTime{DateTime}(∞)
     elseif str == "-infinity"
-        return typemin(DateTime)
+        return InfExtendedTime{DateTime}(-∞)
     end
 
     # Cut off digits after the third after the decimal point,
@@ -235,9 +235,9 @@ const TIMESTAMPTZ_FORMATS = (
 )
 function pqparse(::Type{ZonedDateTime}, str::AbstractString)
     if str == "infinity"
-        return ZonedDateTime(typemax(DateTime), tz"UTC")
+        return InfExtendedTime{ZonedDateTime}(∞)
     elseif str == "-infinity"
-        return ZonedDateTime(typemin(DateTime), tz"UTC")
+        return InfExtendedTime{ZonedDateTime}(-∞)
     end
 
     for fmt in TIMESTAMPTZ_FORMATS[1:end-1]
@@ -251,9 +251,9 @@ end
 _DEFAULT_TYPE_MAP[:date] = Date
 function pqparse(::Type{Date}, str::AbstractString)
     if str == "infinity"
-        return typemax(Date)
+        return InfExtendedTime{Date}(∞)
     elseif str == "-infinity"
-        return typemin(Date)
+        return InfExtendedTime{Date}(-∞)
     end
 
     return parse(Date, str)

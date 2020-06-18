@@ -13,6 +13,8 @@ using DocStringExtensions
 using Decimals
 using FileWatching
 using Tables
+using Infinity
+using Infinity.Utils
 using Intervals
 using IterTools: imap
 using LayerDicts
