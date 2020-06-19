@@ -991,6 +991,23 @@ end
         end
 
         @testset "Type Conversions" begin
+            @testset "Deprecations" begin
+                conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+                result = execute(conn, "SELECT 'infinity'::timestamp;")
+
+                try
+                    oid = LibPQ.column_oids(result)[1]
+                    func = result.column_funcs[1]
+
+                    # Parsing this will show a depwarn
+                    @test (@test_deprecated func(LibPQ.PQValue{oid}(result, 1, 1))) == typemax(DateTime)
+                finally
+                    close(result)
+                end
+                close(conn)
+            end
+
             @testset "Automatic" begin
                 conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 

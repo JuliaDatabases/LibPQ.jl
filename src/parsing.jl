@@ -214,8 +214,10 @@ _DEFAULT_TYPE_MAP[:timestamp] = DateTime
 const TIMESTAMP_FORMAT = dateformat"y-m-d HH:MM:SS.s"  # .s is optional here
 function pqparse(::Type{DateTime}, str::AbstractString)
     if str == "infinity"
+        timetype_inf_warning()
         return typemax(DateTime)
     elseif str == "-infinity"
+        timetype_inf_warning()
         return typemin(DateTime)
     end
 
@@ -235,8 +237,10 @@ const TIMESTAMPTZ_FORMATS = (
 )
 function pqparse(::Type{ZonedDateTime}, str::AbstractString)
     if str == "infinity"
+        timetype_inf_warning()
         return ZonedDateTime(typemax(DateTime), tz"UTC")
     elseif str == "-infinity"
+        timetype_inf_warning()
         return ZonedDateTime(typemin(DateTime), tz"UTC")
     end
 
@@ -251,8 +255,10 @@ end
 _DEFAULT_TYPE_MAP[:date] = Date
 function pqparse(::Type{Date}, str::AbstractString)
     if str == "infinity"
+        timetype_inf_warning()
         return typemax(Date)
     elseif str == "-infinity"
+        timetype_inf_warning()
         return typemin(Date)
     end
 

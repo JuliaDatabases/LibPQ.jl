@@ -91,4 +91,6 @@ include("tables.jl")
 
 include("asyncresults.jl")
 
+include("deprecated.jl")
+
 end
