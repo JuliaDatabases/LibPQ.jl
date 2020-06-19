@@ -1149,21 +1149,21 @@ end
                         ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copyto!(OffsetArray{Union{Missing, Float64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                         ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copyto!(OffsetArray{Union{Missing, LibPQ.Oid}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                         ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copyto!(OffsetArray{Union{Missing, Decimal}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[3,7)'::int4range", Interval(Int32(3), Int32(7), true, false)),
-                        ("'(3,7)'::int4range", Interval(Int32(4), Int32(7), true, false)),
-                        ("'[4,4]'::int4range", Interval(Int32(4), Int32(5), true, false)),
+                        ("'[3,7)'::int4range", Interval{Closed, Open}(Int32(3), Int32(7))),
+                        ("'(3,7)'::int4range", Interval{Closed, Open}(Int32(4), Int32(7))),
+                        ("'[4,4]'::int4range", Interval{Closed, Open}(Int32(4), Int32(5))),
                         ("'[4,4)'::int4range", Interval{Int32}()),  # Empty interval
-                        ("'[3,7)'::int8range", Interval(Int64(3), Int64(7), true, false)),
-                        ("'(3,7)'::int8range", Interval(Int64(4), Int64(7), true, false)),
-                        ("'[4,4]'::int8range", Interval(Int64(4), Int64(5), true, false)),
+                        ("'[3,7)'::int8range", Interval{Closed, Open}(Int64(3), Int64(7))),
+                        ("'(3,7)'::int8range", Interval{Closed, Open}(Int64(4), Int64(7))),
+                        ("'[4,4]'::int8range", Interval{Closed, Open}(Int64(4), Int64(5))),
                         ("'[4,4)'::int8range", Interval{Int64}()),  # Empty interval
-                        ("'[11.1,22.2)'::numrange", Interval(Decimal(11.1), Decimal(22.2), true, false)),
-                        ("'[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange", Interval(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30), true, false)),
-                        ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"), true, false)),
-                        ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(2004, 10, 19, 13, 23, 54, tz"UTC"), true, false)),
-                        ("'[2004-10-19 10:23:54-02, Infinity)'::tstzrange", Interval(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"), true, false)),
-                        ("'(-Infinity, Infinity)'::tstzrange", Interval(ZonedDateTime(typemin(DateTime), tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"), false, false)),
-                        ("'[2018/01/01, 2018/02/02)'::daterange", Interval(Date(2018, 1, 1), Date(2018, 2, 2), true, false)),
+                        ("'[11.1,22.2)'::numrange", Interval{Closed, Open}(Decimal(11.1), Decimal(22.2))),
+                        ("'[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange", Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))),
+                        ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
+                        ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(2004, 10, 19, 13, 23, 54, tz"UTC"))),
+                        ("'[2004-10-19 10:23:54-02, Infinity)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"))),
+                        ("'(-Infinity, Infinity)'::tstzrange", Interval{Open, Open}(ZonedDateTime(typemin(DateTime), tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"))),
+                        ("'[2018/01/01, 2018/02/02)'::daterange", Interval{Closed, Open}(Date(2018, 1, 1), Date(2018, 2, 2))),
                         # Unbounded ranges
                         ("'[3,)'::int4range", Interval(Int32(3), nothing)),
                         ("'[3,]'::int4range", Interval(Int32(3), nothing)),
@@ -1177,7 +1177,7 @@ end
                         ("'[2018/01/01,]'::daterange", Interval{Closed, Unbounded}(Date(2018, 1, 1), nothing)),
                     ]
 
-                    for (test_str, data) in test_data
+                    @testset for (test_str, data) in test_data
                         result = execute(conn, "SELECT $test_str;")
 
                         try
@@ -1294,35 +1294,35 @@ end
             end
 
             @testset "Intervals" begin
-                result = execute(conn, "SELECT '[3, 7)' = \$1", [Interval(Int32(3), Int32(7), true, false)])
+                result = execute(conn, "SELECT '[3, 7)' = \$1", [Interval{Closed, Open}(Int32(3), Int32(7))])
                 @test first(first(result))
                 close(result)
 
-                result = execute(conn, "SELECT '(3, 7)' = \$1", [Interval(Int32(3), Int32(7), false, false)])
+                result = execute(conn, "SELECT '(3, 7)' = \$1", [Interval{Open, Open}(Int32(3), Int32(7))])
                 @test first(first(result))
                 close(result)
 
-                result = execute(conn, "SELECT '[4, 4]' = \$1", [Interval(Int32(4), Int32(4), true, true)])
+                result = execute(conn, "SELECT '[4, 4]' = \$1", [Interval{Closed, Closed}(Int32(4), Int32(4))])
                 @test first(first(result))
                 close(result)
 
-                result = execute(conn, "SELECT '[11.1, 22.2]' = \$1", [Interval(Decimal(11.1), Decimal(22.2), true, true)])
+                result = execute(conn, "SELECT '[11.1, 22.2]' = \$1", [Interval{Closed, Closed}(Decimal(11.1), Decimal(22.2))])
                 @test first(first(result))
                 close(result)
 
-                result = execute(conn, "SELECT '[2010-01-01T14:30:00, 2010-01-01T15:30:00)' = \$1", [Interval(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30), true, false)])
+                result = execute(conn, "SELECT '[2010-01-01T14:30:00, 2010-01-01T15:30:00)' = \$1", [Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))])
                 @test first(first(result))
                 close(result)
 
-                result = execute(conn, "SELECT '[2010-01-01T14:30:00+00:00, 2010-01-01T15:30:00+00:00)' = \$1", [Interval(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"), true, false)])
+                result = execute(conn, "SELECT '[2010-01-01T14:30:00+00:00, 2010-01-01T15:30:00+00:00)' = \$1", [Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))])
                 @test first(first(result))
                 close(result)
 
-                result = execute(conn, "SELECT '[2010-01-01T14:30:00-02:00, 2010-01-01T15:30:00-02:00)' = \$1", [Interval(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC-2"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC-2"), true, false)])
+                result = execute(conn, "SELECT '[2010-01-01T14:30:00-02:00, 2010-01-01T15:30:00-02:00)' = \$1", [Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC-2"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC-2"))])
                 @test first(first(result))
                 close(result)
 
-                result = execute(conn, "SELECT '(2018-01-01, 2018-02-02]' = \$1", [Interval(Date(2018, 1, 1), Date(2018, 2, 2), false, true)])
+                result = execute(conn, "SELECT '(2018-01-01, 2018-02-02]' = \$1", [Interval{Open, Closed}(Date(2018, 1, 1), Date(2018, 2, 2))])
                 @test first(first(result))
                 close(result)
 
