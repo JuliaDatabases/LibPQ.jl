@@ -1218,26 +1218,8 @@ end
                         ("'-infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(-∞)),
                         ("'infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(∞)),
                         ("'-infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(-∞)),
-                        (
-                            "'[2004-10-19 10:23:54-02, infinity)'::tstzrange",
-                            Interval{InfExtendedTime{ZonedDateTime}},
-                            Interval(
-                                ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"),
-                                ∞,
-                                true,
-                                false
-                            )
-                        ),
-                        (
-                            "'(-infinity, infinity)'::tstzrange",
-                            Interval{InfExtendedTime{ZonedDateTime}},
-                            Interval(
-                                InfExtendedTime{ZonedDateTime}(-∞),
-                                InfExtendedTime{ZonedDateTime}(∞),
-                                false,
-                                false
-                            )
-                        ),
+                        ("'[2004-10-19 10:23:54-02, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ∞)),
+                        ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{Open, Open}(InfExtendedTime{ZonedDateTime}(-∞), InfExtendedTime{ZonedDateTime}(∞))),
                     ]
 
                     for (test_str, typ, data) in test_data
@@ -1366,10 +1348,25 @@ end
                     ("'(-infinity, 2012-01-01]'::daterange", Interval{Open, Closed}(-∞, Date(2012, 1, 1))),
                     ("'(2012-01-01, infinity]'::daterange", Interval{Open, Closed}(Date(2012, 1, 1), ∞)),
                     ("'(-infinity, infinity)'::tstzrange", Interval{Open, Open}(InfExtendedTime{ZonedDateTime}(-∞), InfExtendedTime{ZonedDateTime}(∞)))
-                   )
+                )
 
-                for (pq_str, obj) in tests
-                    result = execute(conn, "SELECT $pq_str = \$1", [obj])
+                @testset for (pg_str, obj) in tests
+                    result = execute(conn, "SELECT $pg_str = \$1", [obj])
+                    @test first(first(result))
+                    close(result)
+                end
+            end
+
+            @testset "TimeType" begin
+                tests = (
+                    ("'2012-01-01'::date", Date(2012, 1, 1)),
+                    ("'01:01:01.01'::time", Time(1, 1, 1, 10)),
+                    ("'2012-01-01 01:01:01.01'::timestamp", DateTime(2012, 1, 1, 1, 1, 1, 10)),
+                    ("'2012-01-01 01:01:01.01 UTC'::timestamptz", ZonedDateTime(2012, 1, 1, 1, 1, 1, 10, tz"UTC")),
+                )
+
+                @testset for (pg_str, obj) in tests
+                    result = execute(conn, "SELECT $pg_str = \$1", [obj])
                     @test first(first(result))
                     close(result)
                 end
