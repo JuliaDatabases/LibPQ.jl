@@ -1294,74 +1294,40 @@ end
             end
 
             @testset "Intervals" begin
-                result = execute(conn, "SELECT '[3, 7)' = \$1", [Interval{Closed, Open}(Int32(3), Int32(7))])
-                @test first(first(result))
-                close(result)
+                tests = (
+                    ("'[3, 7)'::int4range", Interval{Closed, Open}(Int32(3), Int32(7))),
+                    ("'[4, 4]'::int4range", Interval{Closed, Closed}(Int32(4), Int32(4))),
+                    ("'[11.1, 22.2]'::numrange", Interval{Closed, Closed}(Decimal(11.1), Decimal(22.2))),
+                    ("'[2010-01-01T14:30:00, 2010-01-01T15:30:00)'::tsrange", Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))),
+                    ("'[2010-01-01T14:30:00+00:00, 2010-01-01T15:30:00+00:00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
+                    ("'[2010-01-01T14:30:00-02:00, 2010-01-01T15:30:00-02:00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC-2"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC-2"))),
+                    ("'(2018-01-01, 2018-02-02]'::daterange", Interval{Open, Closed}(Date(2018, 1, 1), Date(2018, 2, 2))),
+                )
 
-                result = execute(conn, "SELECT '(3, 7)' = \$1", [Interval{Open, Open}(Int32(3), Int32(7))])
-                @test first(first(result))
-                close(result)
-
-                result = execute(conn, "SELECT '[4, 4]' = \$1", [Interval{Closed, Closed}(Int32(4), Int32(4))])
-                @test first(first(result))
-                close(result)
-
-                result = execute(conn, "SELECT '[11.1, 22.2]' = \$1", [Interval{Closed, Closed}(Decimal(11.1), Decimal(22.2))])
-                @test first(first(result))
-                close(result)
-
-                result = execute(conn, "SELECT '[2010-01-01T14:30:00, 2010-01-01T15:30:00)' = \$1", [Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))])
-                @test first(first(result))
-                close(result)
-
-                result = execute(conn, "SELECT '[2010-01-01T14:30:00+00:00, 2010-01-01T15:30:00+00:00)' = \$1", [Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))])
-                @test first(first(result))
-                close(result)
-
-                result = execute(conn, "SELECT '[2010-01-01T14:30:00-02:00, 2010-01-01T15:30:00-02:00)' = \$1", [Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC-2"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC-2"))])
-                @test first(first(result))
-                close(result)
-
-                result = execute(conn, "SELECT '(2018-01-01, 2018-02-02]' = \$1", [Interval{Open, Closed}(Date(2018, 1, 1), Date(2018, 2, 2))])
-                @test first(first(result))
-                close(result)
+                @testset for (pg_str, obj) in tests
+                    result = execute(conn, "SELECT $pg_str = \$1", [obj])
+                    @test first(first(result))
+                    close(result)
+                end
 
                 @testset "Unbounded Ranges" begin
-                    result = execute(conn, "SELECT '[3,)'::int4range = \$1", [Interval(Int32(3), nothing)])
-                    @test first(first(result))
-                    close(result)
+                    tests = (
+                        ("'[3,)'::int4range", Interval(Int32(3), nothing)),
+                        ("'(4,]'::int4range", Interval{Open, Unbounded}(Int32(4), nothing)),
+                        ("'(,2)'::int4range", Interval{Unbounded, Open}(nothing, Int32(2))),
+                        ("'(,3]'::int4range", Interval{Unbounded, Closed}(nothing, Int32(3))),
+                        ("'(,)'::int4range", Interval{Unbounded, Unbounded}(nothing, nothing)),
+                        ("'[,]'::int4range", Interval{Unbounded, Unbounded}(nothing, nothing)),
+                        ("'[2010-01-01T14:30:00,)'::tsrange", Interval(DateTime(2010, 1, 1, 14, 30), nothing)),
+                        ("'[2010-01-01T14:30:00+00:00,)'::tstzrange", Interval(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), nothing)),
+                        ("'[2018-01-02,]'::daterange", Interval(Date(2018, 1, 2), nothing)),
+                    )
 
-                    result = execute(conn, "SELECT '(3,]'::int4range = \$1", [Interval{Closed, Unbounded}(Int32(4), nothing)])
-                    @test first(first(result))
-                    close(result)
-
-                    result = execute(conn, "SELECT '(,2)'::int4range = \$1", [Interval{Unbounded, Open}(nothing, Int32(2))])
-                    @test first(first(result))
-                    close(result)
-
-                    result = execute(conn, "SELECT '(,2]'::int4range = \$1", [Interval{Unbounded, Open}(nothing, Int32(3))])
-                    @test first(first(result))
-                    close(result)
-
-                    result = execute(conn, "SELECT '(,)'::int4range = \$1", [Interval{Unbounded, Unbounded}(nothing, nothing)])
-                    @test first(first(result))
-                    close(result)
-
-                    result = execute(conn, "SELECT '[,]'::int4range = \$1", [Interval{Unbounded, Unbounded}(nothing, nothing)])
-                    @test first(first(result))
-                    close(result)
-
-                    result = execute(conn, "SELECT '[2010-01-01T14:30:00,)'::tsrange = \$1", [Interval(DateTime(2010, 1, 1, 14, 30), nothing)])
-                    @test first(first(result))
-                    close(result)
-
-                    result = execute(conn, "SELECT '[2010-01-01T14:30:00+00:00,)'::tstzrange = \$1", [Interval(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), nothing)])
-                    @test first(first(result))
-                    close(result)
-
-                    result = execute(conn, "SELECT '(2018-01-01,]'::daterange = \$1", [Interval(Date(2018, 1, 2), nothing)])
-                    @test first(first(result))
-                    close(result)
+                    @testset for (pg_str, obj) in tests
+                        result = execute(conn, "SELECT $pg_str = \$1", [obj])
+                        @test first(first(result))
+                        close(result)
+                    end
                 end
             end
 
