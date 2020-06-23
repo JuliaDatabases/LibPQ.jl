@@ -1149,15 +1149,15 @@ end
                         ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copyto!(OffsetArray{Union{Missing, Float64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                         ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copyto!(OffsetArray{Union{Missing, LibPQ.Oid}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                         ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copyto!(OffsetArray{Union{Missing, Decimal}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[3,7)'::int4range", Interval{Closed, Open}(Int32(3), Int32(7))),
-                        ("'(3,7)'::int4range", Interval{Closed, Open}(Int32(4), Int32(7))),
-                        ("'[4,4]'::int4range", Interval{Closed, Open}(Int32(4), Int32(5))),
+                        ("'[3,7)'::int4range", Interval{Int32, Closed, Open}(3, 7)),
+                        ("'(3,7)'::int4range", Interval{Int32, Closed, Open}(4, 7)),
+                        ("'[4,4]'::int4range", Interval{Int32, Closed, Open}(4, 5)),
                         ("'[4,4)'::int4range", Interval{Int32}()),  # Empty interval
-                        ("'[3,7)'::int8range", Interval{Closed, Open}(Int64(3), Int64(7))),
-                        ("'(3,7)'::int8range", Interval{Closed, Open}(Int64(4), Int64(7))),
-                        ("'[4,4]'::int8range", Interval{Closed, Open}(Int64(4), Int64(5))),
+                        ("'[3,7)'::int8range", Interval{Int64, Closed, Open}(3, 7)),
+                        ("'(3,7)'::int8range", Interval{Int64, Closed, Open}(4, 7)),
+                        ("'[4,4]'::int8range", Interval{Int64, Closed, Open}(4, 5)),
                         ("'[4,4)'::int8range", Interval{Int64}()),  # Empty interval
-                        ("'[11.1,22.2)'::numrange", Interval{Closed, Open}(Decimal(11.1), Decimal(22.2))),
+                        ("'[11.1,22.2)'::numrange", Interval{Decimal, Closed, Open}(11.1, 22.2)),
                         ("'[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange", Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))),
                         ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
                         ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(2004, 10, 19, 13, 23, 54, tz"UTC"))),
@@ -1165,11 +1165,17 @@ end
                         ("'(-Infinity, Infinity)'::tstzrange", Interval{Open, Open}(ZonedDateTime(typemin(DateTime), tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"))),
                         ("'[2018/01/01, 2018/02/02)'::daterange", Interval{Closed, Open}(Date(2018, 1, 1), Date(2018, 2, 2))),
                         # Unbounded ranges
-                        ("'[3,)'::int4range", Interval(Int32(3), nothing)),
-                        ("'[3,]'::int4range", Interval(Int32(3), nothing)),
-                        ("'(3,)'::int4range", Interval{Closed, Unbounded}(Int32(4), nothing)),
-                        ("'(,3)'::int4range", Interval{Unbounded, Open}(nothing, Int32(3))),
-                        ("'(,3]'::int4range", Interval{Unbounded, Open}(nothing, Int32(4))),
+                        ("'[3,)'::int4range", Interval{Int32}(3, nothing)),
+                        ("'[3,]'::int4range", Interval{Int32}(3, nothing)),
+                        ("'(3,)'::int4range", Interval{Int32, Closed, Unbounded}(4, nothing)),
+                        ("'(,3)'::int4range", Interval{Int32, Unbounded, Open}(nothing, 3)),
+                        # Postgres converts closed upper endpoints to their open equivalent
+                        # SELECT '(,3]'::int4range;
+                        #  int4range
+                        # -----------
+                        #  (,4)
+                        # (1 row)
+                        ("'(,3]'::int4range", Interval{Int32, Unbounded, Open}(nothing, 4)),
                         ("'[,]'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
                         ("'(,)'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
                         ("'[2010-01-01 14:30,)'::tsrange", Interval{Closed, Unbounded}(DateTime(2010, 1, 1, 14, 30), nothing)),
@@ -1295,9 +1301,9 @@ end
 
             @testset "Intervals" begin
                 tests = (
-                    ("'[3, 7)'::int4range", Interval{Closed, Open}(Int32(3), Int32(7))),
-                    ("'[4, 4]'::int4range", Interval{Closed, Closed}(Int32(4), Int32(4))),
-                    ("'[11.1, 22.2]'::numrange", Interval{Closed, Closed}(Decimal(11.1), Decimal(22.2))),
+                    ("'[3, 7)'::int4range", Interval{Int32, Closed, Open}(3, 7)),
+                    ("'[4, 4]'::int4range", Interval{Int32, Closed, Closed}(4, 4)),
+                    ("'[11.1, 22.2]'::numrange", Interval{Decimal, Closed, Closed}(11.1, 22.2)),
                     ("'[2010-01-01T14:30:00, 2010-01-01T15:30:00)'::tsrange", Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))),
                     ("'[2010-01-01T14:30:00+00:00, 2010-01-01T15:30:00+00:00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
                     ("'[2010-01-01T14:30:00-02:00, 2010-01-01T15:30:00-02:00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC-2"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC-2"))),
@@ -1312,10 +1318,10 @@ end
 
                 @testset "Unbounded Ranges" begin
                     tests = (
-                        ("'[3,)'::int4range", Interval(Int32(3), nothing)),
-                        ("'(4,]'::int4range", Interval{Open, Unbounded}(Int32(4), nothing)),
-                        ("'(,2)'::int4range", Interval{Unbounded, Open}(nothing, Int32(2))),
-                        ("'(,3]'::int4range", Interval{Unbounded, Closed}(nothing, Int32(3))),
+                        ("'[3,)'::int4range", Interval{Int32}(3, nothing)),
+                        ("'(4,]'::int4range", Interval{Int32, Open, Unbounded}(4, nothing)),
+                        ("'(,2)'::int4range", Interval{Int32, Unbounded, Open}(nothing, 2)),
+                        ("'(,3]'::int4range", Interval{Int32, Unbounded, Closed}(nothing, 3)),
                         ("'(,)'::int4range", Interval{Unbounded, Unbounded}(nothing, nothing)),
                         ("'[,]'::int4range", Interval{Unbounded, Unbounded}(nothing, nothing)),
                         ("'[2010-01-01T14:30:00,)'::tsrange", Interval(DateTime(2010, 1, 1, 14, 30), nothing)),

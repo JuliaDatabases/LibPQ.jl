@@ -387,22 +387,15 @@ function pqparse(::Type{Interval{T}}, str::AbstractString) where {T}
         matched = matched.captures
     end
 
-    start_bounds = get_bounds_type(matched[1])
-    end_bounds = get_bounds_type(matched[4])
-
     # Datetime formats have quotes around them so we strip those out
     start = strip(matched[2], ['"'])
     endpoint = strip(matched[3], ['"'])
 
-    start = start == "" ? nothing : pqparse(T, start)
-    endpoint = endpoint == "" ? nothing : pqparse(T, endpoint)
+    start = isempty(start) ? nothing : pqparse(T, start)
+    endpoint = isempty(endpoint) ? nothing : pqparse(T, endpoint)
 
-    if start === nothing
-        start_bounds = Unbounded
-    end
-    if endpoint === nothing
-        end_bounds = Unbounded
-    end
+    start_bounds = start === nothing ? Unbounded : get_bounds_type(matched[1])
+    end_bounds = endpoint === nothing ? Unbounded : get_bounds_type(matched[4])
 
     return Interval{T, start_bounds, end_bounds}(start, endpoint)
 end

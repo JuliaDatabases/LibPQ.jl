@@ -359,26 +359,14 @@ _array_element(el::AbstractString) = "\"$el\""
 _array_element(el::Missing) = "NULL"
 _array_element(el) = string_parameter(el)
 
+
 function string_parameter(interval::AbstractInterval)
-    start_bounds, end_bounds = bounds_types(interval)
-
-    start = string_parameter(first(interval))
-    endpoint = string_parameter(last(interval))
-
     io = IOBuffer()
-    print(io, start_bounds == Closed ? '[' : '(')
-    if start != "nothing"
-        print(io, start)
-    end
-    print(io, ",")
-    if endpoint != "nothing"
-        if start == "nothing"
-            print(io, endpoint)
-        else
-            print(io, " ", endpoint)
-        end
-    end
-    print(io, end_bounds == Closed ? ']' : ')')
+    L, R = bounds_types(interval)
+    print(io, L === Closed ? '[' : '(')
+    print(io, L === Unbounded ? "" : string_parameter(first(interval)), ",")
+    print(io, R === Unbounded ? "" : " " * string_parameter(last(interval)))
+    print(io, R === Closed ? ']' : ')')
 
     return String(take!(io))
 end
