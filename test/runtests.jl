@@ -1169,12 +1169,7 @@ end
                         ("'[3,]'::int4range", Interval{Int32}(3, nothing)),
                         ("'(3,)'::int4range", Interval{Int32, Closed, Unbounded}(4, nothing)),
                         ("'(,3)'::int4range", Interval{Int32, Unbounded, Open}(nothing, 3)),
-                        # Postgres converts closed upper endpoints to their open equivalent
-                        # SELECT '(,3]'::int4range;
-                        #  int4range
-                        # -----------
-                        #  (,4)
-                        # (1 row)
+                        # Postgres normalizes the range `(,3]` to `(,4)`
                         ("'(,3]'::int4range", Interval{Int32, Unbounded, Open}(nothing, 4)),
                         ("'[,]'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
                         ("'(,)'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
