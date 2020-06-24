@@ -373,7 +373,7 @@ const RANGE_ITEM = "[^\\[\\(\\]\\),]*"
 # Makes sure the string starts and ends with a bracket or parentheses and a comma separates
 # the items in the interval
 const RANGE_REGEX = Regex("^([\\[\\(])($RANGE_ITEM),($RANGE_ITEM)([\\]\\)])\$")
-get_bounds_type(ch) = ch in ("[", "]") ? Closed : Open
+get_bounds_type(ch::AbstractString) = ch in ("[", "]") ? Closed : Open
 
 function pqparse(::Type{Interval{T}}, str::AbstractString) where {T}
     if str == "empty"
