@@ -2,9 +2,9 @@ using Base: depwarn
 
 const INF_WARN = Ref(false)
 
-function timetype_inf_warning()
+function depwarn_timetype_inf()
     if !INF_WARN[]
-        depwarn("`infinity` support for Dates.TimeType is deprecated. Use `InfExtendedTime{T}` instead", :timetype_inf_warning)
+        depwarn("`infinity` support for $(Dates.TimeType) is deprecated. Use `$InfExtendedTime` instead", :depwarn_timetype_inf)
         INF_WARN[] = true
     end
 end
