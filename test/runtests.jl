@@ -4,6 +4,7 @@ using Dates
 using DataFrames
 using DataFrames: eachrow
 using Decimals
+using Infinity
 using Intervals
 using IterTools: imap
 using Memento
@@ -990,6 +991,23 @@ end
         end
 
         @testset "Type Conversions" begin
+            @testset "Deprecations" begin
+                conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+                result = execute(conn, "SELECT 'infinity'::timestamp;")
+
+                try
+                    oid = LibPQ.column_oids(result)[1]
+                    func = result.column_funcs[1]
+
+                    # Parsing this will show a depwarn
+                    @test (@test_deprecated func(LibPQ.PQValue{oid}(result, 1, 1))) == typemax(DateTime)
+                finally
+                    close(result)
+                end
+                close(conn)
+            end
+
             @testset "Automatic" begin
                 conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
@@ -1212,7 +1230,13 @@ end
                         ("'foobar'", Symbol, :foobar),
                         ("0::int8", DateTime, DateTime(1970, 1, 1, 0)),
                         ("0::int8", ZonedDateTime, ZonedDateTime(1970, 1, 1, 0, tz"UTC")),
-                        ("'{{{1,2,3},{4,5,6}}}'::int2[]", AbstractArray{Int16}, reshape(Int16[1 2 3; 4 5 6], 1, 2, 3))
+                        ("'{{{1,2,3},{4,5,6}}}'::int2[]", AbstractArray{Int16}, reshape(Int16[1 2 3; 4 5 6], 1, 2, 3)),
+                        ("'infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(∞)),
+                        ("'-infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(-∞)),
+                        ("'infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(∞)),
+                        ("'-infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(-∞)),
+                        ("'[2004-10-19 10:23:54-02, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ∞)),
+                        ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{InfExtendedTime{ZonedDateTime}, Open, Open}(-∞, ∞)),
                     ]
 
                     for (test_str, typ, data) in test_data
@@ -1328,6 +1352,41 @@ end
                         @test first(first(result))
                         close(result)
                     end
+                end
+            end
+
+            @testset "InfExtendedTime" begin
+                tests = (
+                    ("'infinity'::date", InfExtendedTime{Date}(∞)),
+                    ("'-infinity'::date", InfExtendedTime{Date}(-∞)),
+                    ("'infinity'::timestamp", InfExtendedTime{DateTime}(∞)),
+                    ("'-infinity'::timestamp", InfExtendedTime{DateTime}(-∞)),
+                    ("'infinity'::timestamptz", InfExtendedTime{ZonedDateTime}(∞)),
+                    ("'-infinity'::timestamptz", InfExtendedTime{ZonedDateTime}(-∞)),
+                    ("'(-infinity, 2012-01-01]'::daterange", Interval{Open, Closed}(-∞, Date(2012, 1, 1))),
+                    ("'(2012-01-01, infinity]'::daterange", Interval{Open, Closed}(Date(2012, 1, 1), ∞)),
+                    ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}, Open, Open}(-∞, ∞))
+                )
+
+                @testset for (pg_str, obj) in tests
+                    result = execute(conn, "SELECT $pg_str = \$1", [obj])
+                    @test first(first(result))
+                    close(result)
+                end
+            end
+
+            @testset "TimeType" begin
+                tests = (
+                    ("'2012-01-01'::date", Date(2012, 1, 1)),
+                    ("'01:01:01.01'::time", Time(1, 1, 1, 10)),
+                    ("'2012-01-01 01:01:01.01'::timestamp", DateTime(2012, 1, 1, 1, 1, 1, 10)),
+                    ("'2012-01-01 01:01:01.01 UTC'::timestamptz", ZonedDateTime(2012, 1, 1, 1, 1, 1, 10, tz"UTC")),
+                )
+
+                @testset for (pg_str, obj) in tests
+                    result = execute(conn, "SELECT $pg_str = \$1", [obj])
+                    @test first(first(result))
+                    close(result)
                 end
             end
 
