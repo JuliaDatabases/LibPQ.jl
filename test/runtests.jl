@@ -1352,6 +1352,7 @@ end
                         @test first(first(result))
                         close(result)
                     end
+                end
             end
 
             @testset "InfExtendedTime" begin
