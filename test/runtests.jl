@@ -1236,7 +1236,7 @@ end
                         ("'infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(∞)),
                         ("'-infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(-∞)),
                         ("'[2004-10-19 10:23:54-02, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ∞)),
-                        ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{Open, Open}(InfExtendedTime{ZonedDateTime}(-∞), InfExtendedTime{ZonedDateTime}(∞))),
+                        ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{InfExtendedTime{ZonedDateTime}, Open, Open}(-∞, ∞)),
                     ]
 
                     for (test_str, typ, data) in test_data
@@ -1364,7 +1364,7 @@ end
                     ("'-infinity'::timestamptz", InfExtendedTime{ZonedDateTime}(-∞)),
                     ("'(-infinity, 2012-01-01]'::daterange", Interval{Open, Closed}(-∞, Date(2012, 1, 1))),
                     ("'(2012-01-01, infinity]'::daterange", Interval{Open, Closed}(Date(2012, 1, 1), ∞)),
-                    ("'(-infinity, infinity)'::tstzrange", Interval{Open, Open}(InfExtendedTime{ZonedDateTime}(-∞), InfExtendedTime{ZonedDateTime}(∞)))
+                    ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}, Open, Open}(-∞, ∞))
                 )
 
                 @testset for (pg_str, obj) in tests
