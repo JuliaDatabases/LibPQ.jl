@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Home · LibPQ.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>LibPQ.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li class="current"><a class="toctext" href>Home</a><ul class="internal"><li><a class="toctext" href="#Examples-1">Examples</a></li></ul></li><li><a class="toctext" href="pages/type-conversions/">Type Conversions</a></li><li><a class="toctext" href="pages/api/">API</a></li><li><a class="toctext" href="pages/faq/">FAQ</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Home</a></li></ul><a class="edit-page" href="https://github.com/invenia/LibPQ.jl/blob/master/docs/src/index.md#L"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Home</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="LibPQ-1" href="#LibPQ-1">LibPQ</a></h1><p><a href="https://invenia.github.io/LibPQ.jl/stable/"><img src="https://img.shields.io/badge/docs-stable-blue.svg" alt="Stable"/></a> <a href="https://invenia.github.io/LibPQ.jl/dev/"><img src="https://img.shields.io/badge/docs-dev-blue.svg" alt="In Development"/></a> <a href="https://travis-ci.com/invenia/LibPQ.jl"><img src="https://travis-ci.com/invenia/LibPQ.jl.svg?branch=master" alt="Build Status"/></a> <a href="https://codecov.io/gh/invenia/LibPQ.jl"><img src="https://codecov.io/gh/invenia/LibPQ.jl/branch/master/graph/badge.svg" alt="CodeCov"/></a></p><h2><a class="nav-anchor" id="Examples-1" href="#Examples-1">Examples</a></h2><h3><a class="nav-anchor" id="Selection-1" href="#Selection-1">Selection</a></h3><pre><code class="language-julia">using LibPQ, Tables
+
+conn = LibPQ.Connection(&quot;dbname=postgres&quot;)
+result = execute(conn, &quot;SELECT typname FROM pg_type WHERE oid = 16&quot;)
+data = columntable(result)
+
+# the same but with parameters
+result = execute(conn, &quot;SELECT typname FROM pg_type WHERE oid = \$1&quot;, [&quot;16&quot;])
+data = columntable(result)
+
+# the same but asynchronously
+async_result = async_execute(conn, &quot;SELECT typname FROM pg_type WHERE oid = \$1&quot;, [&quot;16&quot;])
+# do other things
+result = fetch(async_result)
+data = columntable(result)
+
+close(conn)</code></pre><h3><a class="nav-anchor" id="Insertion-1" href="#Insertion-1">Insertion</a></h3><pre><code class="language-julia">using LibPQ
+
+conn = LibPQ.Connection(&quot;dbname=postgres user=$DATABASE_USER&quot;)
+
+result = execute(conn, &quot;&quot;&quot;
+    CREATE TEMPORARY TABLE libpqjl_test (
+        no_nulls    varchar(10) PRIMARY KEY,
+        yes_nulls   varchar(10)
+    );
+&quot;&quot;&quot;)
+
+LibPQ.load!(
+    (no_nulls = [&quot;foo&quot;, &quot;baz&quot;], yes_nulls = [&quot;bar&quot;, missing]),
+    conn,
+    &quot;INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);&quot;,
+)
+
+close(conn)</code></pre><h4><a class="nav-anchor" id="A-Note-on-Bulk-Insertion-1" href="#A-Note-on-Bulk-Insertion-1">A Note on Bulk Insertion</a></h4><p>When inserting a large number of rows, wrapping your insert queries in a transaction will greatly increase performance. See the PostgreSQL documentation <a href="https://www.postgresql.org/docs/10/populate.html#DISABLE-AUTOCOMMIT">14.4.1. Disable Autocommit</a> for more information.</p><p>Concretely, this means surrounding your query like this:</p><pre><code class="language-julia">execute(conn, &quot;BEGIN;&quot;)
+
+LibPQ.load!(
+    (no_nulls = [&quot;foo&quot;, &quot;baz&quot;], yes_nulls = [&quot;bar&quot;, missing]),
+    conn,
+    &quot;INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);&quot;,
+)
+
+execute(conn, &quot;COMMIT;&quot;)</code></pre><h3><a class="nav-anchor" id="COPY-1" href="#COPY-1"><code>COPY</code></a></h3><p>An alternative to repeated <code>INSERT</code> queries is the PostgreSQL <code>COPY</code> query. <code>LibPQ.CopyIn</code> makes it easier to stream data to the server using a <code>COPY FROM STDIN</code> query.</p><pre><code class="language-julia">using LibPQ, DataFrames
+
+conn = LibPQ.Connection(&quot;dbname=postgres user=$DATABASE_USER&quot;)
+
+row_strings = imap(eachrow(df)) do row
+    if ismissing(row[:yes_nulls])
+        &quot;$(row[:no_nulls]),\n&quot;
+    else
+        &quot;$(row[:no_nulls]),$(row[:yes_nulls])\n&quot;
+    end
+end
+
+copyin = LibPQ.CopyIn(&quot;COPY libpqjl_test FROM STDIN (FORMAT CSV);&quot;, row_strings)
+
+execute(conn, copyin)
+
+close(conn)</code></pre><footer><hr/><a class="next" href="pages/type-conversions/"><span class="direction">Next</span><span class="title">Type Conversions</span></a></footer></article></body></html>
