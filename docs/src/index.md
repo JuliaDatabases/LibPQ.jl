@@ -49,6 +49,26 @@ LibPQ.load!(
     "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
 )
 
+using DataFrames
+no_nulls = map(string, 'a':'z')
+yes_nulls = Union{String, Missing}[isodd(Int(c)) ? string(c) : missing for c in 'a':'z']
+data = DataFrame(no_nulls=no_nulls, yes_nulls=yes_nulls)
+
+execute(conn, "DELETE FROM libpqjl_test;")
+
+using CSV
+"""
+Function for upload of a Tables.jl compatible data structure (e.g. DataFrames.jl) into the db.
+"""
+function load_by_copy!(table, con:: LibPQ.Connection, tablename:: AbstractString)
+    iter = CSV.RowWriter(table)
+    column_names = first(iter)
+    copyin = LibPQ.CopyIn("COPY $tablename ($column_names) FROM STDIN (FORMAT CSV, HEADER);", iter)
+    execute(con, copyin)
+end
+
+load_by_copy!(data, conn, "libpqjl_test")
+
 close(conn)
 ```
 
