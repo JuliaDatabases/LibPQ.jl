@@ -389,7 +389,7 @@ _DEFAULT_TYPE_MAP[:daterange] = Interval{Date}
 const RANGE_ITEM = raw"[^\[\(\]\),]*"
 # Makes sure the string starts and ends with a bracket or parentheses and a comma separates
 # the items in the interval
-const RANGE_REGEX = Regex(raw"^([\[\(])(" * RANGE_ITEM * "),(" * RANGE_ITEM * raw")([\]\)])$")
+const RANGE_REGEX = Regex(string(raw"^([\[\(])(", RANGE_ITEM, "),(", RANGE_ITEM, raw")([\]\)])$"))
 get_bounds_type(ch::AbstractString) = ch in ("[", "]") ? Closed : Open
 
 function pqparse(::Type{Interval{T}}, str::AbstractString) where {T}
