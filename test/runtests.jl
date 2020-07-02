@@ -46,11 +46,11 @@ the order of the columns does not matter.
 Columns in the target DB table, which are not provided by the input `table`, are filled 
 with `null` (provided they are nullable).
 """
-function load_by_copy!(table, con:: LibPQ.Connection, tablename:: AbstractString)
+function load_by_copy!(table, conn::LibPQ.Connection, table_name::AbstractString)
     iter = CSV.RowWriter(table)
     column_names = first(iter)
-    copyin = LibPQ.CopyIn("COPY $tablename ($column_names) FROM STDIN (FORMAT CSV, HEADER);", iter)
-    execute(con, copyin)
+    copyin = LibPQ.CopyIn("COPY $table_name ($column_names) FROM STDIN (FORMAT CSV, HEADER);", iter)
+    execute(conn, copyin)
 end   
 
 @testset "LibPQ" begin
