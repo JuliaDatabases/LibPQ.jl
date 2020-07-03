@@ -43,7 +43,7 @@ matrix:
         - diff error_codes_generated.jl src/error_codes.jl
       after_success: skip
     - stage: "Documentation"
-      julia: 1.0
+      julia: 1.5
       os: linux
       dist: xenial
       addons:
