@@ -2,6 +2,12 @@ using Documenter, LibPQ, Memento
 
 setlevel!(getlogger(LibPQ), "critical")
 
+DocMeta.setdocmeta!(LibPQ, :DocTestSetup, quote
+    using LibPQ
+    DATABASE_USER = get(ENV, "LIBPQJL_DATABASE_USER", "postgres")
+    conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+end; recursive=true)
+
 makedocs(;
     modules=[LibPQ],
     format=Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true"),

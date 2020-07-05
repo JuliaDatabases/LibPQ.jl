@@ -1,14 +1,5 @@
 # LibPQ API
 
-```@meta
-DocTestSetup = quote
-    using LibPQ
-
-    DATABASE_USER = get(ENV, "LIBPQJL_DATABASE_USER", "postgres")
-    conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
-end
-```
-
 ## Public
 
 ### Connections
