@@ -23,7 +23,7 @@ TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 
 [compat]
 BinaryProvider = "0.5"
-CEnum = "0.2"
+CEnum = "0.2, 0.3, 0.4"
 DataFrames = "0.20, 0.21"
 Decimals = "0.4.1"
 DocStringExtensions = "0.8.0"
