@@ -338,14 +338,16 @@ end
             table_data = DataFrame(result)
             @test isequal(table_data, data)
             close(result)
+            close(conn)
 
             # testing loading to database using CSV.jl row iterator
-            result = execute(
-                conn,
-                "DELETE FROM libpqjl_test;";
-                throw_error=true,
-            )  
-            close(result)
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+            result = execute(conn, """
+                CREATE TEMPORARY TABLE libpqjl_test (
+                    no_nulls    varchar(10) PRIMARY KEY,
+                    yes_nulls   varchar(10)
+                );
+            """)
     
             result = load_by_copy!(data, conn, "libpqjl_test")
             @test isopen(result)
