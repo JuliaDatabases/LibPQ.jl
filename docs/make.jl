@@ -21,6 +21,7 @@ makedocs(;
     sitename="LibPQ.jl",
     checkdocs=:exports,
     linkcheck=true,
+    linkcheck_timeout=60,
     strict=true,
     authors="Eric Davies",
 )
