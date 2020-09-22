@@ -273,6 +273,7 @@ function execute(
     throw_error::Bool=true,
     kwargs...
 )
+    debug(LOGGER, "Executing query: $query")
     result = lock(jl_conn) do
         _execute(jl_conn.conn, query)
     end
@@ -289,6 +290,9 @@ function execute(
 )
     string_params = string_parameters(parameters)
     pointer_params = parameter_pointers(string_params)
+
+    debug(LOGGER, "Executing query: $query // with params: $string_params")
+
 
     result = lock(jl_conn) do
         _execute(jl_conn.conn, query, pointer_params)
