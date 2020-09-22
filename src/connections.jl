@@ -16,20 +16,17 @@ function _connection_parameter_dict(;
 )
     keep_option((k, v)) = !(k == "TimeZone" && v == "")
 
-    Dict{String, String}(
+    return Dict{String, String}(
         "client_encoding" => client_encoding,
         "application_name" => application_name,
-        "options" => join(
-            imap(Iterators.filter(keep_option, connection_options)) do (k, v)
-                "-c $k=$(show_option(v))"
-            end,
-            " ",
-        ),
+        "options" => join(imap(Iterators.filter(keep_option, connection_options)) do (k, v)
+            "-c $k=$(show_option(v))"
+        end, " "),
     )
 end
 
-const CONNECTION_PARAMETER_DEFAULTS = _connection_parameter_dict(
-    connection_options=CONNECTION_OPTION_DEFAULTS
+const CONNECTION_PARAMETER_DEFAULTS = _connection_parameter_dict(;
+    connection_options=CONNECTION_OPTION_DEFAULTS,
 )
 
 # https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-PQCONNECTSTARTPARAMS
@@ -39,10 +36,12 @@ const CONNECTION_STATUS_MESSAGES = Dict{libpq_c.ConnStatusType, String}(
     libpq_c.CONNECTION_STARTED => "Waiting for connection to be made",
     libpq_c.CONNECTION_MADE => "Connection OK; waiting to send",
     libpq_c.CONNECTION_AWAITING_RESPONSE => "Waiting for a response from the server",
-    libpq_c.CONNECTION_AUTH_OK => "Received authentication; waiting for backend start-up to finish",
+    libpq_c.CONNECTION_AUTH_OK =>
+        "Received authentication; waiting for backend start-up to finish",
     libpq_c.CONNECTION_SETENV => "Negotiating environment-driven parameter settings",
     libpq_c.CONNECTION_SSL_STARTUP => "Negotiating SSL encryption",
-    libpq_c.CONNECTION_CHECK_WRITABLE => "Checking if connection is able to handle write transactions",
+    libpq_c.CONNECTION_CHECK_WRITABLE =>
+        "Checking if connection is able to handle write transactions",
     libpq_c.CONNECTION_CONSUME => "Consuming any remaining response messages on connection",
     libpq_c.CONNECTION_GSS_STARTUP => "Negotiating GSSAPI",
 )
@@ -71,7 +70,7 @@ mutable struct Connection
     semaphore::Semaphore
 
     "Current AsyncResult, if active"
-    async_result  # ::Union{AsyncResult, Nothing}, would be a circular reference
+    async_result::Any  # ::Union{AsyncResult, Nothing}, would be a circular reference
 
     function Connection(
         conn::Ptr,
@@ -111,9 +110,7 @@ function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
     if conn_status != libpq_c.CONNECTION_OK
         if conn_status == libpq_c.CONNECTION_BAD
             if jl_conn.conn == C_NULL
-                err = Errors.JLConnectionError(
-                    "libpq could not allocate memory for the connection struct"
-                )
+                err = Errors.JLConnectionError("libpq could not allocate memory for the connection struct")
             else
                 err = Errors.PQConnectionError(jl_conn)
             end
@@ -189,7 +186,7 @@ function _connect_poll(conn::Ptr{libpq_c.PGconn}, timer::Timer, timeout::Real)
 
             if wait_write || wait_read
                 event = poll_fd(
-                    socket(conn), timeout; writable=wait_write, readable=wait_read
+                    socket(conn), timeout; writable=wait_write, readable=wait_read,
                 )
 
                 if event.timedout
@@ -267,13 +264,13 @@ function Connection(
     throw_error::Bool=true,
     connect_timeout::Real=0,
     options::Dict{String, String}=CONNECTION_OPTION_DEFAULTS,
-    kwargs...
+    kwargs...,
 )
     if options === CONNECTION_OPTION_DEFAULTS
         # avoid allocating another dict in the common case
         connection_parameters = CONNECTION_PARAMETER_DEFAULTS
     else
-        connection_parameters = _connection_parameter_dict(connection_options=options)
+        connection_parameters = _connection_parameter_dict(; connection_options=options)
     end
 
     ci_array = conninfo(str)
@@ -296,7 +293,7 @@ function Connection(
     # Make the connection
     debug(LOGGER, "Connecting to $str")
     jl_conn = Connection(
-        _connect_nonblocking(keywords, values, false; timeout=connect_timeout); kwargs...
+        _connect_nonblocking(keywords, values, false; timeout=connect_timeout); kwargs...,
     )
 
     # If password needed and not entered, prompt the user
@@ -312,15 +309,12 @@ function Connection(
         return handle_new_connection(
             Connection(
                 _connect_nonblocking(keywords, values, false; timeout=connect_timeout);
-                kwargs...
+                kwargs...,
             );
             throw_error=throw_error,
         )
     else
-        return handle_new_connection(
-            jl_conn;
-            throw_error=throw_error,
-        )
+        return handle_new_connection(jl_conn; throw_error=throw_error)
     end
 end
 
@@ -409,7 +403,7 @@ Parse a PostgreSQL version.
     ```
 """
 macro pqv_str(str)
-    _pqv_str(str)
+    return _pqv_str(str)
 end
 
 function _pqv_str(str)
@@ -425,15 +419,11 @@ function _pqv_str(str)
         elseif length(splitted) == 2
             VersionNumber(splitted[1], 0, splitted[2])
         else
-            throw(ArgumentError(
-                "PostgreSQL versions only have two components starting at version 10"
-            ))
+            throw(ArgumentError("PostgreSQL versions only have two components starting at version 10"))
         end
     else
         if length(splitted) > 3
-            throw(ArgumentError(
-                "PostgreSQL versions cannot have more than three components"
-            ))
+            throw(ArgumentError("PostgreSQL versions cannot have more than three components"))
         end
 
         VersionNumber(splitted...)
@@ -458,10 +448,13 @@ function encoding(jl_conn::Connection)
     encoding_id::Cint = libpq_c.PQclientEncoding(jl_conn.conn)
 
     if encoding_id == -1
-        error(LOGGER, Errors.JLConnectionError(
-            "libpq could not retrieve the connection's client encoding. " *
-            "Something is wrong with the connection."
-        ))
+        error(
+            LOGGER,
+            Errors.JLConnectionError(
+                "libpq could not retrieve the connection's client encoding. " *
+                "Something is wrong with the connection.",
+            ),
+        )
     end
 
     return unsafe_string(libpq_c.pg_encoding_to_char(encoding_id))
@@ -485,9 +478,10 @@ function set_encoding!(jl_conn::Connection, encoding::String)
         status = libpq_c.PQsetClientEncoding(jl_conn.conn, encoding)
 
         if status == -1
-            error(LOGGER, Errors.JLConnectionError(
-                "libpq could not set the connection's client encoding to $encoding"
-            ))
+            error(
+                LOGGER,
+                Errors.JLConnectionError("libpq could not set the connection's client encoding to $encoding"),
+            )
         else
             jl_conn.encoding = encoding
         end
@@ -599,9 +593,10 @@ function reset!(jl_conn::Connection; throw_error::Bool=true)
 
         handle_new_connection(jl_conn; throw_error=throw_error)
     else
-        error(LOGGER, Errors.JLConnectionError(
-            "Cannot reset a connection that has been closed"
-        ))
+        error(
+            LOGGER,
+            Errors.JLConnectionError("Cannot reset a connection that has been closed"),
+        )
     end
 
     return nothing
@@ -639,9 +634,10 @@ function Base.parse(::Type{ConninfoDisplay}, str::AbstractString)::ConninfoDispl
     elseif first(str) == 'D'
         Debug
     else
-        error(LOGGER, Errors.JLConnectionError(
-            "Unexpected dispchar '$str' in PQconninfoOption"
-        ))
+        error(
+            LOGGER,
+            Errors.JLConnectionError("Unexpected dispchar '$str' in PQconninfoOption"),
+        )
     end
 end
 
@@ -696,13 +692,15 @@ function conninfo(jl_conn::Connection)
 
     if ci_ptr == C_NULL
         if !isopen(jl_conn)
-            error(LOGGER, Errors.JLConnectionError(
-                "Cannot get connection info as the connection is closed."
-            ))
+            error(
+                LOGGER,
+                Errors.JLConnectionError("Cannot get connection info as the connection is closed."),
+            )
         else
-            error(LOGGER, Errors.JLConnectionError(
-                "libpq could not allocate memory for connection info"
-            ))
+            error(
+                LOGGER,
+                Errors.JLConnectionError("libpq could not allocate memory for connection info"),
+            )
         end
     end
 
@@ -738,9 +736,10 @@ function conninfo(str::AbstractString)
     ci_ptr = libpq_c.PQconninfoParse(str, err_ref)
 
     if ci_ptr == C_NULL && err_ref[] == C_NULL
-        error(LOGGER, JLConnectionError(
-            "libpq could not allocate memory for connection info"
-        ))
+        error(
+            LOGGER,
+            JLConnectionError("libpq could not allocate memory for connection info"),
+        )
     end
 
     if err_ref[] != C_NULL
@@ -771,7 +770,7 @@ function Base.show(io::IO, jl_conn::Connection)
             print(io, "\n  ", ci_opt.keyword, " = ")
 
             if ci_opt.disptype == Password
-                print(io, "*" ^ ci_opt.dispsize)
+                print(io, "*"^ci_opt.dispsize)
             else
                 print(io, ci_opt.val)
             end

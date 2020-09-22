@@ -9,7 +9,7 @@ struct PQValue{OID}
     "Column index of the result (0-indexed)"
     col::Cint
 
-    function PQValue{OID}(jl_result::Result, row::Integer, col::Integer) where OID
+    function PQValue{OID}(jl_result::Result, row::Integer, col::Integer) where {OID}
         return new{OID}(jl_result, row - 1, col - 1)
     end
 end
@@ -168,10 +168,10 @@ _DEFAULT_TYPE_MAP[:bytea] = Vector{UInt8}
 
 # Needs it's own `parse` method as it uses bytes_view instead of string_view
 function Base.parse(::Type{Vector{UInt8}}, pqv::PQValue{PQ_SYSTEM_TYPES[:bytea]})
-    pqparse(Vector{UInt8}, bytes_view(pqv))
+    return pqparse(Vector{UInt8}, bytes_view(pqv))
 end
 
-function pqparse(::Type{Vector{UInt8}}, bytes::Array{UInt8,1})
+function pqparse(::Type{Vector{UInt8}}, bytes::Array{UInt8, 1})
     byte_length = Ref{Csize_t}(0)
 
     unescaped_ptr = libpq_c.PQunescapeBytea(bytes, byte_length)
@@ -244,7 +244,7 @@ function pqparse(::Type{ZonedDateTime}, str::AbstractString)
         return ZonedDateTime(typemin(DateTime), tz"UTC")
     end
 
-    for fmt in TIMESTAMPTZ_FORMATS[1:end-1]
+    for fmt in TIMESTAMPTZ_FORMATS[1:(end - 1)]
         parsed = tryparse(ZonedDateTime, str, fmt)
         parsed !== nothing && return parsed
     end
@@ -279,7 +279,9 @@ function pqparse(::Type{Time}, str::AbstractString)
 end
 
 # InfExtendedTime support for Dates.TimeType
-function pqparse(::Type{InfExtendedTime{T}}, str::AbstractString) where {T<:Dates.TimeType}
+function pqparse(
+    ::Type{InfExtendedTime{T}}, str::AbstractString,
+) where {T <: Dates.TimeType}
     if str == "infinity"
         return InfExtendedTime{T}(∞)
     elseif str == "-infinity"
@@ -291,11 +293,11 @@ end
 
 # UNIX timestamps
 function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
-    unix2datetime(parse(Int64, pqv))
+    return unix2datetime(parse(Int64, pqv))
 end
 
 function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
-    TimeZones.unix2zdt(parse(Int64, pqv))
+    return TimeZones.unix2zdt(parse(Int64, pqv))
 end
 
 ## intervals
@@ -319,7 +321,8 @@ function _interval_regex()
     for long_type in (Hour, Minute)
         print(io, _field_match(long_type))
     end
-    print(io,
+    print(
+        io,
         _field_match(Second, "(?<whole_seconds>-?\\d+)(?:\\.(?<frac_seconds>\\d{1,9}))?"),
     )
     print(io, ")?\$")
@@ -367,7 +370,7 @@ function pqparse(::Type{Dates.CompoundPeriod}, str::AbstractString)
             period_coeff = fld1(len, 3)
             period_type = frac_periods[period_coeff]  # field regex prevents BoundsError
 
-            frac_seconds = parse(Int, frac_seconds_str) * 10 ^ (3 * period_coeff - len)
+            frac_seconds = parse(Int, frac_seconds_str) * 10^(3 * period_coeff - len)
             if frac_seconds != 0
                 push!(periods, period_type(frac_seconds))
             end
@@ -392,17 +395,18 @@ end
 
 ## arrays
 # numeric arrays never have double quotes and always use ',' as a separator
-parse_numeric_element(::Type{T}, str) where T = parse(T, str)
+parse_numeric_element(::Type{T}, str) where {T} = parse(T, str)
 
-parse_numeric_element(::Type{Union{T, Missing}}, str) where T =
-    str == "NULL" ? missing : parse(T, str)
+function parse_numeric_element(::Type{Union{T, Missing}}, str) where {T}
+    return str == "NULL" ? missing : parse(T, str)
+end
 
-function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
+function parse_numeric_array(eltype::Type{T}, str::AbstractString) where {T}
     eq_ind = findfirst(isequal('='), str)
 
     if eq_ind !== nothing
-        offset_str = str[1:eq_ind-1]
-        range_strs = split(str[1:eq_ind-1], ['[',']']; keepempty=false)
+        offset_str = str[1:(eq_ind - 1)]
+        range_strs = split(str[1:(eq_ind - 1)], ['[', ']']; keepempty=false)
 
         ranges = map(range_strs) do range_str
             lower, upper = split(range_str, ':'; limit=2)
@@ -410,7 +414,7 @@ function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
         end
 
         arr = OffsetArray{T}(undef, ranges...)
-        el_iter = eachmatch(r"[^\}\{,]+", str[eq_ind+1:end])
+        el_iter = eachmatch(r"[^\}\{,]+", str[(eq_ind + 1):end])
     else
         arr = Array{T}(undef, array_size(str)...)
         el_iter = eachmatch(r"[^\}\{,]+", str)
@@ -470,21 +474,20 @@ for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
 
     for jl_eltype in (jl_type, jl_missingtype)
         @eval function pqparse(
-            ::Type{A}, str::AbstractString
-        ) where A <: AbstractArray{$jl_eltype}
-            parse_numeric_array($jl_eltype, str)::A
+            ::Type{A}, str::AbstractString,
+        ) where {A <: AbstractArray{$jl_eltype}}
+            return parse_numeric_array($jl_eltype, str)::A
         end
     end
 end
 
-struct FallbackConversion <: AbstractDict{Tuple{Oid, Type}, Base.Callable}
-end
+struct FallbackConversion <: AbstractDict{Tuple{Oid, Type}, Base.Callable} end
 
 function Base.getindex(cmap::FallbackConversion, oid_typ::Tuple{Integer, Type})
     _, typ = oid_typ
 
     return function parse_type(pqv::PQValue)
-        parse(typ, pqv)
+        return parse(typ, pqv)
     end
 end
 

@@ -33,10 +33,7 @@ mutable struct Result
         jl_result = new(result, Atomic{Bool}(result == C_NULL))
 
         type_lookup = LayerDict(
-            PQTypeMap(type_map),
-            jl_conn.type_map,
-            LIBPQ_TYPE_MAP,
-            _DEFAULT_TYPE_MAP,
+            PQTypeMap(type_map), jl_conn.type_map, LIBPQ_TYPE_MAP, _DEFAULT_TYPE_MAP,
         )
 
         func_lookup = LayerDict(
@@ -47,9 +44,10 @@ mutable struct Result
             _FALLBACK_CONVERSION,
         )
 
-        jl_result.column_oids = col_oids = map(1:num_columns(jl_result)) do col_num
-            libpq_c.PQftype(jl_result.result, col_num - 1)
-        end
+        jl_result.column_oids =
+            col_oids = map(1:num_columns(jl_result)) do col_num
+                libpq_c.PQftype(jl_result.result, col_num - 1)
+            end
 
         jl_result.column_names = map(1:num_columns(jl_result)) do col_num
             unsafe_string(libpq_c.PQfname(jl_result.result, col_num - 1))
@@ -60,16 +58,19 @@ mutable struct Result
             column_type_map[column_number(jl_result, k)] = v
         end
 
-        jl_result.column_types = col_types = collect(Type, imap(enumerate(col_oids)) do itr
-            col_num, col_oid = itr
-            get(column_type_map, col_num) do
-                get(type_lookup, col_oid, String)
-            end
-        end)
+        jl_result.column_types =
+            col_types = collect(Type, imap(enumerate(col_oids)) do itr
+                col_num, col_oid = itr
+                get(column_type_map, col_num) do
+                    get(type_lookup, col_oid, String)
+                end
+            end)
 
-        jl_result.column_funcs = collect(Base.Callable, imap(col_oids, col_types) do oid, typ
-            func_lookup[(oid, typ)]
-        end)
+        jl_result.column_funcs = collect(
+            Base.Callable, imap(col_oids, col_types) do oid, typ
+                func_lookup[(oid, typ)]
+            end,
+        )
 
         # figure out which columns the user says may contain nulls
         if not_null isa Bool
@@ -77,9 +78,7 @@ mutable struct Result
         elseif not_null isa AbstractArray
             if eltype(not_null) === Bool
                 if length(not_null) != length(col_types)
-                    throw(ArgumentError(
-                        "The length of keyword argument not_null, when an array, must be equal to the number of columns"
-                    ))
+                    throw(ArgumentError("The length of keyword argument not_null, when an array, must be equal to the number of columns"))
                 end
 
                 jl_result.not_null = not_null
@@ -95,9 +94,7 @@ mutable struct Result
                 end
             end
         else
-            throw(ArgumentError(
-                "Unsupported type $(typeof(not_null)) for keyword argument not_null"
-            ))
+            throw(ArgumentError("Unsupported type $(typeof(not_null)) for keyword argument not_null"))
         end
 
         finalizer(close, jl_result)
@@ -146,15 +143,14 @@ end
 
 function _verbose_error_message(jl_result::Result)
     msg_ptr = libpq_c.PQresultVerboseErrorMessage(
-        jl_result.result,
-        libpq_c.PQERRORS_VERBOSE,
-        libpq_c.PQSHOW_CONTEXT_ALWAYS,
+        jl_result.result, libpq_c.PQERRORS_VERBOSE, libpq_c.PQSHOW_CONTEXT_ALWAYS,
     )
 
     if msg_ptr == C_NULL
-        error(LOGGER, Errors.JLResultError(
-            "libpq could not allocate memory for the result error message"
-        ))
+        error(
+            LOGGER,
+            Errors.JLResultError("libpq could not allocate memory for the result error message"),
+        )
     end
 
     msg = unsafe_string(msg_ptr)
@@ -268,10 +264,7 @@ For information on the `column_types`, `type_map`, and `conversions` arguments, 
 function execute end
 
 function execute(
-    jl_conn::Connection,
-    query::AbstractString;
-    throw_error::Bool=true,
-    kwargs...
+    jl_conn::Connection, query::AbstractString; throw_error::Bool=true, kwargs...,
 )
     result = lock(jl_conn) do
         _execute(jl_conn.conn, query)
@@ -285,7 +278,7 @@ function execute(
     query::AbstractString,
     parameters::Union{AbstractVector, Tuple};
     throw_error::Bool=true,
-    kwargs...
+    kwargs...,
 )
     string_params = string_parameters(parameters)
     pointer_params = parameter_pointers(string_params)
@@ -302,9 +295,7 @@ function _execute(conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString)
 end
 
 function _execute(
-    conn_ptr::Ptr{libpq_c.PGconn},
-    query::AbstractString,
-    parameters::Vector{Ptr{UInt8}},
+    conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString, parameters::Vector{Ptr{UInt8}},
 )
     num_params = length(parameters)
 
@@ -337,11 +328,11 @@ string_parameters(parameters::AbstractVector) = map(string_parameter, parameters
 
 # vector which might contain missings
 function string_parameters(parameters::AbstractVector{>:Missing})
-    collect(
+    return collect(
         Union{String, Missing},
         imap(parameters) do parameter
             ismissing(parameter) ? missing : string_parameter(parameter)
-        end
+        end,
     )
 end
 
@@ -352,13 +343,12 @@ function string_parameter(parameter::AbstractVector)
     print(io, "{")
     join(io, (_array_element(el) for el in parameter), ",")
     print(io, "}")
-    String(take!(io))
+    return String(take!(io))
 end
 
 _array_element(el::AbstractString) = "\"$el\""
 _array_element(el::Missing) = "NULL"
 _array_element(el) = string_parameter(el)
-
 
 function string_parameter(interval::AbstractInterval)
     io = IOBuffer()
@@ -371,7 +361,7 @@ function string_parameter(interval::AbstractInterval)
     return String(take!(io))
 end
 
-function string_parameter(parameter::InfExtendedTime{T}) where {T<:Dates.TimeType}
+function string_parameter(parameter::InfExtendedTime{T}) where {T <: Dates.TimeType}
     if isinf(parameter)
         return isposinf(parameter) ? "infinity" : "-infinity"
     else
@@ -403,7 +393,7 @@ If this result did not come from the description of a prepared statement, return
 """
 function num_params(jl_result::Result)::Int
     # todo: check cleared?
-    libpq_c.PQnparams(jl_result.result)
+    return libpq_c.PQnparams(jl_result.result)
 end
 
 """
@@ -414,7 +404,7 @@ This will be 0 if the query would never return data.
 """
 function num_rows(jl_result::Result)::Int
     # todo: check cleared?
-    libpq_c.PQntuples(jl_result.result)
+    return libpq_c.PQntuples(jl_result.result)
 end
 
 """
@@ -443,7 +433,7 @@ This will be 0 if the query would never return data.
 """
 function num_columns(jl_result::Result)::Int
     # todo: check cleared?
-    libpq_c.PQnfields(jl_result.result)
+    return libpq_c.PQnfields(jl_result.result)
 end
 
 """

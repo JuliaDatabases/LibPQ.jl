@@ -66,8 +66,7 @@ struct PQResultError{Class, Code} <: PostgreSQLException
 
     function PQResultError{Class_, Code_}(msg, verbose_msg) where {Class_, Code_}
         return new{Class_::Errors.Class, Code_::Errors.ErrorCode}(
-            convert(String, msg),
-            convert(Union{String, Nothing}, verbose_msg),
+            convert(String, msg), convert(Union{String, Nothing}, verbose_msg),
         )
     end
 end
@@ -76,10 +75,10 @@ include("error_codes.jl")
 
 # avoid exposing the meaningless integer value of the enum
 function Base.show(io::IO, ::MIME"text/plain", class::Class)
-    print(io, class, "::", typeof(class))
+    return print(io, class, "::", typeof(class))
 end
 function Base.show(io::IO, ::MIME"text/plain", code::ErrorCode)
-    print(io, code, "::", typeof(code))
+    return print(io, code, "::", typeof(code))
 end
 
 Base.parse(::Type{Class}, str::AbstractString) = getfield(Errors, Symbol("C", str))
@@ -102,20 +101,20 @@ end
 error_class(err::PQResultError{Class_}) where {Class_} = Class_::Class
 error_code(err::PQResultError{Class_, Code_}) where {Class_, Code_} = Code_::ErrorCode
 
-function Base.showerror(io::IO, err::T) where T <: PQResultError
+function Base.showerror(io::IO, err::T) where {T <: PQResultError}
     msg = err.verbose_msg === nothing ? err.msg : err.verbose_msg
 
-    print(io, ERROR_NAMES[T], ": ", chomp(msg))
+    return print(io, ERROR_NAMES[T], ": ", chomp(msg))
 end
 
-function Base.show(io::IO, err::T) where T <: PQResultError
+function Base.show(io::IO, err::T) where {T <: PQResultError}
     print(io, "LibPQ.Errors.", ERROR_NAMES[T], '(', repr(err.msg))
 
     if err.verbose_msg !== nothing
         print(io, ", ", repr(err.verbose_msg))
     end
 
-    print(io, ')')
+    return print(io, ')')
 end
 
 end

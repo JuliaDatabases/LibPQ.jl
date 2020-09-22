@@ -14,15 +14,15 @@ The iterated items must be `AbstractString`s or `Array{UInt8}`s.
 """
 struct CopyIn
     query::String
-    data_itr
+    data_itr::Any
 end
 
 function put_copy_data(jl_conn::Connection, data::Union{Array{UInt8}, AbstractString})
-    libpq_c.PQputCopyData(jl_conn.conn, data, sizeof(data))
+    return libpq_c.PQputCopyData(jl_conn.conn, data, sizeof(data))
 end
 
 function put_copy_end(jl_conn::Connection)
-    libpq_c.PQputCopyEnd(jl_conn.conn, C_NULL)
+    return libpq_c.PQputCopyEnd(jl_conn.conn, C_NULL)
 end
 
 """
@@ -36,11 +36,7 @@ Runs [`execute`](@ref execute(::Connection, ::String)) on `copyin`'s query, then
 All other arguments are passed through to the `execute` call for the initial query.
 """
 function execute(
-    jl_conn::Connection,
-    copy::CopyIn,
-    parameters=nothing;
-    throw_error=true,
-    kwargs...,
+    jl_conn::Connection, copy::CopyIn, parameters=nothing; throw_error=true, kwargs...,
 )
     level = throw_error ? error : warn
     if parameters !== nothing
@@ -58,9 +54,10 @@ function execute(
 
         if result_status != libpq_c.PGRES_COPY_IN
             if !(result_status in (libpq_c.PGRES_BAD_RESPONSE, libpq_c.PGRES_FATAL_ERROR))
-                level(LOGGER, Errors.JLResultError(
-                    "Expected PGRES_COPY_IN after COPY query, got $result_status"
-                ))
+                level(
+                    LOGGER,
+                    Errors.JLResultError("Expected PGRES_COPY_IN after COPY query, got $result_status"),
+                )
             end
             return result
         end
@@ -78,6 +75,6 @@ function execute(
     end
 
     return handle_result(
-        Result(copy_end_result, jl_conn, kwargs...); throw_error=throw_error
+        Result(copy_end_result, jl_conn, kwargs...); throw_error=throw_error,
     )
 end

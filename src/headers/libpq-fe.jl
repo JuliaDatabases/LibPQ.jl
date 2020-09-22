@@ -68,7 +68,7 @@ const PG_COPYRES_EVENTS = 0x04
 const PG_COPYRES_NOTICEHOOKS = 0x08
 
 function PQsetdb(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME)
-    PQsetdbLogin(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME, C_NULL, C_NULL)
+    return PQsetdbLogin(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME, C_NULL, C_NULL)
 end
 PQfreeNotify(ptr) = PQfreemem(ptr)
 
@@ -152,7 +152,8 @@ const pg_int64 = Clong
 const OID_MAX = typemax(Oid)
 InvalidOid() = Oid(0)
 
-@enum(ConnStatusType::Cuint,
+@enum(
+    ConnStatusType::Cuint,
     CONNECTION_OK,
     CONNECTION_BAD,
     CONNECTION_STARTED,
@@ -168,7 +169,8 @@ InvalidOid() = Oid(0)
     CONNECTION_CHECK_TARGET,
 )
 
-@enum(PostgresPollingStatusType::Cuint,
+@enum(
+    PostgresPollingStatusType::Cuint,
     PGRES_POLLING_FAILED,
     PGRES_POLLING_READING,
     PGRES_POLLING_WRITING,
@@ -176,7 +178,8 @@ InvalidOid() = Oid(0)
     PGRES_POLLING_ACTIVE,
 )
 
-@enum(ExecStatusType::Cuint,
+@enum(
+    ExecStatusType::Cuint,
     PGRES_EMPTY_QUERY,
     PGRES_COMMAND_OK,
     PGRES_TUPLES_OK,
@@ -189,7 +192,8 @@ InvalidOid() = Oid(0)
     PGRES_SINGLE_TUPLE,
 )
 
-@enum(PGTransactionStatusType::Cuint,
+@enum(
+    PGTransactionStatusType::Cuint,
     PQTRANS_IDLE,
     PQTRANS_ACTIVE,
     PQTRANS_INTRANS,
@@ -197,31 +201,22 @@ InvalidOid() = Oid(0)
     PQTRANS_UNKNOWN,
 )
 
-@enum(PGVerbosity::Cuint,
-    PQERRORS_TERSE,
-    PQERRORS_DEFAULT,
-    PQERRORS_VERBOSE,
-)
+@enum(PGVerbosity::Cuint, PQERRORS_TERSE, PQERRORS_DEFAULT, PQERRORS_VERBOSE,)
 
-@enum(PGContextVisibility::Cuint,
+@enum(
+    PGContextVisibility::Cuint,
     PQSHOW_CONTEXT_NEVER,
     PQSHOW_CONTEXT_ERRORS,
     PQSHOW_CONTEXT_ALWAYS,
 )
 
-@enum(PGPing::Cuint,
-    PQPING_OK,
-    PQPING_REJECT,
-    PQPING_NO_RESPONSE,
-    PQPING_NO_ATTEMPT,
-)
+@enum(PGPing::Cuint, PQPING_OK, PQPING_REJECT, PQPING_NO_RESPONSE, PQPING_NO_ATTEMPT,)
 
 const PGconn = Cvoid
 
 const PGresult = Cvoid
 
-mutable struct pg_cancel
-end
+mutable struct pg_cancel end
 
 const PGcancel = Cvoid
 
@@ -283,597 +278,1044 @@ const pgthreadlock_t = Ptr{Cvoid}
 # Automatically generated using Clang.jl wrap_c, version 0.0.0
 
 function PQconnectStart(conninfo)
-    ccall((:PQconnectStart, LIBPQ_HANDLE), Ptr{PGconn}, (Cstring,), conninfo)
+    return ccall((:PQconnectStart, LIBPQ_HANDLE), Ptr{PGconn}, (Cstring,), conninfo)
 end
 
 function PQconnectStartParams(keywords, values, expand_dbname)
-    ccall((:PQconnectStartParams, LIBPQ_HANDLE), Ptr{PGconn}, (Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Cint), keywords, values, expand_dbname)
+    return ccall(
+        (:PQconnectStartParams, LIBPQ_HANDLE),
+        Ptr{PGconn},
+        (Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Cint),
+        keywords,
+        values,
+        expand_dbname,
+    )
 end
 
 function PQconnectPoll(conn)
-    ccall((:PQconnectPoll, LIBPQ_HANDLE), PostgresPollingStatusType, (Ptr{PGconn},), conn)
+    return ccall(
+        (:PQconnectPoll, LIBPQ_HANDLE), PostgresPollingStatusType, (Ptr{PGconn},), conn,
+    )
 end
 
 function PQconnectdb(conninfo)
-    ccall((:PQconnectdb, LIBPQ_HANDLE), Ptr{PGconn}, (Cstring,), conninfo)
+    return ccall((:PQconnectdb, LIBPQ_HANDLE), Ptr{PGconn}, (Cstring,), conninfo)
 end
 
 function PQconnectdbParams(keywords, values, expand_dbname)
-    ccall((:PQconnectdbParams, LIBPQ_HANDLE), Ptr{PGconn}, (Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Cint), keywords, values, expand_dbname)
+    return ccall(
+        (:PQconnectdbParams, LIBPQ_HANDLE),
+        Ptr{PGconn},
+        (Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Cint),
+        keywords,
+        values,
+        expand_dbname,
+    )
 end
 
 function PQsetdbLogin(pghost, pgport, pgoptions, pgtty, dbName, login, pwd)
-    ccall((:PQsetdbLogin, LIBPQ_HANDLE), Ptr{PGconn}, (Cstring, Cstring, Cstring, Cstring, Cstring, Cstring, Cstring), pghost, pgport, pgoptions, pgtty, dbName, login, pwd)
+    return ccall(
+        (:PQsetdbLogin, LIBPQ_HANDLE),
+        Ptr{PGconn},
+        (Cstring, Cstring, Cstring, Cstring, Cstring, Cstring, Cstring),
+        pghost,
+        pgport,
+        pgoptions,
+        pgtty,
+        dbName,
+        login,
+        pwd,
+    )
 end
 
 function PQfinish(conn)
-    ccall((:PQfinish, LIBPQ_HANDLE), Cvoid, (Ptr{PGconn},), conn)
+    return ccall((:PQfinish, LIBPQ_HANDLE), Cvoid, (Ptr{PGconn},), conn)
 end
 
 function PQconndefaults()
-    ccall((:PQconndefaults, LIBPQ_HANDLE), Ptr{PQconninfoOption}, ())
+    return ccall((:PQconndefaults, LIBPQ_HANDLE), Ptr{PQconninfoOption}, ())
 end
 
 function PQconninfoParse(conninfo, errmsg)
-    ccall((:PQconninfoParse, LIBPQ_HANDLE), Ptr{PQconninfoOption}, (Cstring, Ptr{Ptr{UInt8}}), conninfo, errmsg)
+    return ccall(
+        (:PQconninfoParse, LIBPQ_HANDLE),
+        Ptr{PQconninfoOption},
+        (Cstring, Ptr{Ptr{UInt8}}),
+        conninfo,
+        errmsg,
+    )
 end
 
 function PQconninfo(conn)
-    ccall((:PQconninfo, LIBPQ_HANDLE), Ptr{PQconninfoOption}, (Ptr{PGconn},), conn)
+    return ccall((:PQconninfo, LIBPQ_HANDLE), Ptr{PQconninfoOption}, (Ptr{PGconn},), conn)
 end
 
 function PQconninfoFree(connOptions)
-    ccall((:PQconninfoFree, LIBPQ_HANDLE), Cvoid, (Ptr{PQconninfoOption},), connOptions)
+    return ccall(
+        (:PQconninfoFree, LIBPQ_HANDLE), Cvoid, (Ptr{PQconninfoOption},), connOptions,
+    )
 end
 
 function PQresetStart(conn)
-    ccall((:PQresetStart, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQresetStart, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQresetPoll(conn)
-    ccall((:PQresetPoll, LIBPQ_HANDLE), PostgresPollingStatusType, (Ptr{PGconn},), conn)
+    return ccall(
+        (:PQresetPoll, LIBPQ_HANDLE), PostgresPollingStatusType, (Ptr{PGconn},), conn,
+    )
 end
 
 function PQreset(conn)
-    ccall((:PQreset, LIBPQ_HANDLE), Cvoid, (Ptr{PGconn},), conn)
+    return ccall((:PQreset, LIBPQ_HANDLE), Cvoid, (Ptr{PGconn},), conn)
 end
 
 function PQgetCancel(conn)
-    ccall((:PQgetCancel, LIBPQ_HANDLE), Ptr{PGcancel}, (Ptr{PGconn},), conn)
+    return ccall((:PQgetCancel, LIBPQ_HANDLE), Ptr{PGcancel}, (Ptr{PGconn},), conn)
 end
 
 function PQfreeCancel(cancel)
-    ccall((:PQfreeCancel, LIBPQ_HANDLE), Cvoid, (Ptr{PGcancel},), cancel)
+    return ccall((:PQfreeCancel, LIBPQ_HANDLE), Cvoid, (Ptr{PGcancel},), cancel)
 end
 
 function PQcancel(cancel, errbuf, errbufsize)
-    ccall((:PQcancel, LIBPQ_HANDLE), Cint, (Ptr{PGcancel}, Cstring, Cint), cancel, errbuf, errbufsize)
+    return ccall(
+        (:PQcancel, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGcancel}, Cstring, Cint),
+        cancel,
+        errbuf,
+        errbufsize,
+    )
 end
 
 function PQrequestCancel(conn)
-    ccall((:PQrequestCancel, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQrequestCancel, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQdb(conn)
-    ccall((:PQdb, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
+    return ccall((:PQdb, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
 end
 
 function PQuser(conn)
-    ccall((:PQuser, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
+    return ccall((:PQuser, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
 end
 
 function PQpass(conn)
-    ccall((:PQpass, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
+    return ccall((:PQpass, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
 end
 
 function PQhost(conn)
-    ccall((:PQhost, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
+    return ccall((:PQhost, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
 end
 
 function PQport(conn)
-    ccall((:PQport, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
+    return ccall((:PQport, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
 end
 
 function PQtty(conn)
-    ccall((:PQtty, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
+    return ccall((:PQtty, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
 end
 
 function PQoptions(conn)
-    ccall((:PQoptions, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
+    return ccall((:PQoptions, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
 end
 
 function PQstatus(conn)
-    ccall((:PQstatus, LIBPQ_HANDLE), ConnStatusType, (Ptr{PGconn},), conn)
+    return ccall((:PQstatus, LIBPQ_HANDLE), ConnStatusType, (Ptr{PGconn},), conn)
 end
 
 function PQtransactionStatus(conn)
-    ccall((:PQtransactionStatus, LIBPQ_HANDLE), PGTransactionStatusType, (Ptr{PGconn},), conn)
+    return ccall(
+        (:PQtransactionStatus, LIBPQ_HANDLE), PGTransactionStatusType, (Ptr{PGconn},), conn,
+    )
 end
 
 function PQparameterStatus(conn, paramName)
-    ccall((:PQparameterStatus, LIBPQ_HANDLE), Cstring, (Ptr{PGconn}, Cstring), conn, paramName)
+    return ccall(
+        (:PQparameterStatus, LIBPQ_HANDLE),
+        Cstring,
+        (Ptr{PGconn}, Cstring),
+        conn,
+        paramName,
+    )
 end
 
 function PQprotocolVersion(conn)
-    ccall((:PQprotocolVersion, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQprotocolVersion, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQserverVersion(conn)
-    ccall((:PQserverVersion, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQserverVersion, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQerrorMessage(conn)
-    ccall((:PQerrorMessage, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
+    return ccall((:PQerrorMessage, LIBPQ_HANDLE), Cstring, (Ptr{PGconn},), conn)
 end
 
 function PQsocket(conn)
-    ccall((:PQsocket, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQsocket, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQbackendPID(conn)
-    ccall((:PQbackendPID, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQbackendPID, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQconnectionNeedsPassword(conn)
-    ccall((:PQconnectionNeedsPassword, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQconnectionNeedsPassword, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQconnectionUsedPassword(conn)
-    ccall((:PQconnectionUsedPassword, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQconnectionUsedPassword, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQclientEncoding(conn)
-    ccall((:PQclientEncoding, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQclientEncoding, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQsetClientEncoding(conn, encoding)
-    ccall((:PQsetClientEncoding, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring), conn, encoding)
+    return ccall(
+        (:PQsetClientEncoding, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring), conn, encoding,
+    )
 end
 
 function PQsslInUse(conn)
-    ccall((:PQsslInUse, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQsslInUse, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQsslStruct(conn, struct_name)
-    ccall((:PQsslStruct, LIBPQ_HANDLE), Ptr{Cvoid}, (Ptr{PGconn}, Cstring), conn, struct_name)
+    return ccall(
+        (:PQsslStruct, LIBPQ_HANDLE), Ptr{Cvoid}, (Ptr{PGconn}, Cstring), conn, struct_name,
+    )
 end
 
 function PQsslAttribute(conn, attribute_name)
-    ccall((:PQsslAttribute, LIBPQ_HANDLE), Cstring, (Ptr{PGconn}, Cstring), conn, attribute_name)
+    return ccall(
+        (:PQsslAttribute, LIBPQ_HANDLE),
+        Cstring,
+        (Ptr{PGconn}, Cstring),
+        conn,
+        attribute_name,
+    )
 end
 
 function PQsslAttributeNames(conn)
-    ccall((:PQsslAttributeNames, LIBPQ_HANDLE), Ptr{Cstring}, (Ptr{PGconn},), conn)
+    return ccall((:PQsslAttributeNames, LIBPQ_HANDLE), Ptr{Cstring}, (Ptr{PGconn},), conn)
 end
 
 function PQgetssl(conn)
-    ccall((:PQgetssl, LIBPQ_HANDLE), Ptr{Cvoid}, (Ptr{PGconn},), conn)
+    return ccall((:PQgetssl, LIBPQ_HANDLE), Ptr{Cvoid}, (Ptr{PGconn},), conn)
 end
 
 function PQinitSSL(do_init::Cint)
-    ccall((:PQinitSSL, LIBPQ_HANDLE), Cvoid, (Cint,), do_init)
+    return ccall((:PQinitSSL, LIBPQ_HANDLE), Cvoid, (Cint,), do_init)
 end
 
 function PQinitOpenSSL(do_ssl::Cint, do_crypto::Cint)
-    ccall((:PQinitOpenSSL, LIBPQ_HANDLE), Cvoid, (Cint, Cint), do_ssl, do_crypto)
+    return ccall((:PQinitOpenSSL, LIBPQ_HANDLE), Cvoid, (Cint, Cint), do_ssl, do_crypto)
 end
 
 function PQsetErrorVerbosity(conn, verbosity::PGVerbosity)
-    ccall((:PQsetErrorVerbosity, LIBPQ_HANDLE), PGVerbosity, (Ptr{PGconn}, PGVerbosity), conn, verbosity)
+    return ccall(
+        (:PQsetErrorVerbosity, LIBPQ_HANDLE),
+        PGVerbosity,
+        (Ptr{PGconn}, PGVerbosity),
+        conn,
+        verbosity,
+    )
 end
 
 function PQsetErrorContextVisibility(conn, show_context::PGContextVisibility)
-    ccall((:PQsetErrorContextVisibility, LIBPQ_HANDLE), PGContextVisibility, (Ptr{PGconn}, PGContextVisibility), conn, show_context)
+    return ccall(
+        (:PQsetErrorContextVisibility, LIBPQ_HANDLE),
+        PGContextVisibility,
+        (Ptr{PGconn}, PGContextVisibility),
+        conn,
+        show_context,
+    )
 end
 
 function PQtrace(conn, debug_port)
-    ccall((:PQtrace, LIBPQ_HANDLE), Cvoid, (Ptr{PGconn}, Ptr{FILE}), conn, debug_port)
+    return ccall(
+        (:PQtrace, LIBPQ_HANDLE), Cvoid, (Ptr{PGconn}, Ptr{FILE}), conn, debug_port,
+    )
 end
 
 function PQuntrace(conn)
-    ccall((:PQuntrace, LIBPQ_HANDLE), Cvoid, (Ptr{PGconn},), conn)
+    return ccall((:PQuntrace, LIBPQ_HANDLE), Cvoid, (Ptr{PGconn},), conn)
 end
 
 function PQsetNoticeReceiver(conn, proc::PQnoticeReceiver, arg)
-    ccall((:PQsetNoticeReceiver, LIBPQ_HANDLE), PQnoticeReceiver, (Ptr{PGconn}, PQnoticeReceiver, Ptr{Cvoid}), conn, proc, arg)
+    return ccall(
+        (:PQsetNoticeReceiver, LIBPQ_HANDLE),
+        PQnoticeReceiver,
+        (Ptr{PGconn}, PQnoticeReceiver, Ptr{Cvoid}),
+        conn,
+        proc,
+        arg,
+    )
 end
 
 function PQsetNoticeProcessor(conn, proc::PQnoticeProcessor, arg)
-    ccall((:PQsetNoticeProcessor, LIBPQ_HANDLE), PQnoticeProcessor, (Ptr{PGconn}, PQnoticeProcessor, Ptr{Cvoid}), conn, proc, arg)
+    return ccall(
+        (:PQsetNoticeProcessor, LIBPQ_HANDLE),
+        PQnoticeProcessor,
+        (Ptr{PGconn}, PQnoticeProcessor, Ptr{Cvoid}),
+        conn,
+        proc,
+        arg,
+    )
 end
 
 function PQregisterThreadLock(newhandler::pgthreadlock_t)
-    ccall((:PQregisterThreadLock, LIBPQ_HANDLE), pgthreadlock_t, (pgthreadlock_t,), newhandler)
+    return ccall(
+        (:PQregisterThreadLock, LIBPQ_HANDLE),
+        pgthreadlock_t,
+        (pgthreadlock_t,),
+        newhandler,
+    )
 end
 
 function PQexec(conn, query)
-    ccall((:PQexec, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring), conn, query)
+    return ccall(
+        (:PQexec, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring), conn, query,
+    )
 end
 
-function PQexecParams(conn, command, nParams, paramTypes, paramValues, paramLengths, paramFormats, resultFormat)
-    ccall((:PQexecParams, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring, Cint, Ptr{Oid}, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint), conn, command, nParams, paramTypes, paramValues, paramLengths, paramFormats, resultFormat)
+function PQexecParams(
+    conn,
+    command,
+    nParams,
+    paramTypes,
+    paramValues,
+    paramLengths,
+    paramFormats,
+    resultFormat,
+)
+    return ccall(
+        (:PQexecParams, LIBPQ_HANDLE),
+        Ptr{PGresult},
+        (Ptr{PGconn}, Cstring, Cint, Ptr{Oid}, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint),
+        conn,
+        command,
+        nParams,
+        paramTypes,
+        paramValues,
+        paramLengths,
+        paramFormats,
+        resultFormat,
+    )
 end
 
 function PQprepare(conn, stmtName, query, nParams, paramTypes)
-    ccall((:PQprepare, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring, Cstring, Cint, Ptr{Oid}), conn, stmtName, query, nParams, paramTypes)
+    return ccall(
+        (:PQprepare, LIBPQ_HANDLE),
+        Ptr{PGresult},
+        (Ptr{PGconn}, Cstring, Cstring, Cint, Ptr{Oid}),
+        conn,
+        stmtName,
+        query,
+        nParams,
+        paramTypes,
+    )
 end
 
-function PQexecPrepared(conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat)
-    ccall((:PQexecPrepared, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring, Cint, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint), conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat)
+function PQexecPrepared(
+    conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat,
+)
+    return ccall(
+        (:PQexecPrepared, LIBPQ_HANDLE),
+        Ptr{PGresult},
+        (Ptr{PGconn}, Cstring, Cint, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint),
+        conn,
+        stmtName,
+        nParams,
+        paramValues,
+        paramLengths,
+        paramFormats,
+        resultFormat,
+    )
 end
 
 function PQsendQuery(conn, query)
-    ccall((:PQsendQuery, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring), conn, query)
+    return ccall((:PQsendQuery, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring), conn, query)
 end
 
-function PQsendQueryParams(conn, command, nParams, paramTypes, paramValues, paramLengths, paramFormats, resultFormat)
-    ccall((:PQsendQueryParams, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cint, Ptr{Oid}, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint), conn, command, nParams, paramTypes, paramValues, paramLengths, paramFormats, resultFormat)
+function PQsendQueryParams(
+    conn,
+    command,
+    nParams,
+    paramTypes,
+    paramValues,
+    paramLengths,
+    paramFormats,
+    resultFormat,
+)
+    return ccall(
+        (:PQsendQueryParams, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGconn}, Cstring, Cint, Ptr{Oid}, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint),
+        conn,
+        command,
+        nParams,
+        paramTypes,
+        paramValues,
+        paramLengths,
+        paramFormats,
+        resultFormat,
+    )
 end
 
 function PQsendPrepare(conn, stmtName, query, nParams, paramTypes)
-    ccall((:PQsendPrepare, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cstring, Cint, Ptr{Oid}), conn, stmtName, query, nParams, paramTypes)
+    return ccall(
+        (:PQsendPrepare, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGconn}, Cstring, Cstring, Cint, Ptr{Oid}),
+        conn,
+        stmtName,
+        query,
+        nParams,
+        paramTypes,
+    )
 end
 
-function PQsendQueryPrepared(conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat)
-    ccall((:PQsendQueryPrepared, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cint, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint), conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat)
+function PQsendQueryPrepared(
+    conn, stmtName, nParams, paramValues, paramLengths, paramFormats, resultFormat,
+)
+    return ccall(
+        (:PQsendQueryPrepared, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGconn}, Cstring, Cint, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}, Cint),
+        conn,
+        stmtName,
+        nParams,
+        paramValues,
+        paramLengths,
+        paramFormats,
+        resultFormat,
+    )
 end
 
 function PQsetSingleRowMode(conn)
-    ccall((:PQsetSingleRowMode, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQsetSingleRowMode, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQgetResult(conn)
-    ccall((:PQgetResult, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn},), conn)
+    return ccall((:PQgetResult, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn},), conn)
 end
 
 function PQisBusy(conn)
-    ccall((:PQisBusy, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQisBusy, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQconsumeInput(conn)
-    ccall((:PQconsumeInput, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQconsumeInput, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQnotifies(conn)
-    ccall((:PQnotifies, LIBPQ_HANDLE), Ptr{PGnotify}, (Ptr{PGconn},), conn)
+    return ccall((:PQnotifies, LIBPQ_HANDLE), Ptr{PGnotify}, (Ptr{PGconn},), conn)
 end
 
 function PQputCopyData(conn, buffer, nbytes)
-    ccall((:PQputCopyData, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cint), conn, buffer, nbytes)
+    return ccall(
+        (:PQputCopyData, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGconn}, Cstring, Cint),
+        conn,
+        buffer,
+        nbytes,
+    )
 end
 
 function PQputCopyEnd(conn, errormsg)
-    ccall((:PQputCopyEnd, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring), conn, errormsg)
+    return ccall(
+        (:PQputCopyEnd, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring), conn, errormsg,
+    )
 end
 
 function PQgetCopyData(conn, buffer, async::Cint)
-    ccall((:PQgetCopyData, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Ptr{Cstring}, Cint), conn, buffer, async)
+    return ccall(
+        (:PQgetCopyData, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGconn}, Ptr{Cstring}, Cint),
+        conn,
+        buffer,
+        async,
+    )
 end
 
 function PQgetline(conn, string, length::Cint)
-    ccall((:PQgetline, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cint), conn, string, length)
+    return ccall(
+        (:PQgetline, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGconn}, Cstring, Cint),
+        conn,
+        string,
+        length,
+    )
 end
 
 function PQputline(conn, string)
-    ccall((:PQputline, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring), conn, string)
+    return ccall((:PQputline, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring), conn, string)
 end
 
 function PQgetlineAsync(conn, buffer, bufsize::Cint)
-    ccall((:PQgetlineAsync, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cint), conn, buffer, bufsize)
+    return ccall(
+        (:PQgetlineAsync, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGconn}, Cstring, Cint),
+        conn,
+        buffer,
+        bufsize,
+    )
 end
 
 function PQputnbytes(conn, buffer, nbytes::Cint)
-    ccall((:PQputnbytes, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring, Cint), conn, buffer, nbytes)
+    return ccall(
+        (:PQputnbytes, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGconn}, Cstring, Cint),
+        conn,
+        buffer,
+        nbytes,
+    )
 end
 
 function PQendcopy(conn)
-    ccall((:PQendcopy, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQendcopy, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQsetnonblocking(conn, arg::Cint)
-    ccall((:PQsetnonblocking, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cint), conn, arg)
+    return ccall((:PQsetnonblocking, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cint), conn, arg)
 end
 
 function PQisnonblocking(conn)
-    ccall((:PQisnonblocking, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQisnonblocking, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
 function PQisthreadsafe()
-    ccall((:PQisthreadsafe, LIBPQ_HANDLE), Cint, ())
+    return ccall((:PQisthreadsafe, LIBPQ_HANDLE), Cint, ())
 end
 
 function PQping(conninfo)
-    ccall((:PQping, LIBPQ_HANDLE), PGPing, (Cstring,), conninfo)
+    return ccall((:PQping, LIBPQ_HANDLE), PGPing, (Cstring,), conninfo)
 end
 
 function PQpingParams(keywords, values, expand_dbname::Cint)
-    ccall((:PQpingParams, LIBPQ_HANDLE), PGPing, (Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Cint), keywords, values, expand_dbname)
+    return ccall(
+        (:PQpingParams, LIBPQ_HANDLE),
+        PGPing,
+        (Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Cint),
+        keywords,
+        values,
+        expand_dbname,
+    )
 end
 
 function PQflush(conn)
-    ccall((:PQflush, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
+    return ccall((:PQflush, LIBPQ_HANDLE), Cint, (Ptr{PGconn},), conn)
 end
 
-function PQfn(conn, fnid::Cint, result_buf, result_len, result_is_int::Cint, args, nargs::Cint)
-    ccall((:PQfn, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cint, Ptr{Cint}, Ptr{Cint}, Cint, Ptr{PQArgBlock}, Cint), conn, fnid, result_buf, result_len, result_is_int, args, nargs)
+function PQfn(
+    conn, fnid::Cint, result_buf, result_len, result_is_int::Cint, args, nargs::Cint,
+)
+    return ccall(
+        (:PQfn, LIBPQ_HANDLE),
+        Ptr{PGresult},
+        (Ptr{PGconn}, Cint, Ptr{Cint}, Ptr{Cint}, Cint, Ptr{PQArgBlock}, Cint),
+        conn,
+        fnid,
+        result_buf,
+        result_len,
+        result_is_int,
+        args,
+        nargs,
+    )
 end
 
 function PQresultStatus(res)
-    ccall((:PQresultStatus, LIBPQ_HANDLE), ExecStatusType, (Ptr{PGresult},), res)
+    return ccall((:PQresultStatus, LIBPQ_HANDLE), ExecStatusType, (Ptr{PGresult},), res)
 end
 
 function PQresStatus(status::ExecStatusType)
-    ccall((:PQresStatus, LIBPQ_HANDLE), Cstring, (ExecStatusType,), status)
+    return ccall((:PQresStatus, LIBPQ_HANDLE), Cstring, (ExecStatusType,), status)
 end
 
 function PQresultErrorMessage(res)
-    ccall((:PQresultErrorMessage, LIBPQ_HANDLE), Cstring, (Ptr{PGresult},), res)
+    return ccall((:PQresultErrorMessage, LIBPQ_HANDLE), Cstring, (Ptr{PGresult},), res)
 end
 
-function PQresultVerboseErrorMessage(res, verbosity::PGVerbosity, show_context::PGContextVisibility)
-    ccall((:PQresultVerboseErrorMessage, LIBPQ_HANDLE), Ptr{UInt8}, (Ptr{PGresult}, PGVerbosity, PGContextVisibility), res, verbosity, show_context)
+function PQresultVerboseErrorMessage(
+    res, verbosity::PGVerbosity, show_context::PGContextVisibility,
+)
+    return ccall(
+        (:PQresultVerboseErrorMessage, LIBPQ_HANDLE),
+        Ptr{UInt8},
+        (Ptr{PGresult}, PGVerbosity, PGContextVisibility),
+        res,
+        verbosity,
+        show_context,
+    )
 end
 
 function PQresultErrorField(res, fieldcode)
-    ccall((:PQresultErrorField, LIBPQ_HANDLE), Cstring, (Ptr{PGresult}, Cint), res, fieldcode)
+    return ccall(
+        (:PQresultErrorField, LIBPQ_HANDLE), Cstring, (Ptr{PGresult}, Cint), res, fieldcode,
+    )
 end
 
 function PQntuples(res)
-    ccall((:PQntuples, LIBPQ_HANDLE), Cint, (Ptr{PGresult},), res)
+    return ccall((:PQntuples, LIBPQ_HANDLE), Cint, (Ptr{PGresult},), res)
 end
 
 function PQnfields(res)
-    ccall((:PQnfields, LIBPQ_HANDLE), Cint, (Ptr{PGresult},), res)
+    return ccall((:PQnfields, LIBPQ_HANDLE), Cint, (Ptr{PGresult},), res)
 end
 
 function PQbinaryTuples(res)
-    ccall((:PQbinaryTuples, LIBPQ_HANDLE), Cint, (Ptr{PGresult},), res)
+    return ccall((:PQbinaryTuples, LIBPQ_HANDLE), Cint, (Ptr{PGresult},), res)
 end
 
 function PQfname(res, field_num)
-    ccall((:PQfname, LIBPQ_HANDLE), Cstring, (Ptr{PGresult}, Cint), res, field_num)
+    return ccall((:PQfname, LIBPQ_HANDLE), Cstring, (Ptr{PGresult}, Cint), res, field_num)
 end
 
 function PQfnumber(res, field_name)
-    ccall((:PQfnumber, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cstring), res, field_name)
+    return ccall(
+        (:PQfnumber, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cstring), res, field_name,
+    )
 end
 
 function PQftable(res, field_num)
-    ccall((:PQftable, LIBPQ_HANDLE), Oid, (Ptr{PGresult}, Cint), res, field_num)
+    return ccall((:PQftable, LIBPQ_HANDLE), Oid, (Ptr{PGresult}, Cint), res, field_num)
 end
 
 function PQftablecol(res, field_num)
-    ccall((:PQftablecol, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint), res, field_num)
+    return ccall((:PQftablecol, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint), res, field_num)
 end
 
 function PQfformat(res, field_num)
-    ccall((:PQfformat, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint), res, field_num)
+    return ccall((:PQfformat, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint), res, field_num)
 end
 
 function PQftype(res, field_num)
-    ccall((:PQftype, LIBPQ_HANDLE), Oid, (Ptr{PGresult}, Cint), res, field_num)
+    return ccall((:PQftype, LIBPQ_HANDLE), Oid, (Ptr{PGresult}, Cint), res, field_num)
 end
 
 function PQfsize(res, field_num)
-    ccall((:PQfsize, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint), res, field_num)
+    return ccall((:PQfsize, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint), res, field_num)
 end
 
 function PQfmod(res, field_num)
-    ccall((:PQfmod, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint), res, field_num)
+    return ccall((:PQfmod, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint), res, field_num)
 end
 
 function PQcmdStatus(res)
-    ccall((:PQcmdStatus, LIBPQ_HANDLE), Cstring, (Ptr{PGresult},), res)
+    return ccall((:PQcmdStatus, LIBPQ_HANDLE), Cstring, (Ptr{PGresult},), res)
 end
 
 function PQoidStatus(res)
-    ccall((:PQoidStatus, LIBPQ_HANDLE), Cstring, (Ptr{PGresult},), res)
+    return ccall((:PQoidStatus, LIBPQ_HANDLE), Cstring, (Ptr{PGresult},), res)
 end
 
 function PQoidValue(res)
-    ccall((:PQoidValue, LIBPQ_HANDLE), Oid, (Ptr{PGresult},), res)
+    return ccall((:PQoidValue, LIBPQ_HANDLE), Oid, (Ptr{PGresult},), res)
 end
 
 function PQcmdTuples(res)
-    ccall((:PQcmdTuples, LIBPQ_HANDLE), Cstring, (Ptr{PGresult},), res)
+    return ccall((:PQcmdTuples, LIBPQ_HANDLE), Cstring, (Ptr{PGresult},), res)
 end
 
 function PQgetvalue(res, tup_num, field_num)
-    ccall((:PQgetvalue, LIBPQ_HANDLE), Ptr{UInt8}, (Ptr{PGresult}, Cint, Cint), res, tup_num, field_num)
+    return ccall(
+        (:PQgetvalue, LIBPQ_HANDLE),
+        Ptr{UInt8},
+        (Ptr{PGresult}, Cint, Cint),
+        res,
+        tup_num,
+        field_num,
+    )
 end
 
 function PQgetlength(res, tup_num, field_num)
-    ccall((:PQgetlength, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint, Cint), res, tup_num, field_num)
+    return ccall(
+        (:PQgetlength, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGresult}, Cint, Cint),
+        res,
+        tup_num,
+        field_num,
+    )
 end
 
 function PQgetisnull(res, tup_num, field_num)
-    ccall((:PQgetisnull, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint, Cint), res, tup_num, field_num)
+    return ccall(
+        (:PQgetisnull, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGresult}, Cint, Cint),
+        res,
+        tup_num,
+        field_num,
+    )
 end
 
 function PQnparams(res)
-    ccall((:PQnparams, LIBPQ_HANDLE), Cint, (Ptr{PGresult},), res)
+    return ccall((:PQnparams, LIBPQ_HANDLE), Cint, (Ptr{PGresult},), res)
 end
 
 function PQparamtype(res, param_num)
-    ccall((:PQparamtype, LIBPQ_HANDLE), Oid, (Ptr{PGresult}, Cint), res, param_num)
+    return ccall((:PQparamtype, LIBPQ_HANDLE), Oid, (Ptr{PGresult}, Cint), res, param_num)
 end
 
 function PQdescribePrepared(conn, stmt)
-    ccall((:PQdescribePrepared, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring), conn, stmt)
+    return ccall(
+        (:PQdescribePrepared, LIBPQ_HANDLE),
+        Ptr{PGresult},
+        (Ptr{PGconn}, Cstring),
+        conn,
+        stmt,
+    )
 end
 
 function PQdescribePortal(conn, portal)
-    ccall((:PQdescribePortal, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, Cstring), conn, portal)
+    return ccall(
+        (:PQdescribePortal, LIBPQ_HANDLE),
+        Ptr{PGresult},
+        (Ptr{PGconn}, Cstring),
+        conn,
+        portal,
+    )
 end
 
 function PQsendDescribePrepared(conn, stmt)
-    ccall((:PQsendDescribePrepared, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring), conn, stmt)
+    return ccall(
+        (:PQsendDescribePrepared, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring), conn, stmt,
+    )
 end
 
 function PQsendDescribePortal(conn, portal)
-    ccall((:PQsendDescribePortal, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring), conn, portal)
+    return ccall(
+        (:PQsendDescribePortal, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cstring), conn, portal,
+    )
 end
 
 function PQclear(res)
-    ccall((:PQclear, LIBPQ_HANDLE), Cvoid, (Ptr{PGresult},), res)
+    return ccall((:PQclear, LIBPQ_HANDLE), Cvoid, (Ptr{PGresult},), res)
 end
 
 function PQfreemem(ptr)
-    ccall((:PQfreemem, LIBPQ_HANDLE), Cvoid, (Ptr{Cvoid},), ptr)
+    return ccall((:PQfreemem, LIBPQ_HANDLE), Cvoid, (Ptr{Cvoid},), ptr)
 end
 
 function PQmakeEmptyPGresult(conn, status::ExecStatusType)
-    ccall((:PQmakeEmptyPGresult, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGconn}, ExecStatusType), conn, status)
+    return ccall(
+        (:PQmakeEmptyPGresult, LIBPQ_HANDLE),
+        Ptr{PGresult},
+        (Ptr{PGconn}, ExecStatusType),
+        conn,
+        status,
+    )
 end
 
 function PQcopyResult(src, flags::Cint)
-    ccall((:PQcopyResult, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGresult}, Cint), src, flags)
+    return ccall(
+        (:PQcopyResult, LIBPQ_HANDLE), Ptr{PGresult}, (Ptr{PGresult}, Cint), src, flags,
+    )
 end
 
 function PQsetResultAttrs(res, numAttributes::Cint, attDescs)
-    ccall((:PQsetResultAttrs, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint, Ptr{PGresAttDesc}), res, numAttributes, attDescs)
+    return ccall(
+        (:PQsetResultAttrs, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGresult}, Cint, Ptr{PGresAttDesc}),
+        res,
+        numAttributes,
+        attDescs,
+    )
 end
 
 function PQresultAlloc(res, nBytes::Csize_t)
-    ccall((:PQresultAlloc, LIBPQ_HANDLE), Ptr{Cvoid}, (Ptr{PGresult}, Csize_t), res, nBytes)
+    return ccall(
+        (:PQresultAlloc, LIBPQ_HANDLE), Ptr{Cvoid}, (Ptr{PGresult}, Csize_t), res, nBytes,
+    )
 end
 
 function PQsetvalue(res, tup_num::Cint, field_num::Cint, value, len::Cint)
-    ccall((:PQsetvalue, LIBPQ_HANDLE), Cint, (Ptr{PGresult}, Cint, Cint, Cstring, Cint), res, tup_num, field_num, value, len)
+    return ccall(
+        (:PQsetvalue, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGresult}, Cint, Cint, Cstring, Cint),
+        res,
+        tup_num,
+        field_num,
+        value,
+        len,
+    )
 end
 
 function PQescapeStringConn(conn, to, from, length::Csize_t, error)
-    ccall((:PQescapeStringConn, LIBPQ_HANDLE), Csize_t, (Ptr{PGconn}, Cstring, Cstring, Csize_t, Ptr{Cint}), conn, to, from, length, error)
+    return ccall(
+        (:PQescapeStringConn, LIBPQ_HANDLE),
+        Csize_t,
+        (Ptr{PGconn}, Cstring, Cstring, Csize_t, Ptr{Cint}),
+        conn,
+        to,
+        from,
+        length,
+        error,
+    )
 end
 
 function PQescapeLiteral(conn, str, len::Csize_t)
-    ccall((:PQescapeLiteral, LIBPQ_HANDLE), Cstring, (Ptr{PGconn}, Cstring, Csize_t), conn, str, len)
+    return ccall(
+        (:PQescapeLiteral, LIBPQ_HANDLE),
+        Cstring,
+        (Ptr{PGconn}, Cstring, Csize_t),
+        conn,
+        str,
+        len,
+    )
 end
 
 function PQescapeIdentifier(conn, str, len::Csize_t)
-    ccall((:PQescapeIdentifier, LIBPQ_HANDLE), Cstring, (Ptr{PGconn}, Cstring, Csize_t), conn, str, len)
+    return ccall(
+        (:PQescapeIdentifier, LIBPQ_HANDLE),
+        Cstring,
+        (Ptr{PGconn}, Cstring, Csize_t),
+        conn,
+        str,
+        len,
+    )
 end
 
 function PQescapeByteaConn(conn, from, from_length::Csize_t, to_length)
-    ccall((:PQescapeByteaConn, LIBPQ_HANDLE), Ptr{Cuchar}, (Ptr{PGconn}, Ptr{Cuchar}, Csize_t, Ptr{Csize_t}), conn, from, from_length, to_length)
+    return ccall(
+        (:PQescapeByteaConn, LIBPQ_HANDLE),
+        Ptr{Cuchar},
+        (Ptr{PGconn}, Ptr{Cuchar}, Csize_t, Ptr{Csize_t}),
+        conn,
+        from,
+        from_length,
+        to_length,
+    )
 end
 
 function PQunescapeBytea(strtext, retbuflen::Ref{Csize_t})
-    ccall((:PQunescapeBytea, LIBPQ_HANDLE), Ptr{Cuchar}, (Ptr{Cuchar}, Ref{Csize_t}), strtext, retbuflen)
+    return ccall(
+        (:PQunescapeBytea, LIBPQ_HANDLE),
+        Ptr{Cuchar},
+        (Ptr{Cuchar}, Ref{Csize_t}),
+        strtext,
+        retbuflen,
+    )
 end
 
 function PQescapeString(to, from, length::Csize_t)
-    ccall((:PQescapeString, LIBPQ_HANDLE), Csize_t, (Cstring, Cstring, Csize_t), to, from, length)
+    return ccall(
+        (:PQescapeString, LIBPQ_HANDLE),
+        Csize_t,
+        (Cstring, Cstring, Csize_t),
+        to,
+        from,
+        length,
+    )
 end
 
 function PQescapeBytea(from, from_length::Csize_t, to_length)
-    ccall((:PQescapeBytea, LIBPQ_HANDLE), Ptr{Cuchar}, (Ptr{Cuchar}, Csize_t, Ptr{Csize_t}), from, from_length, to_length)
+    return ccall(
+        (:PQescapeBytea, LIBPQ_HANDLE),
+        Ptr{Cuchar},
+        (Ptr{Cuchar}, Csize_t, Ptr{Csize_t}),
+        from,
+        from_length,
+        to_length,
+    )
 end
 
 function PQprint(fout, res, ps)
-    ccall((:PQprint, LIBPQ_HANDLE), Cvoid, (Ptr{FILE}, Ptr{PGresult}, Ptr{PQprintOpt}), fout, res, ps)
+    return ccall(
+        (:PQprint, LIBPQ_HANDLE),
+        Cvoid,
+        (Ptr{FILE}, Ptr{PGresult}, Ptr{PQprintOpt}),
+        fout,
+        res,
+        ps,
+    )
 end
 
 function PQdisplayTuples(res, fp, fillAlign::Cint, fieldSep, printHeader::Cint, quiet::Cint)
-    ccall((:PQdisplayTuples, LIBPQ_HANDLE), Cvoid, (Ptr{PGresult}, Ptr{FILE}, Cint, Cstring, Cint, Cint), res, fp, fillAlign, fieldSep, printHeader, quiet)
+    return ccall(
+        (:PQdisplayTuples, LIBPQ_HANDLE),
+        Cvoid,
+        (Ptr{PGresult}, Ptr{FILE}, Cint, Cstring, Cint, Cint),
+        res,
+        fp,
+        fillAlign,
+        fieldSep,
+        printHeader,
+        quiet,
+    )
 end
 
 function PQprintTuples(res, fout, printAttName::Cint, terseOutput::Cint, width::Cint)
-    ccall((:PQprintTuples, LIBPQ_HANDLE), Cvoid, (Ptr{PGresult}, Ptr{FILE}, Cint, Cint, Cint), res, fout, printAttName, terseOutput, width)
+    return ccall(
+        (:PQprintTuples, LIBPQ_HANDLE),
+        Cvoid,
+        (Ptr{PGresult}, Ptr{FILE}, Cint, Cint, Cint),
+        res,
+        fout,
+        printAttName,
+        terseOutput,
+        width,
+    )
 end
 
 function lo_open(conn, lobjId::Oid, mode::Cint)
-    ccall((:lo_open, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Oid, Cint), conn, lobjId, mode)
+    return ccall(
+        (:lo_open, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Oid, Cint), conn, lobjId, mode,
+    )
 end
 
 function lo_close(conn, fd::Cint)
-    ccall((:lo_close, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cint), conn, fd)
+    return ccall((:lo_close, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cint), conn, fd)
 end
 
 function lo_read(conn, fd::Cint, buf, len::Csize_t)
-    ccall((:lo_read, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cint, Cstring, Csize_t), conn, fd, buf, len)
+    return ccall(
+        (:lo_read, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGconn}, Cint, Cstring, Csize_t),
+        conn,
+        fd,
+        buf,
+        len,
+    )
 end
 
 function lo_write(conn, fd::Cint, buf, len::Csize_t)
-    ccall((:lo_write, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cint, Cstring, Csize_t), conn, fd, buf, len)
+    return ccall(
+        (:lo_write, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGconn}, Cint, Cstring, Csize_t),
+        conn,
+        fd,
+        buf,
+        len,
+    )
 end
 
 function lo_lseek(conn, fd::Cint, offset::Cint, whence::Cint)
-    ccall((:lo_lseek, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cint, Cint, Cint), conn, fd, offset, whence)
+    return ccall(
+        (:lo_lseek, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGconn}, Cint, Cint, Cint),
+        conn,
+        fd,
+        offset,
+        whence,
+    )
 end
 
 function lo_lseek64(conn, fd::Cint, offset::pg_int64, whence::Cint)
-    ccall((:lo_lseek64, LIBPQ_HANDLE), pg_int64, (Ptr{PGconn}, Cint, pg_int64, Cint), conn, fd, offset, whence)
+    return ccall(
+        (:lo_lseek64, LIBPQ_HANDLE),
+        pg_int64,
+        (Ptr{PGconn}, Cint, pg_int64, Cint),
+        conn,
+        fd,
+        offset,
+        whence,
+    )
 end
 
 function lo_creat(conn, mode::Cint)
-    ccall((:lo_creat, LIBPQ_HANDLE), Oid, (Ptr{PGconn}, Cint), conn, mode)
+    return ccall((:lo_creat, LIBPQ_HANDLE), Oid, (Ptr{PGconn}, Cint), conn, mode)
 end
 
 function lo_create(conn, lobjId::Oid)
-    ccall((:lo_create, LIBPQ_HANDLE), Oid, (Ptr{PGconn}, Oid), conn, lobjId)
+    return ccall((:lo_create, LIBPQ_HANDLE), Oid, (Ptr{PGconn}, Oid), conn, lobjId)
 end
 
 function lo_tell(conn, fd::Cint)
-    ccall((:lo_tell, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cint), conn, fd)
+    return ccall((:lo_tell, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cint), conn, fd)
 end
 
 function lo_tell64(conn, fd::Cint)
-    ccall((:lo_tell64, LIBPQ_HANDLE), pg_int64, (Ptr{PGconn}, Cint), conn, fd)
+    return ccall((:lo_tell64, LIBPQ_HANDLE), pg_int64, (Ptr{PGconn}, Cint), conn, fd)
 end
 
 function lo_truncate(conn, fd::Cint, len::Csize_t)
-    ccall((:lo_truncate, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cint, Csize_t), conn, fd, len)
+    return ccall(
+        (:lo_truncate, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cint, Csize_t), conn, fd, len,
+    )
 end
 
 function lo_truncate64(conn, fd::Cint, len::pg_int64)
-    ccall((:lo_truncate64, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cint, pg_int64), conn, fd, len)
+    return ccall(
+        (:lo_truncate64, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Cint, pg_int64), conn, fd, len,
+    )
 end
 
 function lo_unlink(conn, lobjId::Oid)
-    ccall((:lo_unlink, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Oid), conn, lobjId)
+    return ccall((:lo_unlink, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Oid), conn, lobjId)
 end
 
 function lo_import(conn, filename)
-    ccall((:lo_import, LIBPQ_HANDLE), Oid, (Ptr{PGconn}, Cstring), conn, filename)
+    return ccall((:lo_import, LIBPQ_HANDLE), Oid, (Ptr{PGconn}, Cstring), conn, filename)
 end
 
 function lo_import_with_oid(conn, filename, lobjId::Oid)
-    ccall((:lo_import_with_oid, LIBPQ_HANDLE), Oid, (Ptr{PGconn}, Cstring, Oid), conn, filename, lobjId)
+    return ccall(
+        (:lo_import_with_oid, LIBPQ_HANDLE),
+        Oid,
+        (Ptr{PGconn}, Cstring, Oid),
+        conn,
+        filename,
+        lobjId,
+    )
 end
 
 function lo_export(conn, lobjId::Oid, filename)
-    ccall((:lo_export, LIBPQ_HANDLE), Cint, (Ptr{PGconn}, Oid, Cstring), conn, lobjId, filename)
+    return ccall(
+        (:lo_export, LIBPQ_HANDLE),
+        Cint,
+        (Ptr{PGconn}, Oid, Cstring),
+        conn,
+        lobjId,
+        filename,
+    )
 end
 
 function PQlibVersion()
-    ccall((:PQlibVersion, LIBPQ_HANDLE), Cint, ())
+    return ccall((:PQlibVersion, LIBPQ_HANDLE), Cint, ())
 end
 
 function PQmblen(s, encoding::Cint)
-    ccall((:PQmblen, LIBPQ_HANDLE), Cint, (Cstring, Cint), s, encoding)
+    return ccall((:PQmblen, LIBPQ_HANDLE), Cint, (Cstring, Cint), s, encoding)
 end
 
 function PQdsplen(s, encoding::Cint)
-    ccall((:PQdsplen, LIBPQ_HANDLE), Cint, (Cstring, Cint), s, encoding)
+    return ccall((:PQdsplen, LIBPQ_HANDLE), Cint, (Cstring, Cint), s, encoding)
 end
 
 function PQenv2encoding()
-    ccall((:PQenv2encoding, LIBPQ_HANDLE), Cint, ())
+    return ccall((:PQenv2encoding, LIBPQ_HANDLE), Cint, ())
 end
 
 function PQencryptPassword(passwd, user)
-    ccall((:PQencryptPassword, LIBPQ_HANDLE), Cstring, (Cstring, Cstring), passwd, user)
+    return ccall(
+        (:PQencryptPassword, LIBPQ_HANDLE), Cstring, (Cstring, Cstring), passwd, user,
+    )
 end
 
 function pg_char_to_encoding(name)
-    ccall((:pg_char_to_encoding, LIBPQ_HANDLE), Cint, (Cstring,), name)
+    return ccall((:pg_char_to_encoding, LIBPQ_HANDLE), Cint, (Cstring,), name)
 end
 
 function pg_encoding_to_char(encoding::Cint)
-    ccall((:pg_encoding_to_char, LIBPQ_HANDLE), Cstring, (Cint,), encoding)
+    return ccall((:pg_encoding_to_char, LIBPQ_HANDLE), Cstring, (Cint,), encoding)
 end
 
 function pg_valid_server_encoding_id(encoding::Cint)
-    ccall((:pg_valid_server_encoding_id, LIBPQ_HANDLE), Cint, (Cint,), encoding)
+    return ccall((:pg_valid_server_encoding_id, LIBPQ_HANDLE), Cint, (Cint,), encoding)
 end

@@ -31,7 +31,7 @@ function Base.show(io::IO, async_result::AsyncResult)
     else
         "in progress"
     end
-    print(io, typeof(async_result), " (", status, ")")
+    return print(io, typeof(async_result), " (", status, ")")
 end
 
 """
@@ -56,11 +56,7 @@ function handle_result(async_result::AsyncResult; throw_error=true)
     for result_ptr in _consume(async_result.jl_conn)
         try
             result = handle_result(
-                Result(
-                    result_ptr,
-                    async_result.jl_conn;
-                    async_result.result_kwargs[]...
-                );
+                Result(result_ptr, async_result.jl_conn; async_result.result_kwargs[]...);
                 throw_error=throw_error,
             )
         catch err
@@ -102,9 +98,11 @@ function _consume(jl_conn::Connection)
                 _cancel(jl_conn)
             end
 
-            last_log == curr && debug(LOGGER, "Waiting to read from connection $(jl_conn.conn)")
+            last_log == curr &&
+                debug(LOGGER, "Waiting to read from connection $(jl_conn.conn)")
             wait(watcher)
-            last_log == curr && debug(LOGGER, "Consuming input from connection $(jl_conn.conn)")
+            last_log == curr &&
+                debug(LOGGER, "Consuming input from connection $(jl_conn.conn)")
             success = libpq_c.PQconsumeInput(jl_conn.conn) == 1
             !success && error(LOGGER, Errors.PQConnectionError(jl_conn))
 
@@ -116,8 +114,8 @@ function _consume(jl_conn::Connection)
                     return result_ptrs
                 else
                     result_num = length(result_ptrs) + 1
-                    debug(LOGGER,
-                        "Saving result $result_num from connection $(jl_conn.conn)"
+                    debug(
+                        LOGGER, "Saving result $result_num from connection $(jl_conn.conn)",
                     )
                     push!(result_ptrs, result_ptr)
                 end
@@ -126,9 +124,10 @@ function _consume(jl_conn::Connection)
     catch err
         if err isa Base.IOError && err.code == -9  # EBADF
             debug(() -> sprint(showerror, err), LOGGER)
-            error(LOGGER, Errors.JLConnectionError(
-                "PostgreSQL connection socket was unexpectedly closed"
-            ))
+            error(
+                LOGGER,
+                Errors.JLConnectionError("PostgreSQL connection socket was unexpectedly closed"),
+            )
         else
             rethrow(err)
         end
@@ -158,9 +157,10 @@ function _cancel(jl_conn::Connection)
         errbuf = zeros(UInt8, errbuf_size)
         success = libpq_c.PQcancel(cancel_ptr, pointer(errbuf), errbuf_size) == 1
         if !success
-            warn(LOGGER, Errors.JLConnectionError(
-                "Failed cancelling query: $(String(errbuf))"
-            ))
+            warn(
+                LOGGER,
+                Errors.JLConnectionError("Failed cancelling query: $(String(errbuf))"),
+            )
         else
             debug(LOGGER, "Cancelled query for connection $(jl_conn.conn)")
         end
@@ -219,7 +219,7 @@ function async_execute(
     jl_conn::Connection,
     query::AbstractString,
     parameters::Union{AbstractVector, Tuple};
-    kwargs...
+    kwargs...,
 )
     string_params = string_parameters(parameters)
     pointer_params = parameter_pointers(string_params)
@@ -232,7 +232,7 @@ function async_execute(
 end
 
 function _async_execute(
-    submission_fn::Function, jl_conn::Connection; throw_error::Bool=true, kwargs...
+    submission_fn::Function, jl_conn::Connection; throw_error::Bool=true, kwargs...,
 )
     async_result = AsyncResult(jl_conn; kwargs...)
 
@@ -260,9 +260,7 @@ function _async_submit(conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString)
 end
 
 function _async_submit(
-    conn_ptr::Ptr{libpq_c.PGconn},
-    query::AbstractString,
-    parameters::Vector{Ptr{UInt8}},
+    conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString, parameters::Vector{Ptr{UInt8}},
 )
     num_params = length(parameters)
 

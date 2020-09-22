@@ -107,7 +107,7 @@ result(c::Column) = getfield(c, :result)
 column_number(c::Column) = getfield(c, :col)
 column_name(c::Column) = getfield(c, :col_name)
 
-function Base.getindex(c::Column{T}, row::Integer)::T where T
+function Base.getindex(c::Column{T}, row::Integer)::T where {T}
     jl_result = result(c)
     col = column_number(c)
     if isnull(jl_result, row, col)
@@ -120,7 +120,6 @@ end
 Base.IndexStyle(::Type{<:Column}) = IndexLinear()
 Base.length(c::Column) = num_rows(result(c))
 Base.size(c::Column) = (length(c),)
-
 
 """
     LibPQ.load!(table, connection::LibPQ.Connection, query) -> LibPQ.Statement
