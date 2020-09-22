@@ -123,6 +123,8 @@ function execute(
     string_params = string_parameters(parameters)
     pointer_params = parameter_pointers(string_params)
 
+    debug(LOGGER, "Executing prepared statement: $(stmt.query) // with params: $string_params")
+
     result = lock(stmt.jl_conn) do
         _execute_prepared(stmt.jl_conn.conn, stmt.name, pointer_params)
     end
@@ -135,6 +137,8 @@ function execute(
     throw_error::Bool=true,
     kwargs...
 )
+    debug(LOGGER, "Executing statement: $(stmt.query)")
+
     result = lock(stmt.jl_conn) do
         _execute_prepared(stmt.jl_conn.conn, stmt.name)
     end
