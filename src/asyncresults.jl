@@ -208,6 +208,7 @@ As is normal for `Task`s, any exceptions will be thrown when calling `wait` or `
 function async_execute end
 
 function async_execute(jl_conn::Connection, query::AbstractString; kwargs...)
+    debug(LOGGER, "Executing query (async): $query")
     async_result = _async_execute(jl_conn; kwargs...) do jl_conn
         _async_submit(jl_conn.conn, query)
     end
@@ -223,6 +224,8 @@ function async_execute(
 )
     string_params = string_parameters(parameters)
     pointer_params = parameter_pointers(string_params)
+
+    debug(LOGGER, "Executing query (async): $query // with params: $string_params")
 
     async_result = _async_execute(jl_conn; kwargs...) do jl_conn
         _async_submit(jl_conn.conn, query, pointer_params)
