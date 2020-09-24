@@ -171,7 +171,7 @@ function Base.parse(::Type{Vector{UInt8}}, pqv::PQValue{PQ_SYSTEM_TYPES[:bytea]}
     return pqparse(Vector{UInt8}, bytes_view(pqv))
 end
 
-function pqparse(::Type{Vector{UInt8}}, bytes::Array{UInt8, 1})
+function pqparse(::Type{Vector{UInt8}}, bytes::Array{UInt8,1})
     byte_length = Ref{Csize_t}(0)
 
     unescaped_ptr = libpq_c.PQunescapeBytea(bytes, byte_length)
@@ -279,9 +279,7 @@ function pqparse(::Type{Time}, str::AbstractString)
 end
 
 # InfExtendedTime support for Dates.TimeType
-function pqparse(
-    ::Type{InfExtendedTime{T}}, str::AbstractString,
-) where {T <: Dates.TimeType}
+function pqparse(::Type{InfExtendedTime{T}}, str::AbstractString) where {T<:Dates.TimeType}
     if str == "infinity"
         return InfExtendedTime{T}(∞)
     elseif str == "-infinity"
@@ -397,7 +395,7 @@ end
 # numeric arrays never have double quotes and always use ',' as a separator
 parse_numeric_element(::Type{T}, str) where {T} = parse(T, str)
 
-function parse_numeric_element(::Type{Union{T, Missing}}, str) where {T}
+function parse_numeric_element(::Type{Union{T,Missing}}, str) where {T}
     return str == "NULL" ? missing : parse(T, str)
 end
 
@@ -467,23 +465,23 @@ end
 for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
     array_oid = PQ_SYSTEM_TYPES[Symbol("_$pq_eltype")]
     jl_type = _DEFAULT_TYPE_MAP[Symbol(pq_eltype)]
-    jl_missingtype = Union{jl_type, Missing}
+    jl_missingtype = Union{jl_type,Missing}
 
     # could be an OffsetArray or Array of any dimensionality
     _DEFAULT_TYPE_MAP[array_oid] = AbstractArray{jl_missingtype}
 
     for jl_eltype in (jl_type, jl_missingtype)
         @eval function pqparse(
-            ::Type{A}, str::AbstractString,
-        ) where {A <: AbstractArray{$jl_eltype}}
+            ::Type{A}, str::AbstractString
+        ) where {A<:AbstractArray{$jl_eltype}}
             return parse_numeric_array($jl_eltype, str)::A
         end
     end
 end
 
-struct FallbackConversion <: AbstractDict{Tuple{Oid, Type}, Base.Callable} end
+struct FallbackConversion <: AbstractDict{Tuple{Oid,Type},Base.Callable} end
 
-function Base.getindex(cmap::FallbackConversion, oid_typ::Tuple{Integer, Type})
+function Base.getindex(cmap::FallbackConversion, oid_typ::Tuple{Integer,Type})
     _, typ = oid_typ
 
     return function parse_type(pqv::PQValue)
@@ -491,7 +489,7 @@ function Base.getindex(cmap::FallbackConversion, oid_typ::Tuple{Integer, Type})
     end
 end
 
-Base.haskey(cmap::FallbackConversion, oid_typ::Tuple{Integer, Type}) = true
+Base.haskey(cmap::FallbackConversion, oid_typ::Tuple{Integer,Type}) = true
 
 """
 A fallback conversion mapping (like [`PQConversions`](@ref) which holds a single function

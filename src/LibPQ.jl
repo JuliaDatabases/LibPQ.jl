@@ -28,7 +28,7 @@ using Memento: Memento, getlogger, warn, info, error, debug
 using OffsetArrays
 using TimeZones
 
-const Parameter = Union{String, Missing}
+const Parameter = Union{String,Missing}
 const LOGGER = getlogger(@__MODULE__)
 
 function __init__()

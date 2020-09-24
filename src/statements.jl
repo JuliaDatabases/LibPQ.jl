@@ -63,7 +63,7 @@ Show a PostgreSQL prepared statement and its query.
 """
 function Base.show(io::IO, stmt::Statement)
     return print(
-        io, "PostgreSQL prepared statement named ", stmt.name, " with query ", stmt.query,
+        io, "PostgreSQL prepared statement named ", stmt.name, " with query ", stmt.query
     )
 end
 
@@ -111,7 +111,7 @@ end
 
 function execute(
     stmt::Statement,
-    parameters::Union{AbstractVector, Tuple};
+    parameters::Union{AbstractVector,Tuple};
     throw_error::Bool=true,
     kwargs...,
 )

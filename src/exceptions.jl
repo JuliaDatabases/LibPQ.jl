@@ -60,13 +60,13 @@ julia> LibPQ.Errors.SyntaxError
 LibPQ.Errors.PQResultError{LibPQ.Errors.C42,LibPQ.Errors.E42601}
 ```
 """
-struct PQResultError{Class, Code} <: PostgreSQLException
+struct PQResultError{Class,Code} <: PostgreSQLException
     msg::String
-    verbose_msg::Union{String, Nothing}
+    verbose_msg::Union{String,Nothing}
 
-    function PQResultError{Class_, Code_}(msg, verbose_msg) where {Class_, Code_}
-        return new{Class_::Errors.Class, Code_::Errors.ErrorCode}(
-            convert(String, msg), convert(Union{String, Nothing}, verbose_msg),
+    function PQResultError{Class_,Code_}(msg, verbose_msg) where {Class_,Code_}
+        return new{Class_::Errors.Class,Code_::Errors.ErrorCode}(
+            convert(String, msg), convert(Union{String,Nothing}, verbose_msg)
         )
     end
 end
@@ -84,8 +84,8 @@ end
 Base.parse(::Type{Class}, str::AbstractString) = getfield(Errors, Symbol("C", str))
 Base.parse(::Type{ErrorCode}, str::AbstractString) = getfield(Errors, Symbol("E", str))
 
-function PQResultError{Class, Code}(msg::String) where {Class, Code}
-    return PQResultError{Class, Code}(msg, nothing)
+function PQResultError{Class,Code}(msg::String) where {Class,Code}
+    return PQResultError{Class,Code}(msg, nothing)
 end
 
 function PQResultError(result::Result; verbose=false)
@@ -95,19 +95,19 @@ function PQResultError(result::Result; verbose=false)
     class = parse(Class, code_str[1:2])
     code = parse(ErrorCode, code_str)
 
-    return PQResultError{class, code}(msg, verbose_msg)
+    return PQResultError{class,code}(msg, verbose_msg)
 end
 
 error_class(err::PQResultError{Class_}) where {Class_} = Class_::Class
-error_code(err::PQResultError{Class_, Code_}) where {Class_, Code_} = Code_::ErrorCode
+error_code(err::PQResultError{Class_,Code_}) where {Class_,Code_} = Code_::ErrorCode
 
-function Base.showerror(io::IO, err::T) where {T <: PQResultError}
+function Base.showerror(io::IO, err::T) where {T<:PQResultError}
     msg = err.verbose_msg === nothing ? err.msg : err.verbose_msg
 
     return print(io, ERROR_NAMES[T], ": ", chomp(msg))
 end
 
-function Base.show(io::IO, err::T) where {T <: PQResultError}
+function Base.show(io::IO, err::T) where {T<:PQResultError}
     print(io, "LibPQ.Errors.", ERROR_NAMES[T], '(', repr(err.msg))
 
     if err.verbose_msg !== nothing

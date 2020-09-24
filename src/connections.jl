@@ -3,7 +3,7 @@ show_option(bool::Bool) = ifelse(bool, 't', 'f')
 show_option(num::Real) = num
 
 # values containing spaces may not work correctly on PostgreSQL versions before 9.6
-const CONNECTION_OPTION_DEFAULTS = Dict{String, String}(
+const CONNECTION_OPTION_DEFAULTS = Dict{String,String}(
     "DateStyle" => "ISO,YMD",
     "IntervalStyle" => "iso_8601",
     "TimeZone" => DEFAULT_CLIENT_TIME_ZONE[],
@@ -12,11 +12,11 @@ const CONNECTION_OPTION_DEFAULTS = Dict{String, String}(
 function _connection_parameter_dict(;
     client_encoding::String="UTF8",
     application_name::String="LibPQ.jl",
-    connection_options::Dict{String, String}=Dict{String, String}(),
+    connection_options::Dict{String,String}=Dict{String,String}(),
 )
     keep_option((k, v)) = !(k == "TimeZone" && v == "")
 
-    return Dict{String, String}(
+    return Dict{String,String}(
         "client_encoding" => client_encoding,
         "application_name" => application_name,
         "options" => join(imap(Iterators.filter(keep_option, connection_options)) do (k, v)
@@ -26,11 +26,11 @@ function _connection_parameter_dict(;
 end
 
 const CONNECTION_PARAMETER_DEFAULTS = _connection_parameter_dict(;
-    connection_options=CONNECTION_OPTION_DEFAULTS,
+    connection_options=CONNECTION_OPTION_DEFAULTS
 )
 
 # https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-PQCONNECTSTARTPARAMS
-const CONNECTION_STATUS_MESSAGES = Dict{libpq_c.ConnStatusType, String}(
+const CONNECTION_STATUS_MESSAGES = Dict{libpq_c.ConnStatusType,String}(
     libpq_c.CONNECTION_OK => "Connection is ready",
     libpq_c.CONNECTION_BAD => "Connection failed",
     libpq_c.CONNECTION_STARTED => "Waiting for connection to be made",
@@ -70,7 +70,7 @@ mutable struct Connection
     semaphore::Semaphore
 
     "Current AsyncResult, if active"
-    async_result::Any  # ::Union{AsyncResult, Nothing}, would be a circular reference
+    async_result  # ::Union{AsyncResult, Nothing}, would be a circular reference
 
     function Connection(
         conn::Ptr,
@@ -186,7 +186,7 @@ function _connect_poll(conn::Ptr{libpq_c.PGconn}, timer::Timer, timeout::Real)
 
             if wait_write || wait_read
                 event = poll_fd(
-                    socket(conn), timeout; writable=wait_write, readable=wait_read,
+                    socket(conn), timeout; writable=wait_write, readable=wait_read
                 )
 
                 if event.timedout
@@ -263,7 +263,7 @@ function Connection(
     str::AbstractString;
     throw_error::Bool=true,
     connect_timeout::Real=0,
-    options::Dict{String, String}=CONNECTION_OPTION_DEFAULTS,
+    options::Dict{String,String}=CONNECTION_OPTION_DEFAULTS,
     kwargs...,
 )
     if options === CONNECTION_OPTION_DEFAULTS
@@ -293,7 +293,7 @@ function Connection(
     # Make the connection
     debug(LOGGER, "Connecting to $str")
     jl_conn = Connection(
-        _connect_nonblocking(keywords, values, false; timeout=connect_timeout); kwargs...,
+        _connect_nonblocking(keywords, values, false; timeout=connect_timeout); kwargs...
     )
 
     # If password needed and not entered, prompt the user
@@ -647,13 +647,13 @@ struct ConnectionOption
     keyword::String
 
     "The name of the fallback environment variable for this option"
-    envvar::Union{String, Missing}
+    envvar::Union{String,Missing}
 
     "The PostgreSQL compiled-in default for this option"
-    compiled::Union{String, Missing}
+    compiled::Union{String,Missing}
 
     "The value of the option if set"
-    val::Union{String, Missing}
+    val::Union{String,Missing}
 
     "The label of the option for display"
     label::String
@@ -737,8 +737,7 @@ function conninfo(str::AbstractString)
 
     if ci_ptr == C_NULL && err_ref[] == C_NULL
         error(
-            LOGGER,
-            JLConnectionError("libpq could not allocate memory for connection info"),
+            LOGGER, JLConnectionError("libpq could not allocate memory for connection info")
         )
     end
 

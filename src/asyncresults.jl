@@ -115,7 +115,7 @@ function _consume(jl_conn::Connection)
                 else
                     result_num = length(result_ptrs) + 1
                     debug(
-                        LOGGER, "Saving result $result_num from connection $(jl_conn.conn)",
+                        LOGGER, "Saving result $result_num from connection $(jl_conn.conn)"
                     )
                     push!(result_ptrs, result_ptr)
                 end
@@ -218,7 +218,7 @@ end
 function async_execute(
     jl_conn::Connection,
     query::AbstractString,
-    parameters::Union{AbstractVector, Tuple};
+    parameters::Union{AbstractVector,Tuple};
     kwargs...,
 )
     string_params = string_parameters(parameters)
@@ -232,7 +232,7 @@ function async_execute(
 end
 
 function _async_execute(
-    submission_fn::Function, jl_conn::Connection; throw_error::Bool=true, kwargs...,
+    submission_fn::Function, jl_conn::Connection; throw_error::Bool=true, kwargs...
 )
     async_result = AsyncResult(jl_conn; kwargs...)
 
@@ -260,7 +260,7 @@ function _async_submit(conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString)
 end
 
 function _async_submit(
-    conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString, parameters::Vector{Ptr{UInt8}},
+    conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString, parameters::Vector{Ptr{UInt8}}
 )
     num_params = length(parameters)
 

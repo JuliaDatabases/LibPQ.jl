@@ -25,7 +25,7 @@ mutable struct Result
     function Result(
         result::Ptr{libpq_c.PGresult},
         jl_conn::Connection;
-        column_types::Union{AbstractDict, AbstractVector}=ColumnTypeMap(),
+        column_types::Union{AbstractDict,AbstractVector}=ColumnTypeMap(),
         type_map::AbstractDict=PQTypeMap(),
         conversions::AbstractDict=PQConversions(),
         not_null=false,
@@ -33,7 +33,7 @@ mutable struct Result
         jl_result = new(result, Atomic{Bool}(result == C_NULL))
 
         type_lookup = LayerDict(
-            PQTypeMap(type_map), jl_conn.type_map, LIBPQ_TYPE_MAP, _DEFAULT_TYPE_MAP,
+            PQTypeMap(type_map), jl_conn.type_map, LIBPQ_TYPE_MAP, _DEFAULT_TYPE_MAP
         )
 
         func_lookup = LayerDict(
@@ -69,7 +69,7 @@ mutable struct Result
         jl_result.column_funcs = collect(
             Base.Callable, imap(col_oids, col_types) do oid, typ
                 func_lookup[(oid, typ)]
-            end,
+            end
         )
 
         # figure out which columns the user says may contain nulls
@@ -143,7 +143,7 @@ end
 
 function _verbose_error_message(jl_result::Result)
     msg_ptr = libpq_c.PQresultVerboseErrorMessage(
-        jl_result.result, libpq_c.PQERRORS_VERBOSE, libpq_c.PQSHOW_CONTEXT_ALWAYS,
+        jl_result.result, libpq_c.PQERRORS_VERBOSE, libpq_c.PQSHOW_CONTEXT_ALWAYS
     )
 
     if msg_ptr == C_NULL
@@ -175,7 +175,7 @@ julia> LibPQ.error_field(result, LibPQ.libpq_c.PG_DIAG_SEVERITY)
 "ERROR"
 ```
 """
-function error_field(jl_result::Result, field_code::Union{Char, Integer})
+function error_field(jl_result::Result, field_code::Union{Char,Integer})
     ret = libpq_c.PQresultErrorField(jl_result.result, field_code)
     return ret == C_NULL ? nothing : unsafe_string(ret)
 end
@@ -264,7 +264,7 @@ For information on the `column_types`, `type_map`, and `conversions` arguments, 
 function execute end
 
 function execute(
-    jl_conn::Connection, query::AbstractString; throw_error::Bool=true, kwargs...,
+    jl_conn::Connection, query::AbstractString; throw_error::Bool=true, kwargs...
 )
     result = lock(jl_conn) do
         _execute(jl_conn.conn, query)
@@ -276,7 +276,7 @@ end
 function execute(
     jl_conn::Connection,
     query::AbstractString,
-    parameters::Union{AbstractVector, Tuple};
+    parameters::Union{AbstractVector,Tuple};
     throw_error::Bool=true,
     kwargs...,
 )
@@ -295,7 +295,7 @@ function _execute(conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString)
 end
 
 function _execute(
-    conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString, parameters::Vector{Ptr{UInt8}},
+    conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString, parameters::Vector{Ptr{UInt8}}
 )
     num_params = length(parameters)
 
@@ -329,7 +329,7 @@ string_parameters(parameters::AbstractVector) = map(string_parameter, parameters
 # vector which might contain missings
 function string_parameters(parameters::AbstractVector{>:Missing})
     return collect(
-        Union{String, Missing},
+        Union{String,Missing},
         imap(parameters) do parameter
             ismissing(parameter) ? missing : string_parameter(parameter)
         end,
@@ -361,7 +361,7 @@ function string_parameter(interval::AbstractInterval)
     return String(take!(io))
 end
 
-function string_parameter(parameter::InfExtendedTime{T}) where {T <: Dates.TimeType}
+function string_parameter(parameter::InfExtendedTime{T}) where {T<:Dates.TimeType}
     if isinf(parameter)
         return isposinf(parameter) ? "infinity" : "-infinity"
     else
@@ -457,7 +457,7 @@ column_names(jl_result::Result) = copy(jl_result.column_names)
 
 Return the index (1-based) of the column named `column_name`.
 """
-function column_number(jl_result::Result, column_name::Union{AbstractString, Symbol})::Int
+function column_number(jl_result::Result, column_name::Union{AbstractString,Symbol})::Int
     return something(findfirst(isequal(String(column_name)), jl_result.column_names), 0)
 end
 

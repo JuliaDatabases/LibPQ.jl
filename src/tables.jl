@@ -15,7 +15,7 @@ end
 
 function Tables.schema(jl_result::Result)
     types = map(jl_result.not_null, column_types(jl_result)) do not_null, col_type
-        not_null ? col_type : Union{col_type, Missing}
+        not_null ? col_type : Union{col_type,Missing}
     end
     return Tables.Schema(map(Symbol, column_names(jl_result)), types)
 end
@@ -81,7 +81,7 @@ Tables.columns(jl_result::Result) = Columns(jl_result)
 function Tables.schema(cs::Columns)
     jl_result = result(cs)
     types = map(jl_result.not_null, column_types(jl_result)) do not_null, col_type
-        not_null ? col_type : Union{col_type, Missing}
+        not_null ? col_type : Union{col_type,Missing}
     end
     return Tables.Schema(map(Symbol, column_names(jl_result)), types)
 end
@@ -95,7 +95,7 @@ function Column(jl_result::Result, col::Integer, name=Symbol(column_name(jl_resu
     typ = column_types(jl_result)[col]
     func = jl_result.column_funcs[col]
     not_null = jl_result.not_null[col]
-    element_type = not_null ? typ : Union{typ, Missing}
+    element_type = not_null ? typ : Union{typ,Missing}
     return Column{element_type}(jl_result, col, name, oid, not_null, typ, func)
 end
 

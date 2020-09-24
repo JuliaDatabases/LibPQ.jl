@@ -14,10 +14,10 @@ The iterated items must be `AbstractString`s or `Array{UInt8}`s.
 """
 struct CopyIn
     query::String
-    data_itr::Any
+    data_itr
 end
 
-function put_copy_data(jl_conn::Connection, data::Union{Array{UInt8}, AbstractString})
+function put_copy_data(jl_conn::Connection, data::Union{Array{UInt8},AbstractString})
     return libpq_c.PQputCopyData(jl_conn.conn, data, sizeof(data))
 end
 
@@ -36,7 +36,7 @@ Runs [`execute`](@ref execute(::Connection, ::String)) on `copyin`'s query, then
 All other arguments are passed through to the `execute` call for the initial query.
 """
 function execute(
-    jl_conn::Connection, copy::CopyIn, parameters=nothing; throw_error=true, kwargs...,
+    jl_conn::Connection, copy::CopyIn, parameters=nothing; throw_error=true, kwargs...
 )
     level = throw_error ? error : warn
     if parameters !== nothing
@@ -75,6 +75,6 @@ function execute(
     end
 
     return handle_result(
-        Result(copy_end_result, jl_conn, kwargs...); throw_error=throw_error,
+        Result(copy_end_result, jl_conn, kwargs...); throw_error=throw_error
     )
 end
