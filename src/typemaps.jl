@@ -1,3 +1,4 @@
+#! format: off
 """
     const PQ_SYSTEM_TYPES::Dict{Symbol, Oid}
 
