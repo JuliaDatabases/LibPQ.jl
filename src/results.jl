@@ -59,17 +59,21 @@ mutable struct Result
         end
 
         jl_result.column_types =
-            col_types = collect(Type, imap(enumerate(col_oids)) do itr
-                col_num, col_oid = itr
-                get(column_type_map, col_num) do
-                    get(type_lookup, col_oid, String)
-                end
-            end)
+            col_types = collect(
+                Type,
+                imap(enumerate(col_oids)) do itr
+                    col_num, col_oid = itr
+                    get(column_type_map, col_num) do
+                        get(type_lookup, col_oid, String)
+                    end
+                end,
+            )
 
         jl_result.column_funcs = collect(
-            Base.Callable, imap(col_oids, col_types) do oid, typ
+            Base.Callable,
+            imap(col_oids, col_types) do oid, typ
                 func_lookup[(oid, typ)]
-            end
+            end,
         )
 
         # figure out which columns the user says may contain nulls

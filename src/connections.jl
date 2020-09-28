@@ -19,9 +19,12 @@ function _connection_parameter_dict(;
     return Dict{String,String}(
         "client_encoding" => client_encoding,
         "application_name" => application_name,
-        "options" => join(imap(Iterators.filter(keep_option, connection_options)) do (k, v)
-            "-c $k=$(show_option(v))"
-        end, " "),
+        "options" => join(
+            imap(Iterators.filter(keep_option, connection_options)) do (k, v)
+                "-c $k=$(show_option(v))"
+            end,
+            " ",
+        ),
     )
 end
 
