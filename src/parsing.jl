@@ -101,6 +101,7 @@ is not in UTF-8.
 bytes_view(pqv::PQValue) = unsafe_wrap(Vector{UInt8}, data_pointer(pqv), num_bytes(pqv) + 1)
 
 Base.String(pqv::PQValue) = unsafe_string(pqv)
+Base.parse(::Type{String}, pqv::PQValue) = unsafe_string(pqv)
 Base.convert(::Type{String}, pqv::PQValue) = String(pqv)
 Base.length(pqv::PQValue) = length(string_view(pqv))
 Base.lastindex(pqv::PQValue) = lastindex(string_view(pqv))
@@ -153,8 +154,8 @@ _DEFAULT_TYPE_MAP[:numeric] = Decimal
 
 ## character
 # bpchar is char(n)
-function pqparse(::Type{String}, str::AbstractString)
-    return String(rstrip(str, ' '))
+function Base.parse(::Type{String}, pqv::PQValue{PQ_SYSTEM_TYPES[:bpchar]})
+    return String(rstrip(string_view(pqv), ' '))
 end
 # char is "char"
 _DEFAULT_TYPE_MAP[:char] = PQChar
