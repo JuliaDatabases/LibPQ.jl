@@ -1101,6 +1101,8 @@ end
                         ("E'\\\\001'::bytea", UInt8[0o001]),
                         ("E'\\\\176'::bytea", UInt8[0o176]),
                         ("'hello'::char(10)", "hello"),
+                        ("'hello  '::char(10)", "hello"),
+                        ("'hello  '::varchar(10)", "hello  "),
                         ("'3'::\"char\"", LibPQ.PQChar('3')),
                         ("'t'::bool", true),
                         ("'T'::bool", true),
