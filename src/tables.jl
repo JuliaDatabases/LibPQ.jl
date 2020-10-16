@@ -160,7 +160,7 @@ function load!(table::T, connection::Connection, query::AbstractString) where {T
             elseif val isa AbstractString
                 convert(String, val)
             else
-                string(val)
+                string_parameter(val)
             end
         end
         close(execute(stmt, parameters; throw_error=true))
