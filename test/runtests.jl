@@ -275,6 +275,30 @@ end
         close(conn)
     end
 
+    @testset "load!" begin
+        @testset "issue #204" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+
+            close(execute(conn, """
+                CREATE TEMPORARY TABLE libpqjl_test (
+                    id    serial PRIMARY KEY,
+                    data  text[]
+                );
+            """))
+
+            table = (; data = [["foo", "bar"], ["baz"]])
+            LibPQ.load!(table, conn, "INSERT INTO libpqjl_test (data) VALUES (\$1);")
+
+            # TODO: comapre entire tables once string array parsing is supported
+            result = execute(conn, "SELECT data[1] as data1 FROM libpqjl_test ORDER BY id;", not_null=true)
+            retrieved = columntable(result)
+            @test first.(table.data) == retrieved.data1
+
+            close(result)
+            close(conn)
+        end
+    end
+
     @testset "COPY FROM" begin
         @testset "Example COPY FROM" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
