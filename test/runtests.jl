@@ -289,7 +289,7 @@ end
             table = (; data = [["foo", "bar"], ["baz"]])
             LibPQ.load!(table, conn, "INSERT INTO libpqjl_test (data) VALUES (\$1);")
 
-            # TODO: comapre entire tables once string array parsing is supported
+            # TODO: compare entire tables once string array parsing is supported
             result = execute(conn, "SELECT data[1] as data1 FROM libpqjl_test ORDER BY id;", not_null=true)
             retrieved = columntable(result)
             @test first.(table.data) == retrieved.data1
