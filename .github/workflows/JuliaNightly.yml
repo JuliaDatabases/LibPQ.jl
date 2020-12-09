@@ -23,6 +23,7 @@ jobs:
             ${{ runner.os }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-test-
             ${{ runner.os }}-
+      - uses: harmon758/postgresql-action@v1
       - uses: julia-actions/julia-buildpkg@latest
       - run: |
           git config --global user.name Tester
