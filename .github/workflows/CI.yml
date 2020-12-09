@@ -8,9 +8,9 @@ on:
     tags: ["*"]
   pull_request:
 env:
-  PGHOST: localhost
+  PGDATABASE: postgres
   PGUSER: postgres
-  PGPASSWORD: password123
+  PGPASSWORD: root
 jobs:
   test:
     name: Julia ${{ matrix.version }} - PostgreSQL ${{ matrix.postgresql-version }} - ${{ matrix.os }} - ${{ matrix.arch }}
@@ -91,19 +91,44 @@ jobs:
             ${{ runner.os }}-test-
             ${{ runner.os }}-
       - uses: harmon758/postgresql-action@v1
+        if: ${{ runner.os == 'Linux' }}
         with:
           postgresql version: ${{ matrix.postgresql-version }}
           postgresql user: ${{ env.PGUSER }}
           postgresql password: ${{ env.PGPASSWORD }}
       - name: Wait / Sleep
         uses: jakejarvis/wait-action@v0.1.0
+        if: ${{ runner.os == 'Linux' }}
         with:
           time: '1m'
       - name: Collect Docker Logs
         uses: jwalton/gh-docker-logs@v1.0.0
+        if: ${{ runner.os == 'Linux' }}
       - name: Check running containers
         run: docker ps -a
-      - run: psql -h localhost -c '\conninfo'
+        if: ${{ runner.os == 'Linux' }}
+      - name: Set PGHOST on Linux
+        run: echo "PGHOST=localhost" >> $GITHUB_ENV
+        if: ${{ runner.os == 'Linux' }}
+      - name: Set PGUSER on macOS
+        run: |
+          echo "PGUSER=$USER" >> $GITHUB_ENV
+          echo "LIBPQJL_DATABASE_USER=$USER" >> $GITHUB_ENV
+        if: ${{ runner.os == 'macOS' }}
+      - name: Start Homebrew PostgreSQL service
+        run: pg_ctl -D /usr/local/var/postgres start
+        if: ${{ runner.os == 'macOS' }}
+      - name: Add PostgreSQL to Path
+        run: |
+          echo $env:PGBIN
+          echo $env:PGBIN | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        if: ${{ runner.os == 'Windows' }}
+      - name: Start Windows PostgreSQL service
+        run: |
+          pg_ctl -D $env:PGDATA start
+          pg_ctl -D $env:PGDATA status
+        if: ${{ runner.os == 'Windows' }}
+      - run: psql -c '\conninfo'
       - uses: julia-actions/julia-buildpkg@latest
       - run: |
           git config --global user.name Tester
