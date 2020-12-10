@@ -195,3 +195,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+
+  error-codes:
+    name: Error Codes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1'
+      - run: |
+          git config --global user.name name
+          git config --global user.email email
+          git config --global github.user username
+      - name: Install Julia packages
+        run: julia -e 'using Pkg; Pkg.add(["EzXML", "HTTP"]);'
+      - name: Generate error codes
+        run: julia deps/error_codes.jl error_codes_generated.jl
+      - name: Compare error codes
+        run: diff error_codes_generated.jl src/error_codes.jl
