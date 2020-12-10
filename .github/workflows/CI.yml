@@ -167,9 +167,13 @@ jobs:
           git config --global user.name name
           git config --global user.email email
           git config --global github.user username
+      - name: Setup documentation dependencies
+        run: |
+          sudo apt-get update -y -qq
+          sudo apt-get install -y -qq fonts-lmodern pdf2svg texlive-latex-extra texlive-luatex texlive-pictures texlive-xetex
       - uses: harmon758/postgresql-action@v1
         with:
-          postgresql version: ${{ matrix.postgresql-version }}
+          postgresql version: latest
           postgresql user: ${{ env.PGUSER }}
           postgresql password: ${{ env.PGPASSWORD }}
       - name: Wait / Sleep
