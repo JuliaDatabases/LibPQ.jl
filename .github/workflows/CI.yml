@@ -157,6 +157,12 @@ jobs:
           git config --global user.email email
           git config --global github.user username
       - uses: harmon758/postgresql-action@v1
+        with:
+          postgresql version: ${{ matrix.postgresql-version }}
+          postgresql user: ${{ env.PGUSER }}
+          postgresql password: ${{ env.PGPASSWORD }}
+      - name: Set PGHOST
+        run: echo "PGHOST=localhost" >> $GITHUB_ENV
       - run: |
           julia --project=docs -e '
             using Pkg;
