@@ -96,6 +96,17 @@ jobs:
           postgresql version: ${{ matrix.postgresql-version }}
           postgresql user: ${{ env.PGUSER }}
           postgresql password: ${{ env.PGPASSWORD }}
+      - name: Wait / Sleep
+        uses: jakejarvis/wait-action@v0.1.0
+        if: ${{ runner.os == 'Linux' }}
+        with:
+          time: '1m'
+      - name: Collect Docker Logs
+        uses: jwalton/gh-docker-logs@v1.0.0
+        if: ${{ runner.os == 'Linux' }}
+      - name: Check running containers
+        run: docker ps -a
+        if: ${{ runner.os == 'Linux' }}
       - name: Set PGHOST on Linux
         run: echo "PGHOST=localhost" >> $GITHUB_ENV
         if: ${{ runner.os == 'Linux' }}
