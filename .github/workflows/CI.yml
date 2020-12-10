@@ -172,6 +172,14 @@ jobs:
           postgresql version: ${{ matrix.postgresql-version }}
           postgresql user: ${{ env.PGUSER }}
           postgresql password: ${{ env.PGPASSWORD }}
+      - name: Wait / Sleep
+        uses: jakejarvis/wait-action@v0.1.0
+        with:
+          time: '1m'
+      - name: Collect Docker Logs
+        uses: jwalton/gh-docker-logs@v1.0.0
+      - name: Check running containers
+        run: docker ps -a
       - name: Set PGHOST
         run: echo "PGHOST=localhost" >> $GITHUB_ENV
       - run: |
