@@ -19,7 +19,8 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - 1
+          - "1.0"  # LTS
+          - "1"    # Latest Release
         postgresql-version:
           - latest
         os:
@@ -28,40 +29,27 @@ jobs:
           - windows-latest
         arch:
           - x64
+          - x86
+        exclude:
+          # Don't test 32-bit on macOS
+          - os: macOS-latest
+            arch: x86
         include:
-          # Add a 1.0 job just to make sure we still support it
-          - os: ubuntu-latest
-            version: 1.0.5
-            arch: x64
-            postgresql-version: latest
           # Add a 1.3 job because that's what Invenia actually uses
           - os: ubuntu-latest
             version: 1.3
             arch: x64
             postgresql-version: latest
-          # Add 32-bit jobs to ensure we don't have any 64-bit specific logic
-          - os: ubuntu-latest
-            version: 1
-            arch: x86
-            postgresql-version: latest
-          - os: windows-latest
-            version: 1
-            arch: x86
-            postgresql-version: latest
-          # add older postgresql versions
+          # Add older PostgreSQL Versions
           - os: ubuntu-latest
             version: 1
             arch: x64
             postgresql-version: '12'
-          # add older supported postgresql versions
+          # Add older supported PostgreSQL Versions
           - os: ubuntu-latest
             version: 1
             arch: x64
             postgresql-version: '11'
-          - os: ubuntu-latest
-            version: 1
-            arch: x64
-            postgresql-version: '10'
           - os: ubuntu-latest
             version: 1
             arch: x64
@@ -90,7 +78,9 @@ jobs:
             ${{ runner.os }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-test-
             ${{ runner.os }}-
-      - uses: harmon758/postgresql-action@v1
+      # Linux
+      - name: Install PostgreSQL
+        uses: harmon758/postgresql-action@v1
         if: ${{ runner.os == 'Linux' }}
         with:
           postgresql version: ${{ matrix.postgresql-version }}
@@ -110,6 +100,7 @@ jobs:
       - name: Set PGHOST on Linux
         run: echo "PGHOST=localhost" >> $GITHUB_ENV
         if: ${{ runner.os == 'Linux' }}
+      # MacOS
       - name: Set PGUSER on macOS
         run: |
           echo "PGUSER=$USER" >> $GITHUB_ENV
@@ -118,6 +109,7 @@ jobs:
       - name: Start Homebrew PostgreSQL service
         run: pg_ctl -D /usr/local/var/postgres start
         if: ${{ runner.os == 'macOS' }}
+      # Windows
       - name: Add PostgreSQL to Path
         run: |
           echo $env:PGBIN
@@ -128,11 +120,9 @@ jobs:
           pg_ctl -D $env:PGDATA start
           pg_ctl -D $env:PGDATA status
         if: ${{ runner.os == 'Windows' }}
+      # Run Tests
       - run: psql -c '\conninfo'
       - uses: julia-actions/julia-buildpkg@latest
-      - run: |
-          git config --global user.name Tester
-          git config --global user.email te@st.er
       - uses: julia-actions/julia-runtest@latest
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v1
@@ -143,7 +133,7 @@ jobs:
     name: Notify Slack Failure
     needs: test
     runs-on: ubuntu-latest
-    if: github.event == 'schedule'
+    if: always() && github.event_name == 'schedule'
     steps:
       - uses: technote-space/workflow-conclusion-action@v2
       - uses: voxmedia/github-action-slack-notify-build@v1
@@ -163,10 +153,6 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1'
-      - run: |
-          git config --global user.name name
-          git config --global user.email email
-          git config --global github.user username
       - name: Setup documentation dependencies
         run: |
           sudo apt-get update -y -qq
@@ -188,10 +174,10 @@ jobs:
         run: echo "PGHOST=localhost" >> $GITHUB_ENV
       - run: |
           julia --project=docs -e '
-            using Pkg;
-            Pkg.develop(PackageSpec(path=pwd()));
-            Pkg.instantiate();
-            include("docs/make.jl");'
+            using Pkg
+            Pkg.develop(PackageSpec(path=pwd()))
+            Pkg.instantiate()
+            include("docs/make.jl")'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
@@ -204,10 +190,6 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1'
-      - run: |
-          git config --global user.name name
-          git config --global user.email email
-          git config --global github.user username
       - name: Install Julia packages
         run: julia -e 'using Pkg; Pkg.add(["EzXML", "HTTP"]);'
       - name: Generate error codes
