@@ -1,0 +1,201 @@
+name: CI
+# Run on master, tags, or any pull request
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC (8 PM CST)
+  push:
+    branches: [master]
+    tags: ["*"]
+  pull_request:
+env:
+  PGDATABASE: postgres
+  PGUSER: postgres
+  PGPASSWORD: root
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - PostgreSQL ${{ matrix.postgresql-version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - "1"  # Latest Release
+        postgresql-version:
+          - latest
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+        arch:
+          - x64
+          - x86
+        exclude:
+          # Don't test 32-bit on macOS
+          - os: macOS-latest
+            arch: x86
+        include:
+          # Add a 1.0 job just to make sure we still support it
+          - os: ubuntu-latest
+            version: "1.0"
+            arch: x64
+            postgresql-version: latest
+          # Add a 1.3 job because that's what Invenia actually uses
+          - os: ubuntu-latest
+            version: 1.3
+            arch: x64
+            postgresql-version: latest
+          # Add older supported PostgreSQL Versions
+          - os: ubuntu-latest
+            version: 1
+            arch: x64
+            postgresql-version: '12'
+          - os: ubuntu-latest
+            version: 1
+            arch: x64
+            postgresql-version: '11'
+          - os: ubuntu-latest
+            version: 1
+            arch: x64
+            postgresql-version: '10'
+          - os: ubuntu-latest
+            version: 1
+            arch: x64
+            postgresql-version: '9.6'
+          - os: ubuntu-latest
+            version: 1
+            arch: x64
+            postgresql-version: '9.5'
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: actions/cache@v1
+        env:
+          cache-name: cache-artifacts
+        with:
+          path: ~/.julia/artifacts
+          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-test-${{ env.cache-name }}-
+            ${{ runner.os }}-test-
+            ${{ runner.os }}-
+      # Linux
+      - name: Install PostgreSQL
+        uses: harmon758/postgresql-action@v1
+        if: ${{ runner.os == 'Linux' }}
+        with:
+          postgresql version: ${{ matrix.postgresql-version }}
+          postgresql user: ${{ env.PGUSER }}
+          postgresql password: ${{ env.PGPASSWORD }}
+      - name: Wait / Sleep
+        uses: jakejarvis/wait-action@v0.1.0
+        if: ${{ runner.os == 'Linux' }}
+        with:
+          time: '1m'
+      - name: Collect Docker Logs
+        uses: jwalton/gh-docker-logs@v1.0.0
+        if: ${{ runner.os == 'Linux' }}
+      - name: Check running containers
+        run: docker ps -a
+        if: ${{ runner.os == 'Linux' }}
+      - name: Set PGHOST on Linux
+        run: echo "PGHOST=localhost" >> $GITHUB_ENV
+        if: ${{ runner.os == 'Linux' }}
+      # MacOS
+      - name: Set PGUSER on macOS
+        run: |
+          echo "PGUSER=$USER" >> $GITHUB_ENV
+          echo "LIBPQJL_DATABASE_USER=$USER" >> $GITHUB_ENV
+        if: ${{ runner.os == 'macOS' }}
+      - name: Start Homebrew PostgreSQL service
+        run: pg_ctl -D /usr/local/var/postgres start
+        if: ${{ runner.os == 'macOS' }}
+      # Windows
+      - name: Add PostgreSQL to Path
+        run: |
+          echo $env:PGBIN
+          echo $env:PGBIN | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        if: ${{ runner.os == 'Windows' }}
+      - name: Start Windows PostgreSQL service
+        run: |
+          pg_ctl -D $env:PGDATA start
+          pg_ctl -D $env:PGDATA status
+        if: ${{ runner.os == 'Windows' }}
+      # Run Tests
+      - run: psql -c '\conninfo'
+      - uses: julia-actions/julia-buildpkg@latest
+      - uses: julia-actions/julia-runtest@latest
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v1
+        with:
+          file: lcov.info
+
+  slack:
+    name: Notify Slack Failure
+    needs: test
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'schedule'
+    steps:
+      - uses: technote-space/workflow-conclusion-action@v2
+      - uses: voxmedia/github-action-slack-notify-build@v1
+        if: env.WORKFLOW_CONCLUSION == 'failure'
+        with:
+          channel: nightly-dev
+          status: FAILED
+          color: danger
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.DEV_SLACK_BOT_TOKEN }}
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1'
+      - name: Setup documentation dependencies
+        run: |
+          sudo apt-get update -y -qq
+          sudo apt-get install -y -qq fonts-lmodern pdf2svg texlive-latex-extra texlive-luatex texlive-pictures texlive-xetex
+      - uses: harmon758/postgresql-action@v1
+        with:
+          postgresql version: latest
+          postgresql user: ${{ env.PGUSER }}
+          postgresql password: ${{ env.PGPASSWORD }}
+      - name: Wait / Sleep
+        uses: jakejarvis/wait-action@v0.1.0
+        with:
+          time: '1m'
+      - name: Collect Docker Logs
+        uses: jwalton/gh-docker-logs@v1.0.0
+      - name: Check running containers
+        run: docker ps -a
+      - name: Set PGHOST
+        run: echo "PGHOST=localhost" >> $GITHUB_ENV
+      - run: |
+          julia --project=docs -e '
+            using Pkg
+            Pkg.develop(PackageSpec(path=pwd()))
+            Pkg.instantiate()
+            include("docs/make.jl")'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+
+  error-codes:
+    name: Error Codes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1'
+      - name: Install Julia packages
+        run: julia -e 'using Pkg; Pkg.add(["EzXML", "HTTP"]);'
+      - name: Generate error codes
+        run: julia deps/error_codes.jl error_codes_generated.jl
+      - name: Compare error codes
+        run: diff error_codes_generated.jl src/error_codes.jl

@@ -1,0 +1,51 @@
+name: JuliaNightly
+# Nightly Scheduled Julia Nightly Run
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC (8 PM CST)
+env:
+  PGDATABASE: postgres
+  PGUSER: postgres
+  PGPASSWORD: root
+jobs:
+  test:
+    name: Julia Nightly - Ubuntu - x64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: nightly
+          arch: x64
+      - uses: actions/cache@v1
+        env:
+          cache-name: cache-artifacts
+        with:
+          path: ~/.julia/artifacts
+          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-test-${{ env.cache-name }}-
+            ${{ runner.os }}-test-
+            ${{ runner.os }}-
+      - uses: harmon758/postgresql-action@v1
+        with:
+          postgresql version: latest
+          postgresql user: ${{ env.PGUSER }}
+          postgresql password: ${{ env.PGPASSWORD }}
+      - name: Wait / Sleep
+        uses: jakejarvis/wait-action@v0.1.0
+        with:
+          time: '1m'
+      - name: Collect Docker Logs
+        uses: jwalton/gh-docker-logs@v1.0.0
+      - name: Check running containers
+        run: docker ps -a
+      - name: Set PGHOST
+        run: echo "PGHOST=localhost" >> $GITHUB_ENV
+      - run: psql -c '\conninfo'
+      - uses: julia-actions/julia-buildpkg@latest
+      - uses: julia-actions/julia-runtest@latest
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v1
+        with:
+          file: lcov.info
