@@ -19,8 +19,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - "1.0"  # LTS
-          - "1"    # Latest Release
+          - "1"  # Latest Release
+        postgresql-version:
+          - latest
         os:
           - ubuntu-latest
           - macOS-latest
@@ -29,16 +30,41 @@ jobs:
           - x64
           - x86
         exclude:
-          # Test 32-bit only on Linux
+          # Don't test 32-bit on macOS
           - os: macOS-latest
             arch: x86
-          - os: windows-latest
-            arch: x86
         include:
-          # Add a 1.5 job because that's what Invenia actually uses
+          # Add a 1.0 job just to make sure we still support it
           - os: ubuntu-latest
-            version: 1.5
+            version: "1.0"
             arch: x64
+            postgresql-version: latest
+          # Add a 1.3 job because that's what Invenia actually uses
+          - os: ubuntu-latest
+            version: 1.3
+            arch: x64
+            postgresql-version: latest
+          # Add older supported PostgreSQL Versions
+          - os: ubuntu-latest
+            version: 1
+            arch: x64
+            postgresql-version: '12'
+          - os: ubuntu-latest
+            version: 1
+            arch: x64
+            postgresql-version: '11'
+          - os: ubuntu-latest
+            version: 1
+            arch: x64
+            postgresql-version: '10'
+          - os: ubuntu-latest
+            version: 1
+            arch: x64
+            postgresql-version: '9.6'
+          - os: ubuntu-latest
+            version: 1
+            arch: x64
+            postgresql-version: '9.5'
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
