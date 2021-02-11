@@ -301,6 +301,16 @@ end
 
 function execute(
     jl_conn::Connection,
+    sql::SQLStrings.Sql;
+    throw_error::Bool=true,
+    kwargs...
+)
+    query, parameters = SQLStrings.prepare(sql)
+    execute(jl_conn, query, parameters; throw_error=throw_error, kwargs...)
+end
+
+function execute(
+    jl_conn::Connection,
     query::AbstractString,
     parameters::Union{AbstractVector,Tuple};
     throw_error::Bool=true,

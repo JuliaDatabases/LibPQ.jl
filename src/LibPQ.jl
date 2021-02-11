@@ -26,6 +26,7 @@ using IterTools: imap
 using LayerDicts
 using Memento: Memento, getlogger, warn, info, error, debug
 using OffsetArrays
+using SQLStrings
 using TimeZones
 
 const Parameter = Union{String,Missing}
