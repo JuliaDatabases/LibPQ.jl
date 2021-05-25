@@ -1534,6 +1534,9 @@ end
             result = stmt([16]; throw_error=true)
             _test_stmt_exec_2(result)
 
+            result = stmt(16; throw_error=true)
+            _test_stmt_exec_2(result)
+
             close(conn)
         end
     end

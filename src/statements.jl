@@ -162,6 +162,14 @@ function _execute_prepared(
     )
 end
 
-function (stmt::Statement)(args...; kwargs...)
-    execute(stmt, args...; kwargs...)
+function (stmt::LibPQ.Statement)(; kwargs...)
+    LibPQ.execute(stmt; kwargs...)
+end
+
+function (stmt::LibPQ.Statement)(parameters::Union{AbstractVector, Tuple}; kwargs...)
+    LibPQ.execute(stmt, parameters; kwargs...)
+end
+
+function (stmt::LibPQ.Statement)(parameters...; kwargs...)
+    LibPQ.execute(stmt, parameters; kwargs...)
 end

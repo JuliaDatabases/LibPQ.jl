@@ -31,7 +31,7 @@ stmt = prepare(conn, "SELECT typname FROM pg_type WHERE oid = \$1")
 result = execute(stmt, ["16"])
 data = columntable(result)
 # or
-result = stmt(["16"])
+result = stmt("16")
 data = columntable(result)
 
 close(conn)
