@@ -1430,6 +1430,34 @@ end
                 @test !first(first(result))
                 close(result)
 
+                result = execute(conn, "SELECT 'f\"oo' = ANY(\$1)", [["b\"ar", "f\"oo"]])
+                @test first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT 'f\\oo' = ANY(\$1)", [["b\\ar", "f\\oo"]])
+                @test first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT 'f\\\\oo' = ANY(\$1)", [["b\\\\ar", "f\\\\oo"]])
+                @test first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT 'f\\\"oo' = ANY(\$1)", [["b\\\"ar", "f\\\"oo"]])
+                @test first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT 'f\"\\oo' = ANY(\$1)", [["b\"\\ar", "f\"\\oo"]])
+                @test first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT 'f\\\\oo' = ANY(\$1)", [["b\\ar", "f\\oo"]])
+                @test !first(first(result))
+                close(result)
+
+                result = execute(conn, "SELECT 'f\\oo' = ANY(\$1)", [["b\\\\ar", "f\\\\oo"]])
+                @test !first(first(result))
+                close(result)
+
                 result = execute(conn, "SELECT ARRAY[1, 2] = \$1", [[1, 2]])
                 @test first(first(result))
                 close(result)
