@@ -146,6 +146,7 @@ function _execute_prepared(
     conn_ptr::Ptr{libpq_c.PGconn},
     stmt_name::AbstractString,
     parameters::Vector{Ptr{UInt8}}=Ptr{UInt8}[],
+    binary_format::Bool=false,
 )
     num_params = length(parameters)
 
@@ -156,6 +157,6 @@ function _execute_prepared(
         num_params == 0 ? C_NULL : parameters,
         C_NULL,  # paramLengths is ignored for text format parameters
         num_params == 0 ? C_NULL : zeros(Cint, num_params),  # all parameters in text format
-        zero(Cint),  # return result in text format
+        Cint(binary_format),  # return result in text format
     )
 end

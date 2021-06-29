@@ -1,5 +1,5 @@
 "A wrapper for one value in a PostgreSQL result."
-struct PQValue{OID}
+struct PQValue{OID, binary_format}
     "PostgreSQL result"
     jl_result::Result
 
@@ -10,7 +10,7 @@ struct PQValue{OID}
     col::Cint
 
     function PQValue{OID}(jl_result::Result, row::Integer, col::Integer) where OID
-        return new{OID}(jl_result, row - 1, col - 1)
+        return new{OID, jl_result.binary_format}(jl_result, row - 1, col - 1)
     end
 end
 
@@ -26,7 +26,7 @@ the result.
 function PQValue(jl_result::Result, row::Integer, col::Integer)
     oid = libpq_c.PQftype(jl_result.result, col - 1)
 
-    return PQValue{oid}(jl_result, row, col)
+    return PQValue{oid, jl_result.binary_format}(jl_result, row, col)
 end
 
 """
@@ -100,8 +100,10 @@ is not in UTF-8.
 """
 bytes_view(pqv::PQValue) = unsafe_wrap(Vector{UInt8}, data_pointer(pqv), num_bytes(pqv) + 1)
 
+# bytes_view(pqv::PQValue) = bswap(unsafe_load(data_pointer(pq_value_bin)))
+
 Base.String(pqv::PQValue) = unsafe_string(pqv)
-Base.parse(::Type{String}, pqv::PQValue) = unsafe_string(pqv)
+Base.parse(::Type{String}, pqv::PQValue) where R = unsafe_string(pqv)
 Base.convert(::Type{String}, pqv::PQValue) = String(pqv)
 Base.length(pqv::PQValue) = length(string_view(pqv))
 Base.lastindex(pqv::PQValue) = lastindex(string_view(pqv))
@@ -119,7 +121,11 @@ By default, this uses any existing `parse` method for parsing a value of type `T
 You can implement default PostgreSQL-specific parsing for a given type by overriding
 `pqparse`.
 """
-Base.parse(::Type{T}, pqv::PQValue) where {T} = pqparse(T, string_view(pqv))
+Base.parse(::Type{T}, pqv::PQValue) where {T, R} = pqparse(T, string_view(pqv))
+# Base.parse(::Type{T}, pqv::PQValue{R, false}) where {T, R} = pqparse(T, string_view(pqv))
+
+# Base.parse(::Type{T}, pqv::PQValue{R, true}) where {T, R} = bswap(unsafe_load(Ptr{T}(data_pointer(pqv))))
+Base.parse(::Type{T}, pqv::PQValue{R, true}) where {T <: Integer, R} = bswap(unsafe_load(Ptr{T}(data_pointer(pqv))))
 
 """
     LibPQ.pqparse(::Type{T}, str::AbstractString) -> T
@@ -154,7 +160,7 @@ _DEFAULT_TYPE_MAP[:numeric] = Decimal
 
 ## character
 # bpchar is char(n)
-function Base.parse(::Type{String}, pqv::PQValue{PQ_SYSTEM_TYPES[:bpchar]})
+function Base.parse(::Type{String}, pqv::PQValue{PQ_SYSTEM_TYPES[:bpchar], false})
     return String(rstrip(string_view(pqv), ' '))
 end
 # char is "char"
@@ -168,7 +174,7 @@ pqparse(::Type{Char}, str::AbstractString) = Char(pqparse(PQChar, str))
 _DEFAULT_TYPE_MAP[:bytea] = Vector{UInt8}
 
 # Needs it's own `parse` method as it uses bytes_view instead of string_view
-function Base.parse(::Type{Vector{UInt8}}, pqv::PQValue{PQ_SYSTEM_TYPES[:bytea]})
+function Base.parse(::Type{Vector{UInt8}}, pqv::PQValue{PQ_SYSTEM_TYPES[:bytea], false})
     pqparse(Vector{UInt8}, bytes_view(pqv))
 end
 
@@ -291,11 +297,11 @@ function pqparse(::Type{InfExtendedTime{T}}, str::AbstractString) where {T<:Date
 end
 
 # UNIX timestamps
-function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
+function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8], false})
     unix2datetime(parse(Int64, pqv))
 end
 
-function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
+function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8], false})
     TimeZones.unix2zdt(parse(Int64, pqv))
 end
 

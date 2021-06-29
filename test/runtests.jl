@@ -236,6 +236,23 @@ end
         @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
         @test table_data[:yes_nulls][2] === missing
 
+        # The same but binary data
+
+        result = execute(
+            conn,
+            "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
+            throw_error=true,
+            binary_format=true,
+        )
+        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+        @test LibPQ.num_rows(result) == 2
+        @test LibPQ.num_columns(result) == 2
+
+        table_data = columntable(result)
+        @test table_data[:no_nulls] == data[:no_nulls]
+        @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
+        @test table_data[:yes_nulls][2] === missing
+
         close(result)
 
         result = execute(
@@ -273,6 +290,87 @@ end
         close(result)
 
         close(conn)
+    end
+
+
+    @testset "Binary Transfer" begin
+        conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+
+        result = execute(conn, """
+            CREATE TEMPORARY TABLE libpqjl_test (
+                no_nulls    int PRIMARY KEY,
+                yes_nulls   int
+            );
+        """)
+        @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
+        close(result)
+
+        # get the data from PostgreSQL and let columntable construct my NamedTuple
+        result = execute(conn, """
+            SELECT no_nulls, yes_nulls FROM (
+                VALUES (1, 2), (3, NULL)
+            ) AS temp (no_nulls, yes_nulls)
+            ORDER BY no_nulls DESC;
+            """;
+            throw_error=true,
+            binary_format=true,
+        )
+        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+        @test LibPQ.num_rows(result) == 2
+        @test LibPQ.num_columns(result) == 2
+
+        data = columntable(result)
+
+        @test data[:no_nulls] == [3, 1]
+        @test data[:yes_nulls][1] === missing
+        @test data[:yes_nulls][2] == 2
+
+        stmt = LibPQ.load!(
+            data,
+            conn,
+            "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
+        )
+
+        @test_throws ArgumentError num_affected_rows(stmt.description)
+        @test num_params(stmt) == 2
+        @test num_columns(stmt) == 0  # an insert has no results
+        @test LibPQ.column_number(stmt, "no_nulls") == 0
+        @test LibPQ.column_names(stmt) == []
+
+        result = execute(
+            conn,
+            "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
+            throw_error=true,
+            binary_format=true,
+        )
+        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+        @test LibPQ.num_rows(result) == 2
+        @test LibPQ.num_columns(result) == 2
+
+        table_data = columntable(result)
+        @test table_data[:no_nulls] == data[:no_nulls]
+        @test table_data[:yes_nulls][1] === data[:yes_nulls][1] === missing
+        @test table_data[:yes_nulls][2] == data[:yes_nulls][2]
+
+        # The same but binary data
+
+        result = execute(
+            conn,
+            "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
+            throw_error=true,
+            binary_format=true,
+        )
+        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+        @test LibPQ.num_rows(result) == 2
+        @test LibPQ.num_columns(result) == 2
+
+        table_data = columntable(result)
+        @test table_data[:no_nulls] == data[:no_nulls]
+        @test table_data[:yes_nulls][1] === data[:yes_nulls][1] === missing
+        @test table_data[:yes_nulls][2] == data[:yes_nulls][2]
+
+        close(conn)
+        close(result)
     end
 
     @testset "load!" begin

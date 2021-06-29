@@ -263,6 +263,7 @@ function _async_submit(
     conn_ptr::Ptr{libpq_c.PGconn},
     query::AbstractString,
     parameters::Vector{Ptr{UInt8}},
+    binary_format::Bool=false,
 )
     num_params = length(parameters)
 
@@ -274,7 +275,7 @@ function _async_submit(
         parameters,
         C_NULL,  # paramLengths is ignored for text format parameters
         zeros(Cint, num_params),  # all parameters in text format
-        zero(Cint),  # return result in text format
+        Cint(binary_format),  # return result in text format
     )
 
     return send_status == 1

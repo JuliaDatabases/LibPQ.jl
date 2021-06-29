@@ -21,6 +21,9 @@ mutable struct Result
     "Name of each column in the result"
     column_names::Vector{String}
 
+    "Flag if the result is in binary"
+    binary_format::Bool
+
     # TODO: attach encoding per https://wiki.postgresql.org/wiki/Driver_development#Result_object_and_client_encoding
     function Result(
         result::Ptr{libpq_c.PGresult},
@@ -29,6 +32,7 @@ mutable struct Result
         type_map::AbstractDict=PQTypeMap(),
         conversions::AbstractDict=PQConversions(),
         not_null=false,
+        binary_format=false,
     )
         jl_result = new(result, Atomic{Bool}(result == C_NULL))
 
@@ -101,6 +105,8 @@ mutable struct Result
         end
 
         finalizer(close, jl_result)
+
+        jl_result.binary_format = binary_format
 
         return jl_result
     end
@@ -271,13 +277,14 @@ function execute(
     jl_conn::Connection,
     query::AbstractString;
     throw_error::Bool=true,
+    binary_format::Bool=false,
     kwargs...
 )
     result = lock(jl_conn) do
-        _execute(jl_conn.conn, query)
+        _execute(jl_conn.conn, query; binary_format)
     end
 
-    return handle_result(Result(result, jl_conn; kwargs...); throw_error=throw_error)
+    return handle_result(Result(result, jl_conn; binary_format, kwargs...); throw_error=throw_error)
 end
 
 function execute(
@@ -285,26 +292,28 @@ function execute(
     query::AbstractString,
     parameters::Union{AbstractVector, Tuple};
     throw_error::Bool=true,
+    binary_format::Bool=false,
     kwargs...
 )
     string_params = string_parameters(parameters)
     pointer_params = parameter_pointers(string_params)
 
     result = lock(jl_conn) do
-        _execute(jl_conn.conn, query, pointer_params)
+        _execute(jl_conn.conn, query, pointer_params; binary_format)
     end
 
-    return handle_result(Result(result, jl_conn; kwargs...); throw_error=throw_error)
+    return handle_result(Result(result, jl_conn; binary_format, kwargs...); throw_error=throw_error)
 end
 
-function _execute(conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString)
-    return libpq_c.PQexec(conn_ptr, query)
-end
+# function _execute(conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString)
+#     return libpq_c.PQexec(conn_ptr, query)
+# end
 
 function _execute(
     conn_ptr::Ptr{libpq_c.PGconn},
     query::AbstractString,
-    parameters::Vector{Ptr{UInt8}},
+    parameters::Vector{Ptr{UInt8}}=Ptr{UInt8}[];
+    binary_format::Bool=false,
 )
     num_params = length(parameters)
 
@@ -316,7 +325,7 @@ function _execute(
         parameters,
         C_NULL,  # paramLengths is ignored for text format parameters
         zeros(Cint, num_params),  # all parameters in text format
-        zero(Cint),  # return result in text format
+        Cint(binary_format),  # return result in text format
     )
 end
 
