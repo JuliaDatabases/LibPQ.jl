@@ -1,5 +1,5 @@
 "A wrapper for one value in a PostgreSQL result."
-struct PQValue{OID, binary_format}
+struct PQValue{OID, BinaryFormat}
     "PostgreSQL result"
     jl_result::Result
 
@@ -9,8 +9,12 @@ struct PQValue{OID, binary_format}
     "Column index of the result (0-indexed)"
     col::Cint
 
-    function PQValue{OID}(jl_result::Result, row::Integer, col::Integer) where OID
-        return new{OID, jl_result.binary_format}(jl_result, row - 1, col - 1)
+    function PQValue{OID}(
+        jl_result::Result{BinaryFormat},
+        row::Integer,
+        col::Integer,
+    ) where {OID, BinaryFormat}
+        return new{OID, BinaryFormat}(jl_result, row - 1, col - 1)
     end
 end
 
@@ -23,10 +27,10 @@ Row and column positions are provided 1-indexed.
 If the `OID` type parameter is not provided, the Oid of the field will be retrieved from
 the result.
 """
-function PQValue(jl_result::Result, row::Integer, col::Integer)
+function PQValue(jl_result::Result{BinaryFormat}, row::Integer, col::Integer) where BinaryFormat
     oid = libpq_c.PQftype(jl_result.result, col - 1)
 
-    return PQValue{oid, jl_result.binary_format}(jl_result, row, col)
+    return PQValue{oid, BinaryFormat}(jl_result, row, col)
 end
 
 """
@@ -103,7 +107,7 @@ bytes_view(pqv::PQValue) = unsafe_wrap(Vector{UInt8}, data_pointer(pqv), num_byt
 # bytes_view(pqv::PQValue) = bswap(unsafe_load(data_pointer(pq_value_bin)))
 
 Base.String(pqv::PQValue) = unsafe_string(pqv)
-Base.parse(::Type{String}, pqv::PQValue) where R = unsafe_string(pqv)
+Base.parse(::Type{String}, pqv::PQValue) = unsafe_string(pqv)
 Base.convert(::Type{String}, pqv::PQValue) = String(pqv)
 Base.length(pqv::PQValue) = length(string_view(pqv))
 Base.lastindex(pqv::PQValue) = lastindex(string_view(pqv))
@@ -121,11 +125,9 @@ By default, this uses any existing `parse` method for parsing a value of type `T
 You can implement default PostgreSQL-specific parsing for a given type by overriding
 `pqparse`.
 """
-Base.parse(::Type{T}, pqv::PQValue) where {T, R} = pqparse(T, string_view(pqv))
-# Base.parse(::Type{T}, pqv::PQValue{R, false}) where {T, R} = pqparse(T, string_view(pqv))
+Base.parse(::Type{T}, pqv::PQValue) where {T} = pqparse(T, string_view(pqv))
 
-# Base.parse(::Type{T}, pqv::PQValue{R, true}) where {T, R} = bswap(unsafe_load(Ptr{T}(data_pointer(pqv))))
-Base.parse(::Type{T}, pqv::PQValue{R, true}) where {T <: Integer, R} = bswap(unsafe_load(Ptr{T}(data_pointer(pqv))))
+Base.parse(::Type{T}, pqv::PQValue{R, BINARY}) where {T <: Integer, R} = pqparse(T, Ptr{T}(data_pointer(pqv)))
 
 """
     LibPQ.pqparse(::Type{T}, str::AbstractString) -> T
@@ -137,6 +139,7 @@ function pqparse end
 
 # Fallback method
 pqparse(::Type{T}, str::AbstractString) where {T} = parse(T, str)
+pqparse(::Type{T}, ptr::Ptr) where {T} = parse(T, ptr)
 
 # allow parsing as a Symbol anything which works as a String
 pqparse(::Type{Symbol}, str::AbstractString) = Symbol(str)
@@ -145,6 +148,8 @@ pqparse(::Type{Symbol}, str::AbstractString) = Symbol(str)
 _DEFAULT_TYPE_MAP[:int2] = Int16
 _DEFAULT_TYPE_MAP[:int4] = Int32
 _DEFAULT_TYPE_MAP[:int8] = Int64
+
+pqparse(::Type{<:Integer}, pqv::Ptr) = ntoh(unsafe_load(pqv))
 
 ## floating point
 _DEFAULT_TYPE_MAP[:float4] = Float32
@@ -160,7 +165,7 @@ _DEFAULT_TYPE_MAP[:numeric] = Decimal
 
 ## character
 # bpchar is char(n)
-function Base.parse(::Type{String}, pqv::PQValue{PQ_SYSTEM_TYPES[:bpchar], false})
+function Base.parse(::Type{String}, pqv::PQValue{PQ_SYSTEM_TYPES[:bpchar], TEXT})
     return String(rstrip(string_view(pqv), ' '))
 end
 # char is "char"
@@ -174,7 +179,7 @@ pqparse(::Type{Char}, str::AbstractString) = Char(pqparse(PQChar, str))
 _DEFAULT_TYPE_MAP[:bytea] = Vector{UInt8}
 
 # Needs it's own `parse` method as it uses bytes_view instead of string_view
-function Base.parse(::Type{Vector{UInt8}}, pqv::PQValue{PQ_SYSTEM_TYPES[:bytea], false})
+function Base.parse(::Type{Vector{UInt8}}, pqv::PQValue{PQ_SYSTEM_TYPES[:bytea], TEXT})
     pqparse(Vector{UInt8}, bytes_view(pqv))
 end
 

@@ -1,5 +1,5 @@
 "A result from a PostgreSQL database query"
-mutable struct Result
+mutable struct Result{BinaryFormat}
     "A pointer to a libpq PGresult object (C_NULL if cleared)"
     result::Ptr{libpq_c.PGresult}
 
@@ -21,20 +21,16 @@ mutable struct Result
     "Name of each column in the result"
     column_names::Vector{String}
 
-    "Flag if the result is in binary"
-    binary_format::Bool
-
     # TODO: attach encoding per https://wiki.postgresql.org/wiki/Driver_development#Result_object_and_client_encoding
-    function Result(
+    function Result{BinaryFormat}(
         result::Ptr{libpq_c.PGresult},
         jl_conn::Connection;
         column_types::Union{AbstractDict, AbstractVector}=ColumnTypeMap(),
         type_map::AbstractDict=PQTypeMap(),
         conversions::AbstractDict=PQConversions(),
         not_null=false,
-        binary_format=false,
-    )
-        jl_result = new(result, Atomic{Bool}(result == C_NULL))
+    )  where BinaryFormat
+        jl_result = new{BinaryFormat}(result, Atomic{Bool}(result == C_NULL))
 
         type_lookup = LayerDict(
             PQTypeMap(type_map),
@@ -106,10 +102,26 @@ mutable struct Result
 
         finalizer(close, jl_result)
 
-        jl_result.binary_format = binary_format
-
         return jl_result
     end
+end
+
+function Result(
+    result::Ptr{libpq_c.PGresult},
+    jl_conn::Connection;
+    column_types::Union{AbstractDict, AbstractVector}=ColumnTypeMap(),
+    type_map::AbstractDict=PQTypeMap(),
+    conversions::AbstractDict=PQConversions(),
+    not_null=false,
+)
+    return Result{TEXT}(
+        result,
+        jl_conn;
+        column_types,
+        type_map,
+        conversions,
+        not_null,
+    )
 end
 
 """
@@ -277,20 +289,19 @@ function execute(
     jl_conn::Connection,
     query::AbstractString;
     throw_error::Bool=true,
-    binary_format::Bool=false,
     kwargs...
 )
     result = lock(jl_conn) do
-        _execute(jl_conn.conn, query; binary_format)
+        _execute(jl_conn.conn, query)
     end
 
-    return handle_result(Result(result, jl_conn; binary_format, kwargs...); throw_error=throw_error)
+    return handle_result(Result(result, jl_conn; kwargs...); throw_error=throw_error)
 end
 
-function execute(
+function execute_param(
     jl_conn::Connection,
     query::AbstractString,
-    parameters::Union{AbstractVector, Tuple};
+    parameters::Union{AbstractVector, Tuple}=[];
     throw_error::Bool=true,
     binary_format::Bool=false,
     kwargs...
@@ -302,12 +313,12 @@ function execute(
         _execute(jl_conn.conn, query, pointer_params; binary_format)
     end
 
-    return handle_result(Result(result, jl_conn; binary_format, kwargs...); throw_error=throw_error)
+    return handle_result(Result{binary_format}(result, jl_conn; kwargs...); throw_error=throw_error)
 end
 
-# function _execute(conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString)
-#     return libpq_c.PQexec(conn_ptr, query)
-# end
+function _execute(conn_ptr::Ptr{libpq_c.PGconn}, query::AbstractString)
+    return libpq_c.PQexec(conn_ptr, query)
+end
 
 function _execute(
     conn_ptr::Ptr{libpq_c.PGconn},

@@ -113,7 +113,7 @@ function column_number(stmt::Statement, column_name::AbstractString)
     column_number(stmt.description, column_name)
 end
 
-function execute(
+function execute_param(
     stmt::Statement,
     parameters::Union{AbstractVector, Tuple};
     throw_error::Bool=true,

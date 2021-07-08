@@ -163,7 +163,7 @@ function load!(table::T, connection::Connection, query::AbstractString) where {T
                 string_parameter(val)
             end
         end
-        close(execute(stmt, parameters; throw_error=true))
+        close(execute_param(stmt, parameters; throw_error=true))
         state = iterate(rows, st)
     end
     return stmt
