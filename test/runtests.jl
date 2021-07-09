@@ -103,7 +103,7 @@ end
         @test !isopen(result)
 
         # the same but with parameters
-        result = execute_param(
+        result = execute_params(
             conn,
             "SELECT typname FROM pg_type WHERE oid = \$1",
             [16];
@@ -128,7 +128,7 @@ end
         qstr = "SELECT \$1::double precision as foo, typname FROM pg_type WHERE oid = \$2"
         stmt = prepare(conn, qstr)
 
-        result = execute_param(
+        result = execute_params(
             conn,
             qstr,
             (1.0, 16);
@@ -150,7 +150,7 @@ end
         close(result)
         @test !isopen(result)
 
-        result = execute_param(
+        result = execute_params(
             stmt,
             (1.0, 16);
             throw_error=false,
@@ -238,7 +238,7 @@ end
 
         # The same but binary data
 
-        result = execute_param(
+        result = execute_params(
             conn,
             "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
             throw_error=true,
@@ -277,7 +277,7 @@ end
 
         close(result)
 
-        result = execute_param(
+        result = execute_params(
             conn,
             "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2), (\$3, \$4);",
             Union{String, Missing}["foo", "bar", "quz", missing],
@@ -306,7 +306,7 @@ end
         close(result)
 
         # get the data from PostgreSQL and let columntable construct my NamedTuple
-        result = execute_param(conn, """
+        result = execute_params(conn, """
             SELECT no_nulls, yes_nulls FROM (
                 VALUES (1, 2), (3, NULL)
             ) AS temp (no_nulls, yes_nulls)
@@ -337,7 +337,7 @@ end
         @test LibPQ.column_number(stmt, "no_nulls") == 0
         @test LibPQ.column_names(stmt) == []
 
-        result = execute_param(
+        result = execute_params(
             conn,
             "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
             throw_error=true,
@@ -354,7 +354,7 @@ end
 
         # The same but binary data
 
-        result = execute_param(
+        result = execute_params(
             conn,
             "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
             throw_error=true,
@@ -1412,31 +1412,31 @@ end
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
             @testset "Arrays" begin
-                result = execute_param(conn, "SELECT 'foo' = ANY(\$1)", [["bar", "foo"]])
+                result = execute_params(conn, "SELECT 'foo' = ANY(\$1)", [["bar", "foo"]])
                 @test first(first(result))
                 close(result)
 
-                result = execute_param(conn, "SELECT 'foo' = ANY(\$1)", (["bar", "foo"],))
+                result = execute_params(conn, "SELECT 'foo' = ANY(\$1)", (["bar", "foo"],))
                 @test first(first(result))
                 close(result)
 
-                result = execute_param(conn, "SELECT 'foo' = ANY(\$1)", [Any["bar", "foo"]])
+                result = execute_params(conn, "SELECT 'foo' = ANY(\$1)", [Any["bar", "foo"]])
                 @test first(first(result))
                 close(result)
 
-                result = execute_param(conn, "SELECT 'foo' = ANY(\$1)", Any[Any["bar", "foo"]])
+                result = execute_params(conn, "SELECT 'foo' = ANY(\$1)", Any[Any["bar", "foo"]])
                 @test first(first(result))
                 close(result)
 
-                result = execute_param(conn, "SELECT 'foo' = ANY(\$1)", [["bar", "foobar"]])
+                result = execute_params(conn, "SELECT 'foo' = ANY(\$1)", [["bar", "foobar"]])
                 @test !first(first(result))
                 close(result)
 
-                result = execute_param(conn, "SELECT ARRAY[1, 2] = \$1", [[1, 2]])
+                result = execute_params(conn, "SELECT ARRAY[1, 2] = \$1", [[1, 2]])
                 @test first(first(result))
                 close(result)
 
-                result = execute_param(conn, "SELECT ARRAY[1, 2] = \$1", Any[Any[1, 2]])
+                result = execute_params(conn, "SELECT ARRAY[1, 2] = \$1", Any[Any[1, 2]])
                 @test first(first(result))
                 close(result)
             end
@@ -1453,7 +1453,7 @@ end
                 )
 
                 @testset for (pg_str, obj) in tests
-                    result = execute_param(conn, "SELECT $pg_str = \$1", [obj])
+                    result = execute_params(conn, "SELECT $pg_str = \$1", [obj])
                     @test first(first(result))
                     close(result)
                 end
@@ -1472,7 +1472,7 @@ end
                     )
 
                     @testset for (pg_str, obj) in tests
-                        result = execute_param(conn, "SELECT $pg_str = \$1", [obj])
+                        result = execute_params(conn, "SELECT $pg_str = \$1", [obj])
                         @test first(first(result))
                         close(result)
                     end
@@ -1493,7 +1493,7 @@ end
                 )
 
                 @testset for (pg_str, obj) in tests
-                    result = execute_param(conn, "SELECT $pg_str = \$1", [obj])
+                    result = execute_params(conn, "SELECT $pg_str = \$1", [obj])
                     @test first(first(result))
                     close(result)
                 end
@@ -1508,7 +1508,7 @@ end
                 )
 
                 @testset for (pg_str, obj) in tests
-                    result = execute_param(conn, "SELECT $pg_str = \$1", [obj])
+                    result = execute_params(conn, "SELECT $pg_str = \$1", [obj])
                     @test first(first(result))
                     close(result)
                 end
@@ -1539,7 +1539,7 @@ end
             @testset "Wrong No. Parameters" begin
                 conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-                result = execute_param(conn, "SELORCT \$1;", String[]; throw_error=false)
+                result = execute_params(conn, "SELORCT \$1;", String[]; throw_error=false)
                 @test status(result) == LibPQ.libpq_c.PGRES_FATAL_ERROR
                 # We're expecting zeros per "33.3.2. Retrieving Query Result Information"
                 # https://www.postgresql.org/docs/10/static/libpq-exec.html#LIBPQ-EXEC-SELECT-INFO
@@ -1548,7 +1548,7 @@ end
                 close(result)
                 @test !isopen(result)
 
-                @test_throws LibPQ.Errors.SyntaxError execute_param(
+                @test_throws LibPQ.Errors.SyntaxError execute_params(
                     conn,
                     "SELORCT \$1;",
                     String[];
@@ -1563,7 +1563,7 @@ end
         @testset "Interface Errors" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            result = execute_param(
+            result = execute_params(
                 conn,
                 "SELECT typname FROM pg_type WHERE oid = \$1",
                 [16],
@@ -1607,7 +1607,7 @@ end
             @test LibPQ.num_params(stmt) == 1
             @test LibPQ.column_names(stmt) == ["oid", "typname"]
 
-            result = execute_param(stmt, [16]; throw_error=true)
+            result = execute_params(stmt, [16]; throw_error=true)
 
             @test LibPQ.num_columns(result) == 2
             @test LibPQ.column_names(result) == ["oid", "typname"]

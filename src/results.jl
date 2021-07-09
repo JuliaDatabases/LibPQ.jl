@@ -300,7 +300,7 @@ function execute(
     return handle_result(Result(result, jl_conn; kwargs...); throw_error=throw_error)
 end
 
-function execute_param(
+function execute_params(
     jl_conn::Connection,
     query::AbstractString,
     parameters::Union{AbstractVector, Tuple}=[];
