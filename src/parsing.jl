@@ -127,7 +127,11 @@ You can implement default PostgreSQL-specific parsing for a given type by overri
 """
 Base.parse(::Type{T}, pqv::PQValue) where {T} = pqparse(T, string_view(pqv))
 
-Base.parse(::Type{T}, pqv::PQValue{R, BINARY}) where {T <: Integer, R} = pqparse(T, Ptr{T}(data_pointer(pqv)))
+Base.parse(::Type{T}, pqv::PQValue{R, BINARY}) where {T <: Integer, R} = T(pqparse(
+    T,
+    Ptr{get(pqv.jl_result.type_lookup, R, String)}(data_pointer(pqv)),
+))
+
 
 """
     LibPQ.pqparse(::Type{T}, str::AbstractString) -> T

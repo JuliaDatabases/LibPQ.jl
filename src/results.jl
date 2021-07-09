@@ -21,6 +21,8 @@ mutable struct Result{BinaryFormat}
     "Name of each column in the result"
     column_names::Vector{String}
 
+    type_lookup::LayerDict
+
     # TODO: attach encoding per https://wiki.postgresql.org/wiki/Driver_development#Result_object_and_client_encoding
     function Result{BinaryFormat}(
         result::Ptr{libpq_c.PGresult},
@@ -32,7 +34,7 @@ mutable struct Result{BinaryFormat}
     )  where BinaryFormat
         jl_result = new{BinaryFormat}(result, Atomic{Bool}(result == C_NULL))
 
-        type_lookup = LayerDict(
+        jl_result.type_lookup = LayerDict(
             PQTypeMap(type_map),
             jl_conn.type_map,
             LIBPQ_TYPE_MAP,
@@ -63,7 +65,7 @@ mutable struct Result{BinaryFormat}
         jl_result.column_types = col_types = collect(Type, imap(enumerate(col_oids)) do itr
             col_num, col_oid = itr
             get(column_type_map, col_num) do
-                get(type_lookup, col_oid, String)
+                get(jl_result.type_lookup, col_oid, String)
             end
         end)
 
@@ -323,8 +325,8 @@ end
 function _execute(
     conn_ptr::Ptr{libpq_c.PGconn},
     query::AbstractString,
-    parameters::Vector{Ptr{UInt8}}=Ptr{UInt8}[];
-    binary_format::Bool=false,
+    parameters::Vector{Ptr{UInt8}};
+    binary_format::Bool,
 )
     num_params = length(parameters)
 
