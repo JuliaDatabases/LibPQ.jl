@@ -127,12 +127,6 @@ You can implement default PostgreSQL-specific parsing for a given type by overri
 """
 Base.parse(::Type{T}, pqv::PQValue) where {T} = pqparse(T, string_view(pqv))
 
-Base.parse(::Type{T}, pqv::PQValue{R, BINARY}) where {T <: Integer, R} = T(pqparse(
-    T,
-    Ptr{get(pqv.jl_result.type_lookup, R, String)}(data_pointer(pqv)),
-))
-
-
 """
     LibPQ.pqparse(::Type{T}, str::AbstractString) -> T
 
@@ -154,6 +148,12 @@ _DEFAULT_TYPE_MAP[:int4] = Int32
 _DEFAULT_TYPE_MAP[:int8] = Int64
 
 pqparse(::Type{<:Integer}, pqv::Ptr) = ntoh(unsafe_load(pqv))
+
+for int_sym in (:int2, :int4, :int8)
+    @eval function Base.parse(::Type{T}, pqv::PQValue{$(oid(int_sym)), BINARY}) where {T <: Number}
+        return convert(T, ntoh(unsafe_load(Ptr{$(_DEFAULT_TYPE_MAP[int_sym])}(data_pointer(pqv)))))
+    end
+end
 
 ## floating point
 _DEFAULT_TYPE_MAP[:float4] = Float32

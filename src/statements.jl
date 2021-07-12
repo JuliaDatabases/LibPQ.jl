@@ -117,6 +117,7 @@ function execute_params(
     stmt::Statement,
     parameters::Union{AbstractVector, Tuple};
     throw_error::Bool=true,
+    binary_format::Bool=TEXT,
     kwargs...
 )
     num_params = length(parameters)
@@ -124,28 +125,29 @@ function execute_params(
     pointer_params = parameter_pointers(string_params)
 
     result = lock(stmt.jl_conn) do
-        _execute_prepared(stmt.jl_conn.conn, stmt.name, pointer_params)
+        _execute_prepared(stmt.jl_conn.conn, stmt.name, pointer_params; binary_format)
     end
 
-    return handle_result(Result(result, stmt.jl_conn; kwargs...); throw_error=throw_error)
+    return handle_result(Result{binary_format}(result, stmt.jl_conn; kwargs...); throw_error=throw_error)
 end
 
 function execute(
     stmt::Statement;
     throw_error::Bool=true,
+    binary_format::Bool=TEXT,
     kwargs...
 )
     result = lock(stmt.jl_conn) do
-        _execute_prepared(stmt.jl_conn.conn, stmt.name)
+        _execute_prepared(stmt.jl_conn.conn, stmt.name; binary_format)
     end
 
-    return handle_result(Result(result, stmt.jl_conn; kwargs...); throw_error=throw_error)
+    return handle_result(Result{binary_format}(result, stmt.jl_conn; kwargs...); throw_error=throw_error)
 end
 
 function _execute_prepared(
     conn_ptr::Ptr{libpq_c.PGconn},
     stmt_name::AbstractString,
-    parameters::Vector{Ptr{UInt8}}=Ptr{UInt8}[],
+    parameters::Vector{Ptr{UInt8}}=Ptr{UInt8}[];
     binary_format::Bool=false,
 )
     num_params = length(parameters)

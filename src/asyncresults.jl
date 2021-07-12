@@ -1,5 +1,5 @@
 "An asynchronous PostgreSQL query"
-mutable struct AsyncResult
+mutable struct AsyncResult{BinaryFormat}
     "The LibPQ.jl Connection used for the query"
     jl_conn::Connection
 
@@ -12,13 +12,17 @@ mutable struct AsyncResult
     "Task which errors or returns a LibPQ.jl Result which is created once available"
     result_task::Task
 
-    function AsyncResult(jl_conn::Connection, result_kwargs::Ref)
-        return new(jl_conn, result_kwargs, false)
+    function AsyncResult{BinaryFormat}(jl_conn::Connection, result_kwargs::Ref) where {BinaryFormat}
+        return new{BinaryFormat}(jl_conn, result_kwargs, false)
     end
 end
 
+function AsyncResult{BinaryFormat}(jl_conn::Connection; kwargs...) where {BinaryFormat}
+    return AsyncResult{BinaryFormat}(jl_conn, Ref(kwargs))
+end
+
 function AsyncResult(jl_conn::Connection; kwargs...)
-    return AsyncResult(jl_conn, Ref(kwargs))
+    return AsyncResult{TEXT}(jl_conn, Ref(kwargs))
 end
 
 function Base.show(io::IO, async_result::AsyncResult)
@@ -50,13 +54,13 @@ The result returned will be the [`Result`](@ref) of the last query run (the only
 using parameters).
 Any errors produced by the queries will be thrown together in a `CompositeException`.
 """
-function handle_result(async_result::AsyncResult; throw_error=true)
+function handle_result(async_result::AsyncResult{BinaryFormat}; throw_error=true) where {BinaryFormat}
     errors = []
     result = nothing
     for result_ptr in _consume(async_result.jl_conn)
         try
             result = handle_result(
-                Result(
+                Result{BinaryFormat}(
                     result_ptr,
                     async_result.jl_conn;
                     async_result.result_kwargs[]...
@@ -215,26 +219,27 @@ function async_execute(jl_conn::Connection, query::AbstractString; kwargs...)
     return async_result
 end
 
-function async_execute(
+function async_execute_params(
     jl_conn::Connection,
     query::AbstractString,
-    parameters::Union{AbstractVector, Tuple};
+    parameters::Union{AbstractVector, Tuple}=[];
+    binary_format=TEXT,
     kwargs...
 )
     string_params = string_parameters(parameters)
     pointer_params = parameter_pointers(string_params)
 
-    async_result = _async_execute(jl_conn; kwargs...) do jl_conn
-        _async_submit(jl_conn.conn, query, pointer_params)
+    async_result = _async_execute(jl_conn; binary_format, kwargs...) do jl_conn
+        _async_submit(jl_conn.conn, query, pointer_params; binary_format)
     end
 
     return async_result
 end
 
 function _async_execute(
-    submission_fn::Function, jl_conn::Connection; throw_error::Bool=true, kwargs...
+    submission_fn::Function, jl_conn::Connection; binary_format::Bool=false, throw_error::Bool=true, kwargs...
 )
-    async_result = AsyncResult(jl_conn; kwargs...)
+    async_result = AsyncResult{binary_format}(jl_conn; kwargs...)
 
     async_result.result_task = @async lock(jl_conn) do
         jl_conn.async_result = async_result
@@ -262,8 +267,8 @@ end
 function _async_submit(
     conn_ptr::Ptr{libpq_c.PGconn},
     query::AbstractString,
-    parameters::Vector{Ptr{UInt8}},
-    binary_format::Bool=false,
+    parameters::Vector{Ptr{UInt8}};
+    binary_format::Bool=TEXT,
 )
     num_params = length(parameters)
 
@@ -275,7 +280,7 @@ function _async_submit(
         parameters,
         C_NULL,  # paramLengths is ignored for text format parameters
         zeros(Cint, num_params),  # all parameters in text format
-        Cint(binary_format),  # return result in text format
+        Cint(binary_format),  # return result in text or binary format
     )
 
     return send_status == 1

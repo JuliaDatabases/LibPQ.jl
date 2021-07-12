@@ -293,7 +293,7 @@ end
     end
 
 
-    @testset "Binary Transfer" begin
+    @testset "Binary" begin
         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
 
         result = execute(conn, """
@@ -354,20 +354,54 @@ end
 
         # The same but binary data
 
-        result = execute_params(
-            conn,
-            "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
-            throw_error=true,
-            binary_format=true,
-        )
-        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-        @test LibPQ.num_rows(result) == 2
-        @test LibPQ.num_columns(result) == 2
+        @testset "Async Binary" begin
+            ar = async_execute_params(
+                conn,
+                "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
+                throw_error=true,
+                binary_format=true,
+            )
+            result = fetch(ar)
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
 
-        table_data = columntable(result)
-        @test table_data[:no_nulls] == data[:no_nulls]
-        @test table_data[:yes_nulls][1] === data[:yes_nulls][1] === missing
-        @test table_data[:yes_nulls][2] == data[:yes_nulls][2]
+            table_data = columntable(result)
+            @test table_data[:no_nulls] == data[:no_nulls]
+            @test table_data[:yes_nulls][1] === data[:yes_nulls][1] === missing
+            @test table_data[:yes_nulls][2] == data[:yes_nulls][2]
+        end
+
+        @testset "Statement Binary" begin
+            stmt = prepare(conn, "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;")
+
+            result = execute(stmt; binary_format=true, throw_error=true)
+
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
+
+            table_data = columntable(result)
+            @test table_data[:no_nulls] == data[:no_nulls]
+            @test table_data[:yes_nulls][1] === data[:yes_nulls][1] === missing
+            @test table_data[:yes_nulls][2] == data[:yes_nulls][2]
+
+            close(result)
+        end
+
+        @testset "Statement Params Binary" begin
+            stmt = prepare(conn, "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;")
+
+            result = execute_params(stmt, []; binary_format=true, throw_error=true)
+
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
+
+            table_data = columntable(result)
+            @test table_data[:no_nulls] == data[:no_nulls]
+            @test table_data[:yes_nulls][1] === data[:yes_nulls][1] === missing
+            @test table_data[:yes_nulls][2] == data[:yes_nulls][2]
+
+            close(result)
+        end
 
         close(conn)
         close(result)
@@ -1652,7 +1686,7 @@ end
         @testset "Parameters" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            ar = async_execute(
+            ar = async_execute_params(
                 conn,
                 "SELECT typname FROM pg_type WHERE oid = \$1",
                 [16];
