@@ -7,6 +7,7 @@
 ```@docs
 LibPQ.Connection
 execute
+execute_params
 prepare
 status(::LibPQ.Connection)
 Base.close(::LibPQ.Connection)
@@ -49,6 +50,7 @@ execute(::LibPQ.Connection, ::LibPQ.CopyIn)
 
 ```@docs
 async_execute
+async_execute_params
 LibPQ.AsyncResult
 cancel
 ```

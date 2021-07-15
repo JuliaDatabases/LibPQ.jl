@@ -19,14 +19,14 @@ end
 
 Currently all types are printed to strings and given to LibPQ as such, with no special treatment.
 Expect this to change in a future release.
-For now, you can convert the data to strings yourself before passing to [`execute`](@ref).
+For now, you can convert the data to strings yourself before passing to [`execute`](@ref) or [`execute_params`](@ref).
 This should only be necessary for data types whose Julia string representation is not valid in
 PostgreSQL, such as arrays.
 
 ```jldoctest
 julia> A = collect(12:15);
 
-julia> nt = columntable(execute(conn, "SELECT \$1 = ANY(\$2) AS result", Any[13, string("{", join(A, ","), "}")]));
+julia> nt = columntable(execute_params(conn, "SELECT \$1 = ANY(\$2) AS result", Any[13, string("{", join(A, ","), "}")]));
 
 julia> nt[:result][1]
 true
@@ -57,7 +57,7 @@ By default, data streamed using the Tables interface is `Union{T, Missing}`, and
 `Vector{Union{T, Missing}}`.
 While `libpq` does not provide an interface for checking whether a result column contains `NULL`,
 it's possible to assert that columns do not contain `NULL` using the `not_null` keyword argument to
-[`execute`](@ref).
+[`execute`](@ref) or [`execute_params`](@ref).
 This will result in data retrieved as `T`/`Vector{T}` instead.
 `not_null` accepts a list of column names or column positions, or a `Bool` asserting that all
 columns do or do not have the possibility of `NULL`.
@@ -72,7 +72,7 @@ Refer to the [Implementation](@ref) section for more detailed information.
 
 #### Query-level
 
-There are three arguments to [`execute`](@ref) for this:
+There are three arguments to [`execute`](@ref) or [`execute_params`](@ref) for this:
 
 * `column_types` argument to set the desired types for given columns.
   This is accepted as a dictionary mapping column names (as `Symbol`s or `String`s) and/or positions
