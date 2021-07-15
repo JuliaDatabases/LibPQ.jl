@@ -119,10 +119,10 @@ function Result(
     return Result{TEXT}(
         result,
         jl_conn;
-        column_types,
-        type_map,
-        conversions,
-        not_null,
+        column_types=column_types,
+        type_map=type_map,
+        conversions=conversions,
+        not_null=not_null,
     )
 end
 
