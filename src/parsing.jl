@@ -137,7 +137,6 @@ function pqparse end
 
 # Fallback method
 pqparse(::Type{T}, str::AbstractString) where {T} = parse(T, str)
-pqparse(::Type{T}, ptr::Ptr) where {T} = parse(T, ptr)
 
 # allow parsing as a Symbol anything which works as a String
 pqparse(::Type{Symbol}, str::AbstractString) = Symbol(str)

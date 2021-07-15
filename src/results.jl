@@ -263,7 +263,6 @@ end
 """
     execute(
         {jl_conn::Connection, query::AbstractString | stmt::Statement},
-        [parameters::Union{AbstractVector, Tuple},]
         throw_error::Bool=true,
         column_types::AbstractDict=ColumnTypeMap(),
         type_map::AbstractDict=LibPQ.PQTypeMap(),
@@ -277,13 +276,12 @@ fatal error or unreadable response.
 The query may be passed as `Connection` and `AbstractString` (SQL) arguments, or as a
 `Statement`.
 
-`execute` optionally takes a `parameters` vector which passes query parameters as strings to
-PostgreSQL.
-
 `column_types` accepts type overrides for columns in the result which take priority over
 those in `type_map`.
 For information on the `column_types`, `type_map`, and `conversions` arguments, see
 [Type Conversions](@ref typeconv).
+
+Also see `execute_params`.
 """
 function execute end
 
@@ -300,12 +298,43 @@ function execute(
     return handle_result(Result(result, jl_conn; kwargs...); throw_error=throw_error)
 end
 
+"""
+    execute_params(
+        {jl_conn::Connection, query::AbstractString | stmt::Statement},
+        [parameters::Union{AbstractVector, Tuple},]
+        throw_error::Bool=true,
+        binary_format::Bool=TEXT,
+        column_types::AbstractDict=ColumnTypeMap(),
+        type_map::AbstractDict=LibPQ.PQTypeMap(),
+        conversions::AbstractDict=LibPQ.PQConversions(),
+    ) -> Result
+
+Run a query on the PostgreSQL database and return a `Result`.
+If `throw_error` is `true`, throw an error and clear the result if the query results in a
+fatal error or unreadable response.
+If `binary_format` is `BINARY`, the results data will be in binary and not string format.
+
+The query may be passed as `Connection` and `AbstractString` (SQL) arguments, or as a
+`Statement`.
+
+`execute_params` optionally takes a `parameters` vector which passes query parameters as
+strings to PostgreSQL.
+
+`column_types` accepts type overrides for columns in the result which take priority over
+those in `type_map`.
+For information on the `column_types`, `type_map`, and `conversions` arguments, see
+[Type Conversions](@ref typeconv).
+
+Also see `execute`.
+"""
+function execute_params end
+
 function execute_params(
     jl_conn::Connection,
     query::AbstractString,
     parameters::Union{AbstractVector, Tuple}=[];
     throw_error::Bool=true,
-    binary_format::Bool=false,
+    binary_format::Bool=TEXT,
     kwargs...
 )
     string_params = string_parameters(parameters)
@@ -326,7 +355,7 @@ function _execute(
     conn_ptr::Ptr{libpq_c.PGconn},
     query::AbstractString,
     parameters::Vector{Ptr{UInt8}};
-    binary_format::Bool,
+    binary_format::Bool=TEXT,
 )
     num_params = length(parameters)
 
