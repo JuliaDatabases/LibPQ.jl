@@ -125,7 +125,7 @@ function execute_params(
     pointer_params = parameter_pointers(string_params)
 
     result = lock(stmt.jl_conn) do
-        _execute_prepared(stmt.jl_conn.conn, stmt.name, pointer_params; binary_format)
+        _execute_prepared(stmt.jl_conn.conn, stmt.name, pointer_params; binary_format=binary_format)
     end
 
     return handle_result(Result{binary_format}(result, stmt.jl_conn; kwargs...); throw_error=throw_error)
@@ -138,7 +138,7 @@ function execute(
     kwargs...
 )
     result = lock(stmt.jl_conn) do
-        _execute_prepared(stmt.jl_conn.conn, stmt.name; binary_format)
+        _execute_prepared(stmt.jl_conn.conn, stmt.name; binary_format=binary_format)
     end
 
     return handle_result(Result{binary_format}(result, stmt.jl_conn; kwargs...); throw_error=throw_error)
