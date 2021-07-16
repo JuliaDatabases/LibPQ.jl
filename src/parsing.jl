@@ -1,5 +1,5 @@
 "A wrapper for one value in a PostgreSQL result."
-struct PQValue{OID, BinaryFormat}
+struct PQValue{OID,BinaryFormat}
     "PostgreSQL result"
     jl_result::Result
 
@@ -10,11 +10,9 @@ struct PQValue{OID, BinaryFormat}
     col::Cint
 
     function PQValue{OID}(
-        jl_result::Result{BinaryFormat},
-        row::Integer,
-        col::Integer,
-    ) where {OID, BinaryFormat}
-        return new{OID, BinaryFormat}(jl_result, row - 1, col - 1)
+        jl_result::Result{BinaryFormat}, row::Integer, col::Integer
+    ) where {OID,BinaryFormat}
+        return new{OID,BinaryFormat}(jl_result, row - 1, col - 1)
     end
 end
 
@@ -147,8 +145,12 @@ _DEFAULT_TYPE_MAP[:int4] = Int32
 _DEFAULT_TYPE_MAP[:int8] = Int64
 
 for int_sym in (:int2, :int4, :int8)
-    @eval function Base.parse(::Type{T}, pqv::PQValue{$(oid(int_sym)), BINARY}) where {T <: Number}
-        return convert(T, ntoh(unsafe_load(Ptr{$(_DEFAULT_TYPE_MAP[int_sym])}(data_pointer(pqv)))))
+    @eval function Base.parse(
+        ::Type{T}, pqv::PQValue{$(oid(int_sym)),BINARY}
+    ) where {T<:Number}
+        return convert(
+            T, ntoh(unsafe_load(Ptr{$(_DEFAULT_TYPE_MAP[int_sym])}(data_pointer(pqv))))
+        )
     end
 end
 
@@ -166,7 +168,7 @@ _DEFAULT_TYPE_MAP[:numeric] = Decimal
 
 ## character
 # bpchar is char(n)
-function Base.parse(::Type{String}, pqv::PQValue{PQ_SYSTEM_TYPES[:bpchar], TEXT})
+function Base.parse(::Type{String}, pqv::PQValue{PQ_SYSTEM_TYPES[:bpchar],TEXT})
     return String(rstrip(string_view(pqv), ' '))
 end
 # char is "char"
@@ -180,8 +182,8 @@ pqparse(::Type{Char}, str::AbstractString) = Char(pqparse(PQChar, str))
 _DEFAULT_TYPE_MAP[:bytea] = Vector{UInt8}
 
 # Needs it's own `parse` method as it uses bytes_view instead of string_view
-function Base.parse(::Type{Vector{UInt8}}, pqv::PQValue{PQ_SYSTEM_TYPES[:bytea], TEXT})
-    pqparse(Vector{UInt8}, bytes_view(pqv))
+function Base.parse(::Type{Vector{UInt8}}, pqv::PQValue{PQ_SYSTEM_TYPES[:bytea],TEXT})
+    return pqparse(Vector{UInt8}, bytes_view(pqv))
 end
 
 function pqparse(::Type{Vector{UInt8}}, bytes::Array{UInt8,1})
@@ -257,7 +259,7 @@ function pqparse(::Type{ZonedDateTime}, str::AbstractString)
         return ZonedDateTime(typemin(DateTime), tz"UTC")
     end
 
-    for fmt in TIMESTAMPTZ_FORMATS[1:end-1]
+    for fmt in TIMESTAMPTZ_FORMATS[1:(end - 1)]
         parsed = tryparse(ZonedDateTime, str, fmt)
         parsed !== nothing && return parsed
     end
@@ -303,12 +305,12 @@ function pqparse(::Type{InfExtendedTime{T}}, str::AbstractString) where {T<:Date
 end
 
 # UNIX timestamps
-function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8], TEXT})
-    unix2datetime(parse(Int64, pqv))
+function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8],TEXT})
+    return unix2datetime(parse(Int64, pqv))
 end
 
-function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8], TEXT})
-    TimeZones.unix2zdt(parse(Int64, pqv))
+function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8],TEXT})
+    return TimeZones.unix2zdt(parse(Int64, pqv))
 end
 
 ## intervals
@@ -332,7 +334,8 @@ function _interval_regex()
     for long_type in (Hour, Minute)
         print(io, _field_match(long_type))
     end
-    print(io,
+    print(
+        io,
         _field_match(Second, "(?<whole_seconds>-?\\d+)(?:\\.(?<frac_seconds>\\d{1,9}))?"),
     )
     print(io, ")?\$")
@@ -380,7 +383,7 @@ function pqparse(::Type{Dates.CompoundPeriod}, str::AbstractString)
             period_coeff = fld1(len, 3)
             period_type = frac_periods[period_coeff]  # field regex prevents BoundsError
 
-            frac_seconds = parse(Int, frac_seconds_str) * 10 ^ (3 * period_coeff - len)
+            frac_seconds = parse(Int, frac_seconds_str) * 10^(3 * period_coeff - len)
             if frac_seconds != 0
                 push!(periods, period_type(frac_seconds))
             end
@@ -405,17 +408,18 @@ end
 
 ## arrays
 # numeric arrays never have double quotes and always use ',' as a separator
-parse_numeric_element(::Type{T}, str) where T = parse(T, str)
+parse_numeric_element(::Type{T}, str) where {T} = parse(T, str)
 
-parse_numeric_element(::Type{Union{T, Missing}}, str) where T =
-    str == "NULL" ? missing : parse(T, str)
+function parse_numeric_element(::Type{Union{T,Missing}}, str) where {T}
+    return str == "NULL" ? missing : parse(T, str)
+end
 
-function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
+function parse_numeric_array(eltype::Type{T}, str::AbstractString) where {T}
     eq_ind = findfirst(isequal('='), str)
 
     if eq_ind !== nothing
-        offset_str = str[1:eq_ind-1]
-        range_strs = split(str[1:eq_ind-1], ['[',']']; keepempty=false)
+        offset_str = str[1:(eq_ind - 1)]
+        range_strs = split(str[1:(eq_ind - 1)], ['[', ']']; keepempty=false)
 
         ranges = map(range_strs) do range_str
             lower, upper = split(range_str, ':'; limit=2)
@@ -423,7 +427,7 @@ function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
         end
 
         arr = OffsetArray{T}(undef, ranges...)
-        el_iter = eachmatch(r"[^\}\{,]+", str[eq_ind+1:end])
+        el_iter = eachmatch(r"[^\}\{,]+", str[(eq_ind + 1):end])
     else
         arr = Array{T}(undef, array_size(str)...)
         el_iter = eachmatch(r"[^\}\{,]+", str)
@@ -476,7 +480,7 @@ end
 for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
     array_oid = PQ_SYSTEM_TYPES[Symbol("_$pq_eltype")]
     jl_type = _DEFAULT_TYPE_MAP[Symbol(pq_eltype)]
-    jl_missingtype = Union{jl_type, Missing}
+    jl_missingtype = Union{jl_type,Missing}
 
     # could be an OffsetArray or Array of any dimensionality
     _DEFAULT_TYPE_MAP[array_oid] = AbstractArray{jl_missingtype}
@@ -484,24 +488,23 @@ for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
     for jl_eltype in (jl_type, jl_missingtype)
         @eval function pqparse(
             ::Type{A}, str::AbstractString
-        ) where A <: AbstractArray{$jl_eltype}
-            parse_numeric_array($jl_eltype, str)::A
+        ) where {A<:AbstractArray{$jl_eltype}}
+            return parse_numeric_array($jl_eltype, str)::A
         end
     end
 end
 
-struct FallbackConversion <: AbstractDict{Tuple{Oid, Type}, Base.Callable}
-end
+struct FallbackConversion <: AbstractDict{Tuple{Oid,Type},Base.Callable} end
 
-function Base.getindex(cmap::FallbackConversion, oid_typ::Tuple{Integer, Type})
+function Base.getindex(cmap::FallbackConversion, oid_typ::Tuple{Integer,Type})
     _, typ = oid_typ
 
     return function parse_type(pqv::PQValue)
-        parse(typ, pqv)
+        return parse(typ, pqv)
     end
 end
 
-Base.haskey(cmap::FallbackConversion, oid_typ::Tuple{Integer, Type}) = true
+Base.haskey(cmap::FallbackConversion, oid_typ::Tuple{Integer,Type}) = true
 
 """
 A fallback conversion mapping (like [`PQConversions`](@ref) which holds a single function

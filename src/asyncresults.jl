@@ -12,7 +12,9 @@ mutable struct AsyncResult{BinaryFormat}
     "Task which errors or returns a LibPQ.jl Result which is created once available"
     result_task::Task
 
-    function AsyncResult{BinaryFormat}(jl_conn::Connection, result_kwargs::Ref) where {BinaryFormat}
+    function AsyncResult{BinaryFormat}(
+        jl_conn::Connection, result_kwargs::Ref
+    ) where {BinaryFormat}
         return new{BinaryFormat}(jl_conn, result_kwargs, false)
     end
 end
@@ -31,7 +33,7 @@ function Base.show(io::IO, async_result::AsyncResult)
     else
         "in progress"
     end
-    print(io, typeof(async_result), " (", status, ")")
+    return print(io, typeof(async_result), " (", status, ")")
 end
 
 """
@@ -50,16 +52,16 @@ The result returned will be the [`Result`](@ref) of the last query run (the only
 using parameters).
 Any errors produced by the queries will be thrown together in a `CompositeException`.
 """
-function handle_result(async_result::AsyncResult{BinaryFormat}; throw_error=true) where {BinaryFormat}
+function handle_result(
+    async_result::AsyncResult{BinaryFormat}; throw_error=true
+) where {BinaryFormat}
     errors = []
     result = nothing
     for result_ptr in _consume(async_result.jl_conn)
         try
             result = handle_result(
                 Result{BinaryFormat}(
-                    result_ptr,
-                    async_result.jl_conn;
-                    async_result.result_kwargs[]...
+                    result_ptr, async_result.jl_conn; async_result.result_kwargs[]...
                 );
                 throw_error=throw_error,
             )
@@ -102,9 +104,11 @@ function _consume(jl_conn::Connection)
                 _cancel(jl_conn)
             end
 
-            last_log == curr && debug(LOGGER, "Waiting to read from connection $(jl_conn.conn)")
+            last_log == curr &&
+                debug(LOGGER, "Waiting to read from connection $(jl_conn.conn)")
             wait(watcher)
-            last_log == curr && debug(LOGGER, "Consuming input from connection $(jl_conn.conn)")
+            last_log == curr &&
+                debug(LOGGER, "Consuming input from connection $(jl_conn.conn)")
             success = libpq_c.PQconsumeInput(jl_conn.conn) == 1
             !success && error(LOGGER, Errors.PQConnectionError(jl_conn))
 
@@ -116,8 +120,8 @@ function _consume(jl_conn::Connection)
                     return result_ptrs
                 else
                     result_num = length(result_ptrs) + 1
-                    debug(LOGGER,
-                        "Saving result $result_num from connection $(jl_conn.conn)"
+                    debug(
+                        LOGGER, "Saving result $result_num from connection $(jl_conn.conn)"
                     )
                     push!(result_ptrs, result_ptr)
                 end
@@ -126,9 +130,12 @@ function _consume(jl_conn::Connection)
     catch err
         if err isa Base.IOError && err.code == -9  # EBADF
             debug(() -> sprint(showerror, err), LOGGER)
-            error(LOGGER, Errors.JLConnectionError(
-                "PostgreSQL connection socket was unexpectedly closed"
-            ))
+            error(
+                LOGGER,
+                Errors.JLConnectionError(
+                    "PostgreSQL connection socket was unexpectedly closed"
+                ),
+            )
         else
             rethrow(err)
         end
@@ -147,7 +154,7 @@ function cancel(async_result::AsyncResult)
     # the actual cancellation will be triggered in the main loop of _consume
     # which will call `_cancel` on the `Connection`
     async_result.should_cancel = true
-    return
+    return nothing
 end
 
 function _cancel(jl_conn::Connection)
@@ -158,9 +165,10 @@ function _cancel(jl_conn::Connection)
         errbuf = zeros(UInt8, errbuf_size)
         success = libpq_c.PQcancel(cancel_ptr, pointer(errbuf), errbuf_size) == 1
         if !success
-            warn(LOGGER, Errors.JLConnectionError(
-                "Failed cancelling query: $(String(errbuf))"
-            ))
+            warn(
+                LOGGER,
+                Errors.JLConnectionError("Failed cancelling query: $(String(errbuf))"),
+            )
         else
             debug(LOGGER, "Cancelled query for connection $(jl_conn.conn)")
         end
@@ -252,22 +260,27 @@ function async_execute_params end
 function async_execute_params(
     jl_conn::Connection,
     query::AbstractString,
-    parameters::Union{AbstractVector, Tuple}=[];
+    parameters::Union{AbstractVector,Tuple}=[];
     binary_format=TEXT,
-    kwargs...
+    kwargs...,
 )
     string_params = string_parameters(parameters)
     pointer_params = parameter_pointers(string_params)
 
-    async_result = _async_execute(jl_conn; binary_format=binary_format, kwargs...) do jl_conn
-        _async_submit(jl_conn.conn, query, pointer_params; binary_format=binary_format)
-    end
+    async_result =
+        _async_execute(jl_conn; binary_format=binary_format, kwargs...) do jl_conn
+            _async_submit(jl_conn.conn, query, pointer_params; binary_format=binary_format)
+        end
 
     return async_result
 end
 
 function _async_execute(
-    submission_fn::Function, jl_conn::Connection; binary_format::Bool=TEXT, throw_error::Bool=true, kwargs...
+    submission_fn::Function,
+    jl_conn::Connection;
+    binary_format::Bool=TEXT,
+    throw_error::Bool=true,
+    kwargs...,
 )
     async_result = AsyncResult{binary_format}(jl_conn; kwargs...)
 
