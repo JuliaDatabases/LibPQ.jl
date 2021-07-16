@@ -1366,6 +1366,9 @@ end
                             parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
                             @test isequal(parsed, data)
                             @test typeof(parsed) == typeof(data)
+                            parsed_no_oid = func(LibPQ.PQValue(result, 1, 1))
+                            @test isequal(parsed_no_oid, data)
+                            @test typeof(parsed_no_oid) == typeof(data)
                         finally
                             close(result)
                         end

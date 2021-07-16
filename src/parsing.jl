@@ -27,10 +27,10 @@ Row and column positions are provided 1-indexed.
 If the `OID` type parameter is not provided, the Oid of the field will be retrieved from
 the result.
 """
-function PQValue(jl_result::Result{BinaryFormat}, row::Integer, col::Integer) where BinaryFormat
+function PQValue(jl_result::Result, row::Integer, col::Integer)
     oid = libpq_c.PQftype(jl_result.result, col - 1)
 
-    return PQValue{oid, BinaryFormat}(jl_result, row, col)
+    return PQValue{oid}(jl_result, row, col)
 end
 
 """
@@ -145,8 +145,6 @@ pqparse(::Type{Symbol}, str::AbstractString) = Symbol(str)
 _DEFAULT_TYPE_MAP[:int2] = Int16
 _DEFAULT_TYPE_MAP[:int4] = Int32
 _DEFAULT_TYPE_MAP[:int8] = Int64
-
-pqparse(::Type{<:Integer}, pqv::Ptr) = ntoh(unsafe_load(pqv))
 
 for int_sym in (:int2, :int4, :int8)
     @eval function Base.parse(::Type{T}, pqv::PQValue{$(oid(int_sym)), BINARY}) where {T <: Number}
@@ -305,11 +303,11 @@ function pqparse(::Type{InfExtendedTime{T}}, str::AbstractString) where {T<:Date
 end
 
 # UNIX timestamps
-function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8], false})
+function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8], TEXT})
     unix2datetime(parse(Int64, pqv))
 end
 
-function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8], false})
+function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8], TEXT})
     TimeZones.unix2zdt(parse(Int64, pqv))
 end
 

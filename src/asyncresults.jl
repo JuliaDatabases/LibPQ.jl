@@ -267,7 +267,7 @@ function async_execute_params(
 end
 
 function _async_execute(
-    submission_fn::Function, jl_conn::Connection; binary_format::Bool=false, throw_error::Bool=true, kwargs...
+    submission_fn::Function, jl_conn::Connection; binary_format::Bool=TEXT, throw_error::Bool=true, kwargs...
 )
     async_result = AsyncResult{binary_format}(jl_conn; kwargs...)
 
