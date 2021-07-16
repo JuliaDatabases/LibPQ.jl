@@ -341,7 +341,7 @@ function execute_params(
     pointer_params = parameter_pointers(string_params)
 
     result = lock(jl_conn) do
-        _execute(jl_conn.conn, query, pointer_params; binary_format)
+        _execute(jl_conn.conn, query, pointer_params; binary_format=binary_format)
     end
 
     return handle_result(Result{binary_format}(result, jl_conn; kwargs...); throw_error=throw_error)
