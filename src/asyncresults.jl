@@ -222,6 +222,12 @@ function async_execute(jl_conn::Connection, query::AbstractString; kwargs...)
     return async_result
 end
 
+@deprecate async_execute(
+    jl_conn::Connection,
+    query::AbstractString,
+    parameters::Union{AbstractVector,Tuple};
+    kwargs...
+) async_execute_params(jl_conn, query, parameters; kwargs...)
 """
 async_execute_params(
         jl_conn::Connection,

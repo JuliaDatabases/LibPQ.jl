@@ -139,24 +139,28 @@ pqparse(::Type{T}, str::AbstractString) where {T} = parse(T, str)
 # allow parsing as a Symbol anything which works as a String
 pqparse(::Type{Symbol}, str::AbstractString) = Symbol(str)
 
+function generate_binary_parser(symbol)
+    @eval function Base.parse(
+        ::Type{T}, pqv::PQValue{$(oid(symbol)),BINARY}
+    ) where {T<:Number}
+        return convert(
+            T, ntoh(unsafe_load(Ptr{$(_DEFAULT_TYPE_MAP[symbol])}(data_pointer(pqv))))
+        )
+    end
+end
+
 ## integers
 _DEFAULT_TYPE_MAP[:int2] = Int16
 _DEFAULT_TYPE_MAP[:int4] = Int32
 _DEFAULT_TYPE_MAP[:int8] = Int64
 
-for int_sym in (:int2, :int4, :int8)
-    @eval function Base.parse(
-        ::Type{T}, pqv::PQValue{$(oid(int_sym)),BINARY}
-    ) where {T<:Number}
-        return convert(
-            T, ntoh(unsafe_load(Ptr{$(_DEFAULT_TYPE_MAP[int_sym])}(data_pointer(pqv))))
-        )
-    end
-end
+generate_binary_parser.((:int2, :int4, :int8))
 
 ## floating point
 _DEFAULT_TYPE_MAP[:float4] = Float32
 _DEFAULT_TYPE_MAP[:float8] = Float64
+
+generate_binary_parser.((:float4, :float8))
 
 ## oid
 _DEFAULT_TYPE_MAP[:oid] = Oid
@@ -168,7 +172,7 @@ _DEFAULT_TYPE_MAP[:numeric] = Decimal
 
 ## character
 # bpchar is char(n)
-function Base.parse(::Type{String}, pqv::PQValue{PQ_SYSTEM_TYPES[:bpchar],TEXT})
+function Base.parse(::Type{String}, pqv::PQValue{PQ_SYSTEM_TYPES[:bpchar]})
     return String(rstrip(string_view(pqv), ' '))
 end
 # char is "char"
@@ -216,6 +220,10 @@ function pqparse(::Type{Bool}, str::AbstractString)
         error("\"$str\" is not a valid boolean")
     end
 end
+
+Base.parse(
+    ::Type{Bool}, pqv::PQValue{oid(:bool),BINARY}
+) = unsafe_load(Ptr{_DEFAULT_TYPE_MAP[:bool]}(data_pointer(pqv)))
 
 ## dates and times
 # ISO, YMD

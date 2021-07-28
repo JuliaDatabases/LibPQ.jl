@@ -305,6 +305,14 @@ function execute(
     return handle_result(Result(result, jl_conn; kwargs...); throw_error=throw_error)
 end
 
+@deprecate execute(
+    jl_conn::Connection,
+    query::AbstractString,
+    parameters::Union{AbstractVector,Tuple};
+    throw_error::Bool=true,
+    kwargs...
+) execute_params(jl_conn, query, parameters; throw_error=throw_error, kwargs...)
+
 """
     execute_params(
         {jl_conn::Connection, query::AbstractString | stmt::Statement},
