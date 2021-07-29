@@ -16,6 +16,9 @@ struct PQValue{OID,BinaryFormat}
     end
 end
 
+const PQTextValue{OID} = PQValue{OID,TEXT}
+const PQBinaryValue{OID} = PQValue{OID,BINARY}
+
 """
     PQValue(jl_result::Result, row::Integer, col::Integer) -> PQValue
     PQValue{OID}(jl_result::Result, row::Integer, col::Integer) -> PQValue{OID}
@@ -141,7 +144,7 @@ pqparse(::Type{Symbol}, str::AbstractString) = Symbol(str)
 
 function generate_binary_parser(symbol)
     @eval function Base.parse(
-        ::Type{T}, pqv::PQValue{$(oid(symbol)),BINARY}
+        ::Type{T}, pqv::PQBinaryValue{$(oid(symbol))}
     ) where {T<:Number}
         return convert(
             T, ntoh(unsafe_load(Ptr{$(_DEFAULT_TYPE_MAP[symbol])}(data_pointer(pqv))))
@@ -186,7 +189,7 @@ pqparse(::Type{Char}, str::AbstractString) = Char(pqparse(PQChar, str))
 _DEFAULT_TYPE_MAP[:bytea] = Vector{UInt8}
 
 # Needs it's own `parse` method as it uses bytes_view instead of string_view
-function Base.parse(::Type{Vector{UInt8}}, pqv::PQValue{PQ_SYSTEM_TYPES[:bytea],TEXT})
+function Base.parse(::Type{Vector{UInt8}}, pqv::PQTextValue{PQ_SYSTEM_TYPES[:bytea]})
     return pqparse(Vector{UInt8}, bytes_view(pqv))
 end
 
@@ -221,7 +224,7 @@ function pqparse(::Type{Bool}, str::AbstractString)
     end
 end
 
-function Base.parse(::Type{Bool}, pqv::PQValue{oid(:bool),BINARY})
+function Base.parse(::Type{Bool}, pqv::PQBinaryValue{oid(:bool)})
     return unsafe_load(Ptr{_DEFAULT_TYPE_MAP[:bool]}(data_pointer(pqv)))
 end
 
@@ -313,11 +316,11 @@ function pqparse(::Type{InfExtendedTime{T}}, str::AbstractString) where {T<:Date
 end
 
 # UNIX timestamps
-function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8],TEXT})
+function Base.parse(::Type{DateTime}, pqv::PQTextValue{PQ_SYSTEM_TYPES[:int8]})
     return unix2datetime(parse(Int64, pqv))
 end
 
-function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8],TEXT})
+function Base.parse(::Type{ZonedDateTime}, pqv::PQTextValue{PQ_SYSTEM_TYPES[:int8]})
     return TimeZones.unix2zdt(parse(Int64, pqv))
 end
 

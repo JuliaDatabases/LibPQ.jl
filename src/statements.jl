@@ -113,7 +113,7 @@ function execute_params(
     stmt::Statement,
     parameters::Union{AbstractVector,Tuple};
     throw_error::Bool=true,
-    binary_format::Bool=TEXT,
+    binary_format::Bool=false,
     kwargs...,
 )
     num_params = length(parameters)
@@ -132,7 +132,7 @@ function execute_params(
 end
 
 function execute(
-    stmt::Statement; throw_error::Bool=true, binary_format::Bool=TEXT, kwargs...
+    stmt::Statement; throw_error::Bool=true, binary_format::Bool=false, kwargs...
 )
     result = lock(stmt.jl_conn) do
         _execute_prepared(stmt.jl_conn.conn, stmt.name; binary_format=binary_format)

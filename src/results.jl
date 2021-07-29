@@ -318,7 +318,7 @@ end
         {jl_conn::Connection, query::AbstractString | stmt::Statement},
         [parameters::Union{AbstractVector, Tuple},]
         throw_error::Bool=true,
-        binary_format::Bool=TEXT,
+        binary_format::Bool=false,
         column_types::AbstractDict=ColumnTypeMap(),
         type_map::AbstractDict=LibPQ.PQTypeMap(),
         conversions::AbstractDict=LibPQ.PQConversions(),
@@ -349,7 +349,7 @@ function execute_params(
     query::AbstractString,
     parameters::Union{AbstractVector,Tuple}=[];
     throw_error::Bool=true,
-    binary_format::Bool=TEXT,
+    binary_format::Bool=false,
     kwargs...,
 )
     string_params = string_parameters(parameters)
@@ -372,7 +372,7 @@ function _execute(
     conn_ptr::Ptr{libpq_c.PGconn},
     query::AbstractString,
     parameters::Vector{Ptr{UInt8}};
-    binary_format::Bool=TEXT,
+    binary_format::Bool=false,
 )
     num_params = length(parameters)
 

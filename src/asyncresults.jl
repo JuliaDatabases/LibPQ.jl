@@ -233,7 +233,7 @@ async_execute_params(
         jl_conn::Connection,
         query::AbstractString,
         [parameters::Union{AbstractVector, Tuple},]
-        binary_format=TEXT,
+        binary_format::Bool=false,
         kwargs...
     ) -> AsyncResult
 
@@ -267,7 +267,7 @@ function async_execute_params(
     jl_conn::Connection,
     query::AbstractString,
     parameters::Union{AbstractVector,Tuple}=[];
-    binary_format=TEXT,
+    binary_format::Bool=false,
     kwargs...,
 )
     string_params = string_parameters(parameters)
@@ -284,7 +284,7 @@ end
 function _async_execute(
     submission_fn::Function,
     jl_conn::Connection;
-    binary_format::Bool=TEXT,
+    binary_format::Bool=false,
     throw_error::Bool=true,
     kwargs...,
 )
@@ -317,7 +317,7 @@ function _async_submit(
     conn_ptr::Ptr{libpq_c.PGconn},
     query::AbstractString,
     parameters::Vector{Ptr{UInt8}};
-    binary_format::Bool=TEXT,
+    binary_format::Bool=false,
 )
     num_params = length(parameters)
 
