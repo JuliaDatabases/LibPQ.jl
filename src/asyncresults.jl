@@ -226,7 +226,7 @@ end
     jl_conn::Connection,
     query::AbstractString,
     parameters::Union{AbstractVector,Tuple};
-    kwargs...
+    kwargs...,
 ) async_execute_params(jl_conn, query, parameters; kwargs...)
 """
 async_execute_params(

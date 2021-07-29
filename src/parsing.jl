@@ -221,9 +221,9 @@ function pqparse(::Type{Bool}, str::AbstractString)
     end
 end
 
-Base.parse(
-    ::Type{Bool}, pqv::PQValue{oid(:bool),BINARY}
-) = unsafe_load(Ptr{_DEFAULT_TYPE_MAP[:bool]}(data_pointer(pqv)))
+function Base.parse(::Type{Bool}, pqv::PQValue{oid(:bool),BINARY})
+    return unsafe_load(Ptr{_DEFAULT_TYPE_MAP[:bool]}(data_pointer(pqv)))
+end
 
 ## dates and times
 # ISO, YMD
