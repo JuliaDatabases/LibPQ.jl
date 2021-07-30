@@ -302,7 +302,7 @@ function execute end
 
 function execute(conn, query; binary_format=false, kwargs...)
     if binary_format
-        execute(conn, query, []; binary_format, kwargs...)
+        execute(conn, query, []; binary_format=binary_format, kwargs...)
     else
         _multi_execute(conn, query; kwargs...)
     end
