@@ -288,15 +288,13 @@ fatal error or unreadable response.
 The query may be passed as `Connection` and `AbstractString` (SQL) arguments, or as a
 `Statement`.
 
-`execute_params` optionally takes a `parameters` vector which passes query parameters as
+`execute` optionally takes a `parameters` vector which passes query parameters as
 strings to PostgreSQL.
 
 `column_types` accepts type overrides for columns in the result which take priority over
 those in `type_map`.
 For information on the `column_types`, `type_map`, and `conversions` arguments, see
 [Type Conversions](@ref typeconv).
-
-Also see `execute_params`.
 """
 function execute end
 
