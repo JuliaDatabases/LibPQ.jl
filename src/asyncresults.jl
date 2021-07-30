@@ -223,7 +223,7 @@ function async_execute end
 
 function async_execute(conn, query; binary_format=false, kwargs...)
     if binary_format
-        async_execute(conn, query, []; binary_format, kwargs...)
+        async_execute(conn, query, []; binary_format=binary_format, kwargs...)
     else
         _multi_async_execute(conn, query; kwargs...)
     end
