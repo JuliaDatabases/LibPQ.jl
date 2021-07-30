@@ -187,51 +187,6 @@ Base.close(async_result::AsyncResult) = cancel(async_result)
     async_execute(
         jl_conn::Connection,
         query::AbstractString,
-        kwargs...
-    ) -> AsyncResult
-
-Run a query on the PostgreSQL database and return an [`AsyncResult`](@ref).
-
-The `AsyncResult` contains a `Task` which processes a query asynchronously.
-Calling `fetch` on the `AsyncResult` will return a [`Result`](@ref).
-
-All keyword arguments are the same as [`execute`](@ref) and are passed to the created
-`Result`.
-
-Only one `AsyncResult` can be active on a [`Connection`](@ref) at once.
-If multiple `AsyncResult`s use the same `Connection`, they will execute serially.
-
-`async_execute` does not yet support [`Statement`](@ref)s.
-
-Queries without parameters can contain multiple SQL statements, and the result of the final
-statement is returned.
-Any errors which occur during executed statements will be bundled together in a
-`CompositeException` and thrown.
-
-As is normal for `Task`s, any exceptions will be thrown when calling `wait` or `fetch`.
-
-Also see `async_execute_params`.
-"""
-function async_execute end
-
-function async_execute(jl_conn::Connection, query::AbstractString; kwargs...)
-    async_result = _async_execute(jl_conn; kwargs...) do jl_conn
-        _async_submit(jl_conn.conn, query)
-    end
-
-    return async_result
-end
-
-@deprecate async_execute(
-    jl_conn::Connection,
-    query::AbstractString,
-    parameters::Union{AbstractVector,Tuple};
-    kwargs...,
-) async_execute_params(jl_conn, query, parameters; kwargs...)
-"""
-async_execute_params(
-        jl_conn::Connection,
-        query::AbstractString,
         [parameters::Union{AbstractVector, Tuple},]
         binary_format::Bool=false,
         kwargs...
@@ -248,25 +203,44 @@ All keyword arguments are the same as [`execute`](@ref) and are passed to the cr
 Only one `AsyncResult` can be active on a [`Connection`](@ref) at once.
 If multiple `AsyncResult`s use the same `Connection`, they will execute serially.
 
-`async_execute_params` does not yet support [`Statement`](@ref)s.
+`async_execute` does not yet support [`Statement`](@ref)s.
 
-`async_execute_params` optionally takes a `parameters` vector which passes query parameters
+`async_execute` optionally takes a `parameters` vector which passes query parameters
 as strings to PostgreSQL.
 Queries without parameters can contain multiple SQL statements, and the result of the final
 statement is returned.
 Any errors which occur during executed statements will be bundled together in a
 `CompositeException` and thrown.
 
+Queries without parameters can contain multiple SQL statements, and the result of the final
+statement is returned.
+Any errors which occur during executed statements will be bundled together in a
+`CompositeException` and thrown.
+
 As is normal for `Task`s, any exceptions will be thrown when calling `wait` or `fetch`.
-
-Also see `async_execute`.
 """
-function async_execute_params end
+function async_execute end
 
-function async_execute_params(
+function async_execute(conn, query; binary_format=false, kwargs...)
+    if binary_format
+        async_execute(conn, query, []; binary_format, kwargs...)
+    else
+        _multi_async_execute(conn, query; kwargs...)
+    end
+end
+
+function _multi_async_execute(jl_conn::Connection, query::AbstractString; kwargs...)
+    async_result = _async_execute(jl_conn; kwargs...) do jl_conn
+        _async_submit(jl_conn.conn, query)
+    end
+
+    return async_result
+end
+
+function async_execute(
     jl_conn::Connection,
     query::AbstractString,
-    parameters::Union{AbstractVector,Tuple}=[];
+    parameters::Union{AbstractVector,Tuple};
     binary_format::Bool=false,
     kwargs...,
 )

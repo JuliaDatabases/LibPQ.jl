@@ -273,49 +273,6 @@ end
 """
     execute(
         {jl_conn::Connection, query::AbstractString | stmt::Statement},
-        throw_error::Bool=true,
-        column_types::AbstractDict=ColumnTypeMap(),
-        type_map::AbstractDict=LibPQ.PQTypeMap(),
-        conversions::AbstractDict=LibPQ.PQConversions(),
-    ) -> Result
-
-Run a query on the PostgreSQL database and return a `Result`.
-If `throw_error` is `true`, throw an error and clear the result if the query results in a
-fatal error or unreadable response.
-
-The query may be passed as `Connection` and `AbstractString` (SQL) arguments, or as a
-`Statement`.
-
-`column_types` accepts type overrides for columns in the result which take priority over
-those in `type_map`.
-For information on the `column_types`, `type_map`, and `conversions` arguments, see
-[Type Conversions](@ref typeconv).
-
-Also see `execute_params`.
-"""
-function execute end
-
-function execute(
-    jl_conn::Connection, query::AbstractString; throw_error::Bool=true, kwargs...
-)
-    result = lock(jl_conn) do
-        _execute(jl_conn.conn, query)
-    end
-
-    return handle_result(Result(result, jl_conn; kwargs...); throw_error=throw_error)
-end
-
-@deprecate execute(
-    jl_conn::Connection,
-    query::AbstractString,
-    parameters::Union{AbstractVector,Tuple};
-    throw_error::Bool=true,
-    kwargs...
-) execute_params(jl_conn, query, parameters; throw_error=throw_error, kwargs...)
-
-"""
-    execute_params(
-        {jl_conn::Connection, query::AbstractString | stmt::Statement},
         [parameters::Union{AbstractVector, Tuple},]
         throw_error::Bool=true,
         binary_format::Bool=false,
@@ -327,7 +284,6 @@ end
 Run a query on the PostgreSQL database and return a `Result`.
 If `throw_error` is `true`, throw an error and clear the result if the query results in a
 fatal error or unreadable response.
-If `binary_format` is `BINARY`, the results data will be in binary and not string format.
 
 The query may be passed as `Connection` and `AbstractString` (SQL) arguments, or as a
 `Statement`.
@@ -340,14 +296,32 @@ those in `type_map`.
 For information on the `column_types`, `type_map`, and `conversions` arguments, see
 [Type Conversions](@ref typeconv).
 
-Also see `execute`.
+Also see `execute_params`.
 """
-function execute_params end
+function execute end
 
-function execute_params(
+function execute(conn, query; binary_format=false, kwargs...)
+    if binary_format
+        execute(conn, query, []; binary_format, kwargs...)
+    else
+        _multi_execute(conn, query; kwargs...)
+    end
+end
+
+function _multi_execute(
+    jl_conn::Connection, query::AbstractString; throw_error::Bool=true, kwargs...
+)
+    result = lock(jl_conn) do
+        _execute(jl_conn.conn, query)
+    end
+
+    return handle_result(Result(result, jl_conn; kwargs...); throw_error=throw_error)
+end
+
+function execute(
     jl_conn::Connection,
     query::AbstractString,
-    parameters::Union{AbstractVector,Tuple}=[];
+    parameters::Union{AbstractVector,Tuple};
     throw_error::Bool=true,
     binary_format::Bool=false,
     kwargs...,

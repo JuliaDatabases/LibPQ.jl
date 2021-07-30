@@ -1,8 +1,15 @@
 module LibPQ
 
-export status, reset!, execute, execute_params, prepare, async_execute,
-    async_execute_params, cancel, num_columns, num_rows, num_params, num_affected_rows
-
+export status,
+    reset!,
+    execute,
+    prepare,
+    async_execute,
+    cancel,
+    num_columns,
+    num_rows,
+    num_params,
+    num_affected_rows
 
 using Base: Semaphore, acquire, release
 using Base.Iterators: zip, product
@@ -21,42 +28,41 @@ using Memento: Memento, getlogger, warn, info, error, debug
 using OffsetArrays
 using TimeZones
 
-const Parameter = Union{String, Missing}
+const Parameter = Union{String,Missing}
 const LOGGER = getlogger(@__MODULE__)
 
 function __init__()
     INTERVAL_REGEX[] = _interval_regex()
-    Memento.register(LOGGER)
+    return Memento.register(LOGGER)
 end
 
 # Docstring template for types using DocStringExtensions
-@template TYPES =
-    """
-        $(TYPEDEF)
+@template TYPES = """
+                      $(TYPEDEF)
 
-    $(DOCSTRING)
+                  $(DOCSTRING)
 
-    ## Fields:
+                  ## Fields:
 
-    $(TYPEDFIELDS)
-    """
+                  $(TYPEDFIELDS)
+                  """
 
 include(joinpath(@__DIR__, "utils.jl"))
 
 module libpq_c
-    export Oid
+export Oid
 
-    @static if VERSION < v"1.3.0"
-        include(joinpath(@__DIR__, "..", "deps", "deps.jl"))
+@static if VERSION < v"1.3.0"
+    include(joinpath(@__DIR__, "..", "deps", "deps.jl"))
 
-        function __init__()
-            check_deps()
-        end
-    else
-        using LibPQ_jll
+    function __init__()
+        return check_deps()
     end
+else
+    using LibPQ_jll
+end
 
-    include(joinpath(@__DIR__, "headers", "libpq-fe.jl"))
+include(joinpath(@__DIR__, "headers", "libpq-fe.jl"))
 end
 
 using .libpq_c
