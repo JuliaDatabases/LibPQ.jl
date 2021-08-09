@@ -222,38 +222,67 @@ end
         @test LibPQ.column_number(stmt, "no_nulls") == 0
         @test LibPQ.column_names(stmt) == []
 
-        result = execute(
-            conn,
-            "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
-            throw_error=true,
-        )
-        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-        @test LibPQ.num_rows(result) == 2
-        @test LibPQ.num_columns(result) == 2
+        @testset for binary_format in (LibPQ.TEXT, LibPQ.BINARY)
+            result = execute(
+                conn,
+                "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
+                throw_error=true,
+                binary_format=binary_format,
+            )
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
 
-        table_data = columntable(result)
-        @test table_data[:no_nulls] == data[:no_nulls]
-        @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
-        @test table_data[:yes_nulls][2] === missing
+            table_data = columntable(result)
+            @test table_data[:no_nulls] == data[:no_nulls]
+            @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
+            @test table_data[:yes_nulls][2] === missing
 
-        # The same but binary data
+            close(result)
 
-        result = execute(
-            conn,
-            "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
-            throw_error=true,
-            binary_format=true,
-        )
-        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-        @test LibPQ.num_rows(result) == 2
-        @test LibPQ.num_columns(result) == 2
+            ar = async_execute(
+                conn,
+                "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
+                throw_error=true,
+                binary_format=binary_format,
+            )
+            result = fetch(ar)
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
 
-        table_data = columntable(result)
-        @test table_data[:no_nulls] == data[:no_nulls]
-        @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
-        @test table_data[:yes_nulls][2] === missing
+            table_data = columntable(result)
+            @test table_data[:no_nulls] == data[:no_nulls]
+            @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
+            @test table_data[:yes_nulls][2] === missing
 
-        close(result)
+            stmt = prepare(conn, "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;")
+
+            result = execute(stmt; binary_format=binary_format, throw_error=true)
+
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
+
+            table_data = columntable(result)
+            @test table_data[:no_nulls] == data[:no_nulls]
+            @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
+            @test table_data[:yes_nulls][2] === missing
+
+            close(result)
+
+            stmt = prepare(conn, "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;")
+
+            result = execute(stmt, []; binary_format=binary_format, throw_error=true)
+
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
+
+            table_data = columntable(result)
+            @test table_data[:no_nulls] == data[:no_nulls]
+            @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
+            @test table_data[:yes_nulls][2] === missing
+
+            close(result)
+        end
 
         result = execute(
             conn,
@@ -290,292 +319,6 @@ end
         close(result)
 
         close(conn)
-    end
-
-
-    @testset "Binary" begin
-        conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
-
-        result = execute(conn, """
-            CREATE TEMPORARY TABLE libpqjl_test (
-                no_nulls    int PRIMARY KEY,
-                yes_nulls   int
-            );
-        """)
-        @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
-        close(result)
-
-        # get the data from PostgreSQL and let columntable construct my NamedTuple
-        result = execute(conn, """
-            SELECT no_nulls, yes_nulls FROM (
-                VALUES (1, 2), (3, NULL)
-            ) AS temp (no_nulls, yes_nulls)
-            ORDER BY no_nulls DESC;
-            """;
-            throw_error=true,
-            binary_format=true,
-        )
-        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-        @test LibPQ.num_rows(result) == 2
-        @test LibPQ.num_columns(result) == 2
-
-        data = columntable(result)
-
-        @test data[:no_nulls] == [3, 1]
-        @test data[:yes_nulls][1] === missing
-        @test data[:yes_nulls][2] == 2
-
-        stmt = LibPQ.load!(
-            data,
-            conn,
-            "INSERT INTO libpqjl_test (no_nulls, yes_nulls) VALUES (\$1, \$2);",
-        )
-
-        @test_throws ArgumentError num_affected_rows(stmt.description)
-        @test num_params(stmt) == 2
-        @test num_columns(stmt) == 0  # an insert has no results
-        @test LibPQ.column_number(stmt, "no_nulls") == 0
-        @test LibPQ.column_names(stmt) == []
-
-        result = execute(
-            conn,
-            "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
-            throw_error=true,
-            binary_format=true,
-        )
-        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-        @test LibPQ.num_rows(result) == 2
-        @test LibPQ.num_columns(result) == 2
-
-        table_data = columntable(result)
-        @test table_data[:no_nulls] == data[:no_nulls]
-        @test table_data[:yes_nulls][1] === data[:yes_nulls][1] === missing
-        @test table_data[:yes_nulls][2] == data[:yes_nulls][2]
-
-        # The same but binary data
-
-        @testset "Async Binary" begin
-            ar = async_execute(
-                conn,
-                "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
-                throw_error=true,
-                binary_format=true,
-            )
-            result = fetch(ar)
-            @test LibPQ.num_rows(result) == 2
-            @test LibPQ.num_columns(result) == 2
-
-            table_data = columntable(result)
-            @test table_data[:no_nulls] == data[:no_nulls]
-            @test table_data[:yes_nulls][1] === data[:yes_nulls][1] === missing
-            @test table_data[:yes_nulls][2] == data[:yes_nulls][2]
-        end
-
-        @testset "Statement Binary" begin
-            stmt = prepare(conn, "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;")
-
-            result = execute(stmt; binary_format=true, throw_error=true)
-
-            @test LibPQ.num_rows(result) == 2
-            @test LibPQ.num_columns(result) == 2
-
-            table_data = columntable(result)
-            @test table_data[:no_nulls] == data[:no_nulls]
-            @test table_data[:yes_nulls][1] === data[:yes_nulls][1] === missing
-            @test table_data[:yes_nulls][2] == data[:yes_nulls][2]
-
-            close(result)
-        end
-
-        @testset "Statement Params Binary" begin
-            stmt = prepare(conn, "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;")
-
-            result = execute(stmt, []; binary_format=true, throw_error=true)
-
-            @test LibPQ.num_rows(result) == 2
-            @test LibPQ.num_columns(result) == 2
-
-            table_data = columntable(result)
-            @test table_data[:no_nulls] == data[:no_nulls]
-            @test table_data[:yes_nulls][1] === data[:yes_nulls][1] === missing
-            @test table_data[:yes_nulls][2] == data[:yes_nulls][2]
-
-            close(result)
-        end
-
-        close(conn)
-        close(result)
-
-
-        @testset "Default Types" begin
-            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
-
-            test_data = [
-                ("3", Cint(3)),
-                ("3::int8", Int64(3)),
-                ("3::int4", Int32(3)),
-                ("3::int2", Int16(3)),
-                ("3::float8", Float64(3)),
-                ("3::float4", Float32(3)),
-                ("'hello'::char(10)", "hello"),
-                ("'hello  '::char(10)", "hello"),
-                ("'hello  '::varchar(10)", "hello  "),
-                ("'3'::\"char\"", LibPQ.PQChar('3')),
-                ("'t'::bool", true),
-                ("'T'::bool", true),
-                ("'true'::bool", true),
-                ("'TRUE'::bool", true),
-                ("'tRuE'::bool", true),
-                ("'y'::bool", true),
-                ("'YEs'::bool", true),
-                ("'on'::bool", true),
-                ("1::bool", true),
-                ("true", true),
-                ("'f'::bool", false),
-                ("'F'::bool", false),
-                ("'false'::bool", false),
-                ("'FALSE'::bool", false),
-                ("'fAlsE'::bool", false),
-                ("'n'::bool", false),
-                ("'nO'::bool", false),
-                ("'off'::bool", false),
-                ("0::bool", false),
-                ("false", false),
-            ]
-
-            @testset for (test_str, data) in test_data
-                result = execute(conn, "SELECT $test_str;"; binary_format=true)
-
-                try
-                    @test LibPQ.num_rows(result) == 1
-                    @test LibPQ.num_columns(result) == 1
-                    @test LibPQ.column_types(result)[1] >: typeof(data)
-
-                    oid = LibPQ.column_oids(result)[1]
-                    func = result.column_funcs[1]
-                    parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
-                    @test isequal(parsed, data)
-                    @test typeof(parsed) == typeof(data)
-                    parsed_no_oid = func(LibPQ.PQValue(result, 1, 1))
-                    @test isequal(parsed_no_oid, data)
-                    @test typeof(parsed_no_oid) == typeof(data)
-                finally
-                    close(result)
-                end
-            end
-
-            test_data = [
-                ("3::oid", LibPQ.Oid(3)),
-                ("3::numeric", decimal("3")),
-                ("$(BigFloat(pi))::numeric", decimal(BigFloat(pi))),
-                ("$(big"4608230166434464229556241992703")::numeric", parse(Decimal, "4608230166434464229556241992703")),
-                ("E'\\\\xDEADBEEF'::bytea", hex2bytes("DEADBEEF")),
-                ("E'\\\\000'::bytea", UInt8[0o000]),
-                ("E'\\\\047'::bytea", UInt8[0o047]),
-                ("E'\\''::bytea", UInt8[0o047]),
-                ("E'\\\\134'::bytea", UInt8[0o134]),
-                ("E'\\\\\\\\'::bytea", UInt8[0o134]),
-                ("E'\\\\001'::bytea", UInt8[0o001]),
-                ("E'\\\\176'::bytea", UInt8[0o176]),
-                ("TIMESTAMP '2004-10-19 10:23:54'", DateTime(2004, 10, 19, 10, 23, 54)),
-                ("TIMESTAMP '2004-10-19 10:23:54.123'", DateTime(2004, 10, 19, 10, 23, 54,123)),
-                ("TIMESTAMP '2004-10-19 10:23:54.1234'", DateTime(2004, 10, 19, 10, 23, 54,123)),
-                ("'infinity'::timestamp", typemax(DateTime)),
-                ("'-infinity'::timestamp", typemin(DateTime)),
-                ("'epoch'::timestamp", DateTime(1970, 1, 1, 0, 0, 0)),
-                ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-00'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC")),
-                ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-02'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC-2")),
-                ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54+10'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC+10")),
-                ("'infinity'::timestamptz", ZonedDateTime(typemax(DateTime), tz"UTC")),
-                ("'-infinity'::timestamptz", ZonedDateTime(typemin(DateTime), tz"UTC")),
-                ("'epoch'::timestamptz", ZonedDateTime(1970, 1, 1, 0, 0, 0, tz"UTC")),
-                ("DATE '2017-01-31'", Date(2017, 1, 31)),
-                ("'infinity'::date", typemax(Date)),
-                ("'-infinity'::date", typemin(Date)),
-                ("TIME '13:13:13.131'", Time(13, 13, 13, 131)),
-                ("TIME '13:13:13.131242'", Time(13, 13, 13, 131)),
-                ("TIME '01:01:01'", Time(1, 1, 1)),
-                ("'allballs'::time", Time(0, 0, 0)),
-                ("INTERVAL '1 year 2 months 3 days 4 hours 5 minutes 6 seconds'", Dates.CompoundPeriod(Period[Year(1), Month(2), Day(3), Hour(4), Minute(5), Second(6)])),
-                ("INTERVAL '6.1 seconds'", Dates.CompoundPeriod(Period[Second(6), Millisecond(100)])),
-                ("INTERVAL '6.01 seconds'", Dates.CompoundPeriod(Period[Second(6), Millisecond(10)])),
-                ("INTERVAL '6.001 seconds'", Dates.CompoundPeriod(Period[Second(6), Millisecond(1)])),
-                ("INTERVAL '6.0001 seconds'", Dates.CompoundPeriod(Period[Second(6), Microsecond(100)])),
-                ("INTERVAL '6.1001 seconds'", Dates.CompoundPeriod(Period[Second(6), Microsecond(100100)])),
-                ("INTERVAL '1000 years 7 weeks'", Dates.CompoundPeriod(Period[Year(1000), Day(7 * 7)])),
-                ("INTERVAL '1 day -1 hour'", Dates.CompoundPeriod(Period[Day(1), Hour(-1)])),
-                ("INTERVAL '-1 month 1 day'", Dates.CompoundPeriod(Period[Month(-1), Day(1)])),
-                ("'{{{1,2,3},{4,5,6}}}'::int2[]", Array{Union{Int16, Missing}}(reshape(Int16[1 2 3; 4 5 6], 1, 2, 3))),
-                ("'{}'::int2[]", Union{Missing, Int16}[]),
-                ("'{{{1,2,3},{4,5,6}}}'::int4[]", Array{Union{Int32, Missing}}(reshape(Int32[1 2 3; 4 5 6], 1, 2, 3))),
-                ("'{{{1,2,3},{4,5,6}}}'::int8[]", Array{Union{Int64, Missing}}(reshape(Int64[1 2 3; 4 5 6], 1, 2, 3))),
-                ("'{{{NULL,2,3},{4,NULL,6}}}'::int8[]", Array{Union{Int64, Missing}}(reshape(Union{Int64, Missing}[missing 2 3; 4 missing 6], 1, 2, 3))),
-                ("'{{{1,2,3},{4,5,6}}}'::float4[]", Array{Union{Float32, Missing}}(reshape(Float32[1 2 3; 4 5 6], 1, 2, 3))),
-                ("'{{{1,2,3},{4,5,6}}}'::float8[]", Array{Union{Float64, Missing}}(reshape(Float64[1 2 3; 4 5 6], 1, 2, 3))),
-                ("'{{{NULL,2,3},{4,NULL,6}}}'::float8[]", Array{Union{Float64, Missing}}(reshape(Union{Float64, Missing}[missing 2 3; 4 missing 6], 1, 2, 3))),
-                ("'{{{1,2,3},{4,5,6}}}'::oid[]", Array{Union{LibPQ.Oid, Missing}}(reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3))),
-                ("'{{{1,2,3},{4,5,6}}}'::numeric[]", Array{Union{Decimal, Missing}}(reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3))),
-                ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copyto!(OffsetArray{Union{Missing, Int16}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copyto!(OffsetArray{Union{Missing, Int32}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copyto!(OffsetArray{Union{Missing, Int64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copyto!(OffsetArray{Union{Missing, Float32}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copyto!(OffsetArray{Union{Missing, Float64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copyto!(OffsetArray{Union{Missing, LibPQ.Oid}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copyto!(OffsetArray{Union{Missing, Decimal}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                ("'[3,7)'::int4range", Interval{Int32, Closed, Open}(3, 7)),
-                ("'(3,7)'::int4range", Interval{Int32, Closed, Open}(4, 7)),
-                ("'[4,4]'::int4range", Interval{Int32, Closed, Open}(4, 5)),
-                ("'[4,4)'::int4range", Interval{Int32}()),  # Empty interval
-                ("'[3,7)'::int8range", Interval{Int64, Closed, Open}(3, 7)),
-                ("'(3,7)'::int8range", Interval{Int64, Closed, Open}(4, 7)),
-                ("'[4,4]'::int8range", Interval{Int64, Closed, Open}(4, 5)),
-                ("'[4,4)'::int8range", Interval{Int64}()),  # Empty interval
-                ("'[11.1,22.2)'::numrange", Interval{Decimal, Closed, Open}(11.1, 22.2)),
-                ("'[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange", Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))),
-                ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
-                ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(2004, 10, 19, 13, 23, 54, tz"UTC"))),
-                ("'[2004-10-19 10:23:54-02, Infinity)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"))),
-                ("'(-Infinity, Infinity)'::tstzrange", Interval{Open, Open}(ZonedDateTime(typemin(DateTime), tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"))),
-                ("'[2018/01/01, 2018/02/02)'::daterange", Interval{Closed, Open}(Date(2018, 1, 1), Date(2018, 2, 2))),
-                # Unbounded ranges
-                ("'[3,)'::int4range", Interval{Int32}(3, nothing)),
-                ("'[3,]'::int4range", Interval{Int32}(3, nothing)),
-                ("'(3,)'::int4range", Interval{Int32, Closed, Unbounded}(4, nothing)),  # Postgres normalizes `(3,)` to `[4,)`
-                ("'(,3)'::int4range", Interval{Int32, Unbounded, Open}(nothing, 3)),
-                ("'(,3]'::int4range", Interval{Int32, Unbounded, Open}(nothing, 4)),  # Postgres normalizes `(,3]` to `(,4)`
-                ("'[,]'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
-                ("'(,)'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
-                ("'[2010-01-01 14:30,)'::tsrange", Interval{Closed, Unbounded}(DateTime(2010, 1, 1, 14, 30), nothing)),
-                ("'[,2010-01-01 15:30-00)'::tstzrange", Interval{Unbounded, Open}(nothing, ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
-                ("'[2018/01/01,]'::daterange", Interval{Closed, Unbounded}(Date(2018, 1, 1), nothing)),
-            ]
-
-            @testset "Not-yet-implemented parsing for bianry transfer" begin
-                @testset for (test_str, data) in test_data
-                    result = execute(conn, "SELECT $test_str;"; binary_format=true)
-
-                    try
-                        @test LibPQ.num_rows(result) == 1
-                        @test LibPQ.num_columns(result) == 1
-                        @test LibPQ.column_types(result)[1] >: typeof(data)
-
-                        oid = LibPQ.column_oids(result)[1]
-                        func = result.column_funcs[1]
-                        parsed = nothing
-                        @test_broken parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
-                        @test_broken isequal(parsed, data)
-                        @test_broken typeof(parsed) == typeof(data)
-                        @test_broken parsed_no_oid = func(LibPQ.PQValue(result, 1, 1))
-                        @test_broken isequal(parsed_no_oid, data)
-                        @test_broken typeof(parsed_no_oid) == typeof(data)
-                    finally
-                        close(result)
-                    end
-                end
-            end
-
-            close(conn)
-        end
     end
 
     @testset "load!" begin
@@ -1613,6 +1356,181 @@ end
                         @test match(regex, input) !== nothing
                     end
                 end
+
+                # The same but binary data
+
+                @testset "Binary" begin
+
+                    @testset "Default Types" begin
+                        conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+
+                        test_data = [
+                            ("3", Cint(3)),
+                            ("3::int8", Int64(3)),
+                            ("3::int4", Int32(3)),
+                            ("3::int2", Int16(3)),
+                            ("3::float8", Float64(3)),
+                            ("3::float4", Float32(3)),
+                            ("'hello'::char(10)", "hello"),
+                            ("'hello  '::char(10)", "hello"),
+                            ("'hello  '::varchar(10)", "hello  "),
+                            ("'3'::\"char\"", LibPQ.PQChar('3')),
+                            ("'t'::bool", true),
+                            ("'T'::bool", true),
+                            ("'true'::bool", true),
+                            ("'TRUE'::bool", true),
+                            ("'tRuE'::bool", true),
+                            ("'y'::bool", true),
+                            ("'YEs'::bool", true),
+                            ("'on'::bool", true),
+                            ("1::bool", true),
+                            ("true", true),
+                            ("'f'::bool", false),
+                            ("'F'::bool", false),
+                            ("'false'::bool", false),
+                            ("'FALSE'::bool", false),
+                            ("'fAlsE'::bool", false),
+                            ("'n'::bool", false),
+                            ("'nO'::bool", false),
+                            ("'off'::bool", false),
+                            ("0::bool", false),
+                            ("false", false),
+                        ]
+
+                        @testset for (test_str, data) in test_data
+                            result = execute(conn, "SELECT $test_str;"; binary_format=true)
+
+                            try
+                                @test LibPQ.num_rows(result) == 1
+                                @test LibPQ.num_columns(result) == 1
+                                @test LibPQ.column_types(result)[1] >: typeof(data)
+
+                                oid = LibPQ.column_oids(result)[1]
+                                func = result.column_funcs[1]
+                                parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                                @test isequal(parsed, data)
+                                @test typeof(parsed) == typeof(data)
+                                parsed_no_oid = func(LibPQ.PQValue(result, 1, 1))
+                                @test isequal(parsed_no_oid, data)
+                                @test typeof(parsed_no_oid) == typeof(data)
+                            finally
+                                close(result)
+                            end
+                        end
+
+                        test_data = [
+                            ("3::oid", LibPQ.Oid(3)),
+                            ("3::numeric", decimal("3")),
+                            ("$(BigFloat(pi))::numeric", decimal(BigFloat(pi))),
+                            ("$(big"4608230166434464229556241992703")::numeric", parse(Decimal, "4608230166434464229556241992703")),
+                            ("E'\\\\xDEADBEEF'::bytea", hex2bytes("DEADBEEF")),
+                            ("E'\\\\000'::bytea", UInt8[0o000]),
+                            ("E'\\\\047'::bytea", UInt8[0o047]),
+                            ("E'\\''::bytea", UInt8[0o047]),
+                            ("E'\\\\134'::bytea", UInt8[0o134]),
+                            ("E'\\\\\\\\'::bytea", UInt8[0o134]),
+                            ("E'\\\\001'::bytea", UInt8[0o001]),
+                            ("E'\\\\176'::bytea", UInt8[0o176]),
+                            ("TIMESTAMP '2004-10-19 10:23:54'", DateTime(2004, 10, 19, 10, 23, 54)),
+                            ("TIMESTAMP '2004-10-19 10:23:54.123'", DateTime(2004, 10, 19, 10, 23, 54,123)),
+                            ("TIMESTAMP '2004-10-19 10:23:54.1234'", DateTime(2004, 10, 19, 10, 23, 54,123)),
+                            ("'infinity'::timestamp", typemax(DateTime)),
+                            ("'-infinity'::timestamp", typemin(DateTime)),
+                            ("'epoch'::timestamp", DateTime(1970, 1, 1, 0, 0, 0)),
+                            ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-00'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC")),
+                            ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-02'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC-2")),
+                            ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54+10'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC+10")),
+                            ("'infinity'::timestamptz", ZonedDateTime(typemax(DateTime), tz"UTC")),
+                            ("'-infinity'::timestamptz", ZonedDateTime(typemin(DateTime), tz"UTC")),
+                            ("'epoch'::timestamptz", ZonedDateTime(1970, 1, 1, 0, 0, 0, tz"UTC")),
+                            ("DATE '2017-01-31'", Date(2017, 1, 31)),
+                            ("'infinity'::date", typemax(Date)),
+                            ("'-infinity'::date", typemin(Date)),
+                            ("TIME '13:13:13.131'", Time(13, 13, 13, 131)),
+                            ("TIME '13:13:13.131242'", Time(13, 13, 13, 131)),
+                            ("TIME '01:01:01'", Time(1, 1, 1)),
+                            ("'allballs'::time", Time(0, 0, 0)),
+                            ("INTERVAL '1 year 2 months 3 days 4 hours 5 minutes 6 seconds'", Dates.CompoundPeriod(Period[Year(1), Month(2), Day(3), Hour(4), Minute(5), Second(6)])),
+                            ("INTERVAL '6.1 seconds'", Dates.CompoundPeriod(Period[Second(6), Millisecond(100)])),
+                            ("INTERVAL '6.01 seconds'", Dates.CompoundPeriod(Period[Second(6), Millisecond(10)])),
+                            ("INTERVAL '6.001 seconds'", Dates.CompoundPeriod(Period[Second(6), Millisecond(1)])),
+                            ("INTERVAL '6.0001 seconds'", Dates.CompoundPeriod(Period[Second(6), Microsecond(100)])),
+                            ("INTERVAL '6.1001 seconds'", Dates.CompoundPeriod(Period[Second(6), Microsecond(100100)])),
+                            ("INTERVAL '1000 years 7 weeks'", Dates.CompoundPeriod(Period[Year(1000), Day(7 * 7)])),
+                            ("INTERVAL '1 day -1 hour'", Dates.CompoundPeriod(Period[Day(1), Hour(-1)])),
+                            ("INTERVAL '-1 month 1 day'", Dates.CompoundPeriod(Period[Month(-1), Day(1)])),
+                            ("'{{{1,2,3},{4,5,6}}}'::int2[]", Array{Union{Int16, Missing}}(reshape(Int16[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'{}'::int2[]", Union{Missing, Int16}[]),
+                            ("'{{{1,2,3},{4,5,6}}}'::int4[]", Array{Union{Int32, Missing}}(reshape(Int32[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'{{{1,2,3},{4,5,6}}}'::int8[]", Array{Union{Int64, Missing}}(reshape(Int64[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'{{{NULL,2,3},{4,NULL,6}}}'::int8[]", Array{Union{Int64, Missing}}(reshape(Union{Int64, Missing}[missing 2 3; 4 missing 6], 1, 2, 3))),
+                            ("'{{{1,2,3},{4,5,6}}}'::float4[]", Array{Union{Float32, Missing}}(reshape(Float32[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'{{{1,2,3},{4,5,6}}}'::float8[]", Array{Union{Float64, Missing}}(reshape(Float64[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'{{{NULL,2,3},{4,NULL,6}}}'::float8[]", Array{Union{Float64, Missing}}(reshape(Union{Float64, Missing}[missing 2 3; 4 missing 6], 1, 2, 3))),
+                            ("'{{{1,2,3},{4,5,6}}}'::oid[]", Array{Union{LibPQ.Oid, Missing}}(reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'{{{1,2,3},{4,5,6}}}'::numeric[]", Array{Union{Decimal, Missing}}(reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copyto!(OffsetArray{Union{Missing, Int16}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copyto!(OffsetArray{Union{Missing, Int32}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copyto!(OffsetArray{Union{Missing, Int64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copyto!(OffsetArray{Union{Missing, Float32}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copyto!(OffsetArray{Union{Missing, Float64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copyto!(OffsetArray{Union{Missing, LibPQ.Oid}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copyto!(OffsetArray{Union{Missing, Decimal}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[3,7)'::int4range", Interval{Int32, Closed, Open}(3, 7)),
+                            ("'(3,7)'::int4range", Interval{Int32, Closed, Open}(4, 7)),
+                            ("'[4,4]'::int4range", Interval{Int32, Closed, Open}(4, 5)),
+                            ("'[4,4)'::int4range", Interval{Int32}()),  # Empty interval
+                            ("'[3,7)'::int8range", Interval{Int64, Closed, Open}(3, 7)),
+                            ("'(3,7)'::int8range", Interval{Int64, Closed, Open}(4, 7)),
+                            ("'[4,4]'::int8range", Interval{Int64, Closed, Open}(4, 5)),
+                            ("'[4,4)'::int8range", Interval{Int64}()),  # Empty interval
+                            ("'[11.1,22.2)'::numrange", Interval{Decimal, Closed, Open}(11.1, 22.2)),
+                            ("'[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange", Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))),
+                            ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
+                            ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(2004, 10, 19, 13, 23, 54, tz"UTC"))),
+                            ("'[2004-10-19 10:23:54-02, Infinity)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"))),
+                            ("'(-Infinity, Infinity)'::tstzrange", Interval{Open, Open}(ZonedDateTime(typemin(DateTime), tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"))),
+                            ("'[2018/01/01, 2018/02/02)'::daterange", Interval{Closed, Open}(Date(2018, 1, 1), Date(2018, 2, 2))),
+                            # Unbounded ranges
+                            ("'[3,)'::int4range", Interval{Int32}(3, nothing)),
+                            ("'[3,]'::int4range", Interval{Int32}(3, nothing)),
+                            ("'(3,)'::int4range", Interval{Int32, Closed, Unbounded}(4, nothing)),  # Postgres normalizes `(3,)` to `[4,)`
+                            ("'(,3)'::int4range", Interval{Int32, Unbounded, Open}(nothing, 3)),
+                            ("'(,3]'::int4range", Interval{Int32, Unbounded, Open}(nothing, 4)),  # Postgres normalizes `(,3]` to `(,4)`
+                            ("'[,]'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
+                            ("'(,)'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
+                            ("'[2010-01-01 14:30,)'::tsrange", Interval{Closed, Unbounded}(DateTime(2010, 1, 1, 14, 30), nothing)),
+                            ("'[,2010-01-01 15:30-00)'::tstzrange", Interval{Unbounded, Open}(nothing, ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
+                            ("'[2018/01/01,]'::daterange", Interval{Closed, Unbounded}(Date(2018, 1, 1), nothing)),
+                        ]
+
+                        @testset "Not-yet-implemented parsing for bianry transfer" begin
+                            @testset for (test_str, data) in test_data
+                                result = execute(conn, "SELECT $test_str;"; binary_format=true)
+
+                                try
+                                    @test LibPQ.num_rows(result) == 1
+                                    @test LibPQ.num_columns(result) == 1
+                                    @test LibPQ.column_types(result)[1] >: typeof(data)
+
+                                    oid = LibPQ.column_oids(result)[1]
+                                    func = result.column_funcs[1]
+                                    parsed = nothing
+                                    @test_broken parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                                    @test_broken isequal(parsed, data)
+                                    @test_broken typeof(parsed) == typeof(data)
+                                    @test_broken parsed_no_oid = func(LibPQ.PQValue(result, 1, 1))
+                                    @test_broken isequal(parsed_no_oid, data)
+                                    @test_broken typeof(parsed_no_oid) == typeof(data)
+                                finally
+                                    close(result)
+                                end
+                            end
+                        end
+
+                        close(conn)
+                    end
+                end
             end
         end
 
@@ -1784,228 +1702,228 @@ end
         end
     end
 
-    @testset "Statements" begin
-        @testset "No Params, Output" begin
-            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+    # @testset "Statements" begin
+    #     @testset "No Params, Output" begin
+    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            stmt = prepare(conn, "SELECT oid, typname FROM pg_type")
+    #         stmt = prepare(conn, "SELECT oid, typname FROM pg_type")
 
-            @test LibPQ.num_columns(stmt) == 2
-            @test LibPQ.num_params(stmt) == 0
-            @test LibPQ.column_names(stmt) == ["oid", "typname"]
+    #         @test LibPQ.num_columns(stmt) == 2
+    #         @test LibPQ.num_params(stmt) == 0
+    #         @test LibPQ.column_names(stmt) == ["oid", "typname"]
 
-            result = execute(stmt; throw_error=true)
+    #         result = execute(stmt; throw_error=true)
 
-            @test LibPQ.num_columns(result) == 2
-            @test LibPQ.column_names(result) == ["oid", "typname"]
-            @test LibPQ.column_types(result) == [LibPQ.Oid, String]
-            @test LibPQ.num_rows(result) > 0
+    #         @test LibPQ.num_columns(result) == 2
+    #         @test LibPQ.column_names(result) == ["oid", "typname"]
+    #         @test LibPQ.column_types(result) == [LibPQ.Oid, String]
+    #         @test LibPQ.num_rows(result) > 0
 
-            close(result)
+    #         close(result)
 
-            close(conn)
-        end
+    #         close(conn)
+    #     end
 
-        @testset "Params, Output" begin
-            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+    #     @testset "Params, Output" begin
+    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            stmt = prepare(conn, "SELECT oid, typname FROM pg_type WHERE oid = \$1")
+    #         stmt = prepare(conn, "SELECT oid, typname FROM pg_type WHERE oid = \$1")
 
-            @test LibPQ.num_columns(stmt) == 2
-            @test LibPQ.num_params(stmt) == 1
-            @test LibPQ.column_names(stmt) == ["oid", "typname"]
+    #         @test LibPQ.num_columns(stmt) == 2
+    #         @test LibPQ.num_params(stmt) == 1
+    #         @test LibPQ.column_names(stmt) == ["oid", "typname"]
 
-            result = execute(stmt, [16]; throw_error=true)
+    #         result = execute(stmt, [16]; throw_error=true)
 
-            @test LibPQ.num_columns(result) == 2
-            @test LibPQ.column_names(result) == ["oid", "typname"]
-            @test LibPQ.column_types(result) == [LibPQ.Oid, String]
-            @test LibPQ.num_rows(result) == 1
+    #         @test LibPQ.num_columns(result) == 2
+    #         @test LibPQ.column_names(result) == ["oid", "typname"]
+    #         @test LibPQ.column_types(result) == [LibPQ.Oid, String]
+    #         @test LibPQ.num_rows(result) == 1
 
-            data = columntable(result)
-            @test data[:oid][1] == 16
-            @test data[:typname][1] == "bool"
+    #         data = columntable(result)
+    #         @test data[:oid][1] == 16
+    #         @test data[:typname][1] == "bool"
 
-            close(result)
+    #         close(result)
 
-            close(conn)
-        end
-    end
+    #         close(conn)
+    #     end
+    # end
 
-    @testset "AsyncResults" begin
-        trywait(ar::LibPQ.AsyncResult) = (try wait(ar) catch end; nothing)
+    # @testset "AsyncResults" begin
+    #     trywait(ar::LibPQ.AsyncResult) = (try wait(ar) catch end; nothing)
 
-        @testset "Basic" begin
-            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+    #     @testset "Basic" begin
+    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            ar = async_execute(conn, "SELECT pg_sleep(2);"; throw_error=false)
-            yield()
-            @test !isready(ar)
-            @test !LibPQ.iserror(ar)
-            @test conn.async_result === ar
+    #         ar = async_execute(conn, "SELECT pg_sleep(2);"; throw_error=false)
+    #         yield()
+    #         @test !isready(ar)
+    #         @test !LibPQ.iserror(ar)
+    #         @test conn.async_result === ar
 
-            wait(ar)
-            @test isready(ar)
-            @test !LibPQ.iserror(ar)
-            @test conn.async_result === nothing
+    #         wait(ar)
+    #         @test isready(ar)
+    #         @test !LibPQ.iserror(ar)
+    #         @test conn.async_result === nothing
 
-            result = fetch(ar)
-            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-            @test LibPQ.column_name(result, 1) == "pg_sleep"
+    #         result = fetch(ar)
+    #         @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+    #         @test LibPQ.column_name(result, 1) == "pg_sleep"
 
-            close(result)
-            close(conn)
-        end
+    #         close(result)
+    #         close(conn)
+    #     end
 
-        @testset "Parameters" begin
-            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+    #     @testset "Parameters" begin
+    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            ar = async_execute(
-                conn,
-                "SELECT typname FROM pg_type WHERE oid = \$1",
-                [16];
-                throw_error=false,
-            )
+    #         ar = async_execute(
+    #             conn,
+    #             "SELECT typname FROM pg_type WHERE oid = \$1",
+    #             [16];
+    #             throw_error=false,
+    #         )
 
-            wait(ar)
-            @test isready(ar)
-            @test !LibPQ.iserror(ar)
-            @test conn.async_result === nothing
+    #         wait(ar)
+    #         @test isready(ar)
+    #         @test !LibPQ.iserror(ar)
+    #         @test conn.async_result === nothing
 
-            result = fetch(ar)
-            @test result isa LibPQ.Result
-            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-            @test isopen(result)
-            @test LibPQ.num_columns(result) == 1
-            @test LibPQ.num_rows(result) == 1
-            @test LibPQ.column_name(result, 1) == "typname"
+    #         result = fetch(ar)
+    #         @test result isa LibPQ.Result
+    #         @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+    #         @test isopen(result)
+    #         @test LibPQ.num_columns(result) == 1
+    #         @test LibPQ.num_rows(result) == 1
+    #         @test LibPQ.column_name(result, 1) == "typname"
 
-            data = columntable(result)
+    #         data = columntable(result)
 
-            @test data[:typname][1] == "bool"
+    #         @test data[:typname][1] == "bool"
 
-            close(result)
-            close(conn)
-        end
+    #         close(result)
+    #         close(conn)
+    #     end
 
-        # Ensures queries wait for previous query completion before starting
-        @testset "Wait in line to complete" begin
-            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+    #     # Ensures queries wait for previous query completion before starting
+    #     @testset "Wait in line to complete" begin
+    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            first_ar = async_execute(conn, "SELECT pg_sleep(4);")
-            yield()
-            second_ar = async_execute(conn, "SELECT pg_sleep(2);")
-            @test !isready(first_ar)
-            @test !isready(second_ar)
+    #         first_ar = async_execute(conn, "SELECT pg_sleep(4);")
+    #         yield()
+    #         second_ar = async_execute(conn, "SELECT pg_sleep(2);")
+    #         @test !isready(first_ar)
+    #         @test !isready(second_ar)
 
-            # wait(first_ar)  # this is needed if I use @par for some reason
-            second_result = fetch(second_ar)
-            @test isready(first_ar)
-            @test isready(second_ar)
-            @test !LibPQ.iserror(first_ar)
-            @test !LibPQ.iserror(second_ar)
-            @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-            @test conn.async_result === nothing
+    #         # wait(first_ar)  # this is needed if I use @par for some reason
+    #         second_result = fetch(second_ar)
+    #         @test isready(first_ar)
+    #         @test isready(second_ar)
+    #         @test !LibPQ.iserror(first_ar)
+    #         @test !LibPQ.iserror(second_ar)
+    #         @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+    #         @test conn.async_result === nothing
 
-            first_result = fetch(first_ar)
-            @test isready(first_ar)
-            @test !LibPQ.iserror(first_ar)
-            @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-            @test conn.async_result === nothing
+    #         first_result = fetch(first_ar)
+    #         @test isready(first_ar)
+    #         @test !LibPQ.iserror(first_ar)
+    #         @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+    #         @test conn.async_result === nothing
 
-            close(second_result)
-            close(first_result)
-            close(conn)
-        end
+    #         close(second_result)
+    #         close(first_result)
+    #         close(conn)
+    #     end
 
-        @testset "Cancel" begin
-            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+    #     @testset "Cancel" begin
+    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            # final query needs to be one that actually does something
-            # on Windows, first query also needs to do something
-            ar = async_execute(
-                conn,
-                "SELECT * FROM pg_opclass; SELECT pg_sleep(3); SELECT * FROM pg_type;",
-            )
-            yield()
-            @test !isready(ar)
-            @test !LibPQ.iserror(ar)
-            @test conn.async_result === ar
+    #         # final query needs to be one that actually does something
+    #         # on Windows, first query also needs to do something
+    #         ar = async_execute(
+    #             conn,
+    #             "SELECT * FROM pg_opclass; SELECT pg_sleep(3); SELECT * FROM pg_type;",
+    #         )
+    #         yield()
+    #         @test !isready(ar)
+    #         @test !LibPQ.iserror(ar)
+    #         @test conn.async_result === ar
 
-            cancel(ar)
-            trywait(ar)
-            @test isready(ar)
-            @test LibPQ.iserror(ar)
-            @test conn.async_result === nothing
+    #         cancel(ar)
+    #         trywait(ar)
+    #         @test isready(ar)
+    #         @test LibPQ.iserror(ar)
+    #         @test conn.async_result === nothing
 
-            local err_msg = ""
-            try
-                wait(ar)
-            catch e
-                err_msg = sprint(showerror, e)
-            end
+    #         local err_msg = ""
+    #         try
+    #             wait(ar)
+    #         catch e
+    #             err_msg = sprint(showerror, e)
+    #         end
 
-            @test occursin("canceling statement due to user request", err_msg)
+    #         @test occursin("canceling statement due to user request", err_msg)
 
-            close(conn)
-        end
+    #         close(conn)
+    #     end
 
-        @testset "Canceled by closing connection" begin
-            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+    #     @testset "Canceled by closing connection" begin
+    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            # final query needs to be one that actually does something
-            # on Windows, first query also needs to do something
-            ar = async_execute(
-                conn,
-                "SELECT * FROM pg_opclass; SELECT pg_sleep(3); SELECT * FROM pg_type;",
-            )
-            yield()
-            @test !isready(ar)
-            @test !LibPQ.iserror(ar)
-            @test conn.async_result === ar
+    #         # final query needs to be one that actually does something
+    #         # on Windows, first query also needs to do something
+    #         ar = async_execute(
+    #             conn,
+    #             "SELECT * FROM pg_opclass; SELECT pg_sleep(3); SELECT * FROM pg_type;",
+    #         )
+    #         yield()
+    #         @test !isready(ar)
+    #         @test !LibPQ.iserror(ar)
+    #         @test conn.async_result === ar
 
-            close(conn)
-            trywait(ar)
-            @test isready(ar)
-            @test LibPQ.iserror(ar)
-            @test conn.async_result === nothing
+    #         close(conn)
+    #         trywait(ar)
+    #         @test isready(ar)
+    #         @test LibPQ.iserror(ar)
+    #         @test conn.async_result === nothing
 
-            local err_msg = ""
-            try
-                wait(ar)
-            catch e
-                err_msg = sprint(showerror, e)
-            end
+    #         local err_msg = ""
+    #         try
+    #             wait(ar)
+    #         catch e
+    #             err_msg = sprint(showerror, e)
+    #         end
 
-            @test occursin("canceling statement due to user request", err_msg)
+    #         @test occursin("canceling statement due to user request", err_msg)
 
-            close(conn)
-        end
+    #         close(conn)
+    #     end
 
-        @testset "FDWatcher: bad file descriptor (EBADF)" begin
-            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+    #     @testset "FDWatcher: bad file descriptor (EBADF)" begin
+    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-            ar = async_execute(conn, "SELECT pg_sleep(3); SELECT * FROM pg_type;")
-            yield()
-            @async Base.throwto(
-                ar.result_task,
-                Base.IOError("FDWatcher: bad file descriptor (EBADF)", -9),
-            )
-            try
-                wait(ar)
-                @test false
-            catch err
-                if VERSION >= v"1.3.0-alpha.110"
-                    while err isa TaskFailedException
-                        err = err.task.exception
-                    end
-                end
-                @test err isa LibPQ.Errors.JLConnectionError
-            end
+    #         ar = async_execute(conn, "SELECT pg_sleep(3); SELECT * FROM pg_type;")
+    #         yield()
+    #         @async Base.throwto(
+    #             ar.result_task,
+    #             Base.IOError("FDWatcher: bad file descriptor (EBADF)", -9),
+    #         )
+    #         try
+    #             wait(ar)
+    #             @test false
+    #         catch err
+    #             if VERSION >= v"1.3.0-alpha.110"
+    #                 while err isa TaskFailedException
+    #                     err = err.task.exception
+    #                 end
+    #             end
+    #             @test err isa LibPQ.Errors.JLConnectionError
+    #         end
 
-            close(conn)
-        end
-    end
+    #         close(conn)
+    #     end
+    # end
 end
 
 end

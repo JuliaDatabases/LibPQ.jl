@@ -47,7 +47,6 @@ end
     num_bytes(pqv::PQValue) -> Cint
 
 The length in bytes of the `PQValue`'s corresponding data.
-LibPQ.jl currently always uses text format, so this is equivalent to C's `strlen`.
 
 See also: [`data_pointer`](@ref)
 """
@@ -105,8 +104,6 @@ is not in UTF-8.
 """
 bytes_view(pqv::PQValue) = unsafe_wrap(Vector{UInt8}, data_pointer(pqv), num_bytes(pqv) + 1)
 
-# bytes_view(pqv::PQValue) = bswap(unsafe_load(data_pointer(pq_value_bin)))
-
 Base.String(pqv::PQValue) = unsafe_string(pqv)
 Base.parse(::Type{String}, pqv::PQValue) = unsafe_string(pqv)
 Base.convert(::Type{String}, pqv::PQValue) = String(pqv)
@@ -126,7 +123,7 @@ By default, this uses any existing `parse` method for parsing a value of type `T
 You can implement default PostgreSQL-specific parsing for a given type by overriding
 `pqparse`.
 """
-Base.parse(::Type{T}, pqv::PQValue) where {T} = pqparse(T, string_view(pqv))
+Base.parse(::Type{T}, pqv::PQValue) where T = pqparse(T, string_view(pqv))
 
 """
     LibPQ.pqparse(::Type{T}, str::AbstractString) -> T
@@ -137,7 +134,7 @@ This is used to parse PostgreSQL's output format.
 function pqparse end
 
 # Fallback method
-pqparse(::Type{T}, str::AbstractString) where {T} = parse(T, str)
+pqparse(::Type{T}, str::AbstractString) where T = parse(T, str)
 
 # allow parsing as a Symbol anything which works as a String
 pqparse(::Type{Symbol}, str::AbstractString) = Symbol(str)
@@ -145,7 +142,7 @@ pqparse(::Type{Symbol}, str::AbstractString) = Symbol(str)
 function generate_binary_parser(symbol)
     @eval function Base.parse(
         ::Type{T}, pqv::PQBinaryValue{$(oid(symbol))}
-    ) where {T<:Number}
+    ) where T<:Number
         return convert(
             T, ntoh(unsafe_load(Ptr{$(_DEFAULT_TYPE_MAP[symbol])}(data_pointer(pqv))))
         )
@@ -157,13 +154,13 @@ _DEFAULT_TYPE_MAP[:int2] = Int16
 _DEFAULT_TYPE_MAP[:int4] = Int32
 _DEFAULT_TYPE_MAP[:int8] = Int64
 
-generate_binary_parser.((:int2, :int4, :int8))
+foreach(generate_binary_parser, (:int2, :int4, :int8))
 
 ## floating point
 _DEFAULT_TYPE_MAP[:float4] = Float32
 _DEFAULT_TYPE_MAP[:float8] = Float64
 
-generate_binary_parser.((:float4, :float8))
+foreach(generate_binary_parser, (:float4, :float8))
 
 ## oid
 _DEFAULT_TYPE_MAP[:oid] = Oid
@@ -305,7 +302,7 @@ function pqparse(::Type{Time}, str::AbstractString)
 end
 
 # InfExtendedTime support for Dates.TimeType
-function pqparse(::Type{InfExtendedTime{T}}, str::AbstractString) where {T<:Dates.TimeType}
+function pqparse(::Type{InfExtendedTime{T}}, str::AbstractString) where T<:Dates.TimeType
     if str == "infinity"
         return InfExtendedTime{T}(∞)
     elseif str == "-infinity"
@@ -412,20 +409,20 @@ _DEFAULT_TYPE_MAP[:tsrange] = Interval{DateTime}
 _DEFAULT_TYPE_MAP[:tstzrange] = Interval{ZonedDateTime}
 _DEFAULT_TYPE_MAP[:daterange] = Interval{Date}
 
-function pqparse(::Type{Interval{T}}, str::AbstractString) where {T}
+function pqparse(::Type{Interval{T}}, str::AbstractString) where T
     str == "empty" && return Interval{T}()
     return parse(Interval{T}, str; element_parser=pqparse)
 end
 
 ## arrays
 # numeric arrays never have double quotes and always use ',' as a separator
-parse_numeric_element(::Type{T}, str) where {T} = parse(T, str)
+parse_numeric_element(::Type{T}, str) where T = parse(T, str)
 
-function parse_numeric_element(::Type{Union{T,Missing}}, str) where {T}
+function parse_numeric_element(::Type{Union{T,Missing}}, str) where T
     return str == "NULL" ? missing : parse(T, str)
 end
 
-function parse_numeric_array(eltype::Type{T}, str::AbstractString) where {T}
+function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
     eq_ind = findfirst(isequal('='), str)
 
     if eq_ind !== nothing
@@ -499,7 +496,7 @@ for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
     for jl_eltype in (jl_type, jl_missingtype)
         @eval function pqparse(
             ::Type{A}, str::AbstractString
-        ) where {A<:AbstractArray{$jl_eltype}}
+        ) where A<:AbstractArray{$jl_eltype}
             return parse_numeric_array($jl_eltype, str)::A
         end
     end

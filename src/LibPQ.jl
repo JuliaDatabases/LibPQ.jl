@@ -33,19 +33,20 @@ const LOGGER = getlogger(@__MODULE__)
 
 function __init__()
     INTERVAL_REGEX[] = _interval_regex()
-    return Memento.register(LOGGER)
+    Memento.register(LOGGER)
+    return nothing
 end
 
 # Docstring template for types using DocStringExtensions
 @template TYPES = """
-                      $(TYPEDEF)
+        $(TYPEDEF)
 
-                  $(DOCSTRING)
+    $(DOCSTRING)
 
-                  ## Fields:
+    ## Fields:
 
-                  $(TYPEDFIELDS)
-                  """
+    $(TYPEDFIELDS)
+    """
 
 include(joinpath(@__DIR__, "utils.jl"))
 

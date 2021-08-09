@@ -21,8 +21,6 @@ mutable struct Result{BinaryFormat}
     "Name of each column in the result"
     column_names::Vector{String}
 
-    type_lookup::LayerDict
-
     # TODO: attach encoding per https://wiki.postgresql.org/wiki/Driver_development#Result_object_and_client_encoding
     function Result{BinaryFormat}(
         result::Ptr{libpq_c.PGresult},
@@ -34,7 +32,7 @@ mutable struct Result{BinaryFormat}
     ) where {BinaryFormat}
         jl_result = new{BinaryFormat}(result, Atomic{Bool}(result == C_NULL))
 
-        jl_result.type_lookup = LayerDict(
+        type_lookup = LayerDict(
             PQTypeMap(type_map), jl_conn.type_map, LIBPQ_TYPE_MAP, _DEFAULT_TYPE_MAP
         )
 
@@ -46,8 +44,7 @@ mutable struct Result{BinaryFormat}
             _FALLBACK_CONVERSION,
         )
 
-        jl_result.column_oids =
-            col_oids = map(1:num_columns(jl_result)) do col_num
+        jl_result.column_oids = col_oids = map(1:num_columns(jl_result)) do col_num
                 libpq_c.PQftype(jl_result.result, col_num - 1)
             end
 
@@ -66,7 +63,7 @@ mutable struct Result{BinaryFormat}
                 imap(enumerate(col_oids)) do itr
                     col_num, col_oid = itr
                     get(column_type_map, col_num) do
-                        get(jl_result.type_lookup, col_oid, String)
+                        get(type_lookup, col_oid, String)
                     end
                 end,
             )
@@ -117,23 +114,7 @@ mutable struct Result{BinaryFormat}
     end
 end
 
-function Result(
-    result::Ptr{libpq_c.PGresult},
-    jl_conn::Connection;
-    column_types::Union{AbstractDict,AbstractVector}=ColumnTypeMap(),
-    type_map::AbstractDict=PQTypeMap(),
-    conversions::AbstractDict=PQConversions(),
-    not_null=false,
-)
-    return Result{TEXT}(
-        result,
-        jl_conn;
-        column_types=column_types,
-        type_map=type_map,
-        conversions=conversions,
-        not_null=not_null,
-    )
-end
+Result(args...; kwargs...) = Result{TEXT}(args...; kwargs...)
 
 """
     show(io::IO, jl_result::Result)
