@@ -165,6 +165,8 @@ foreach(generate_binary_parser, (:float4, :float8))
 ## oid
 _DEFAULT_TYPE_MAP[:oid] = Oid
 
+generate_binary_parser(:oid)
+
 ## numeric
 _DEFAULT_TYPE_MAP[:numeric] = Decimal
 
