@@ -276,6 +276,9 @@ strings to PostgreSQL.
 those in `type_map`.
 For information on the `column_types`, `type_map`, and `conversions` arguments, see
 [Type Conversions](@ref typeconv).
+
+`binary_format` when set to true will trasnfer the data in binary format. Support for
+binary transfer is limited to a subset of basic data types.
 """
 function execute end
 

@@ -212,6 +212,9 @@ statement is returned.
 Any errors which occur during executed statements will be bundled together in a
 `CompositeException` and thrown.
 
+`binary_format` when set to true will trasnfer the data in binary format. Support for
+binary transfer is limited to a subset of basic data types.
+
 Queries without parameters can contain multiple SQL statements, and the result of the final
 statement is returned.
 Any errors which occur during executed statements will be bundled together in a
