@@ -1149,6 +1149,24 @@ end
 
             @testset "Parsing" begin
 
+                binary_not_implemented_oid = [
+                    "numeric",
+                    "timestamp",
+                    "timestamptz",
+                    "tstzrange",
+                ]
+                binary_not_implemented_types = [
+                    Decimal,
+                    DateTime,
+                    ZonedDateTime,
+                    Date,
+                    Time,
+                    Dates.CompoundPeriod,
+                    Array,
+                    OffsetArray,
+                    Interval,
+                ]
+
                 @testset for binary_format in (LibPQ.TEXT, LibPQ.BINARY)
                     @testset "Default Types" begin
                         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
@@ -1269,18 +1287,6 @@ end
                             ("'[2018/01/01,]'::daterange", Interval{Closed, Unbounded}(Date(2018, 1, 1), nothing)),
                         ]
 
-                        binary_not_implemented_types = [
-                            Decimal,
-                            DateTime,
-                            ZonedDateTime,
-                            Date,
-                            Time,
-                            Dates.CompoundPeriod,
-                            Array,
-                            OffsetArray,
-                            Interval,
-                        ]
-
                         @testset for (test_str, data) in test_data
                             result = execute(
                                 conn,
@@ -1295,7 +1301,7 @@ end
 
                                 oid = LibPQ.column_oids(result)[1]
                                 func = result.column_funcs[1]
-                                if any(typeof(data) .<: binary_not_implemented_types) && binary_format
+                                if any(x -> typeof(data) <: x, binary_not_implemented_types) && binary_format
                                     @test_broken parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
                                     @test_broken isequal(parsed, data)
                                     @test_broken typeof(parsed) == typeof(data)
@@ -1341,24 +1347,6 @@ end
                             ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{InfExtendedTime{ZonedDateTime}, Open, Open}(-∞, ∞)),
                         ]
 
-                        binary_not_implemented_oid = [
-                            "numeric",
-                            "timestamp",
-                            "timestamptz",
-                            "tstzrange",
-                        ]
-                        binary_not_implemented_types = [
-                            Decimal,
-                            DateTime,
-                            ZonedDateTime,
-                            Date,
-                            Time,
-                            Dates.CompoundPeriod,
-                            Array,
-                            OffsetArray,
-                            Interval,
-                        ]
-
                         for (test_str, typ, data) in test_data
                             result = execute(
                                 conn,
@@ -1376,7 +1364,7 @@ end
                                 func = result.column_funcs[1]
 
                                 if (
-                                    any(typeof(data) .<: binary_not_implemented_types) ||
+                                    any(x -> typeof(data) <: x, binary_not_implemented_types) ||
                                     any(occursin.(binary_not_implemented_oid, test_str))
                                 ) && binary_format
                                     @test_broken parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
