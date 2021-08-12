@@ -47,6 +47,7 @@ end
     num_bytes(pqv::PQValue) -> Cint
 
 The length in bytes of the `PQValue`'s corresponding data.
+When a query uses `LibPQ.TEXT` format, this is equivalent to C's `strlen`.
 
 See also: [`data_pointer`](@ref)
 """

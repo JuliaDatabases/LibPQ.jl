@@ -1149,7 +1149,7 @@ end
 
             @testset "Parsing" begin
 
-                binary_not_implemented_oid = [
+                binary_not_implemented_pgtypes = [
                     "numeric",
                     "timestamp",
                     "timestamptz",
@@ -1301,7 +1301,7 @@ end
 
                                 oid = LibPQ.column_oids(result)[1]
                                 func = result.column_funcs[1]
-                                if any(x -> typeof(data) <: x, binary_not_implemented_types) && binary_format
+                                if binary_format && any(T -> data isa T, binary_not_implemented_types)
                                     @test_broken parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
                                     @test_broken isequal(parsed, data)
                                     @test_broken typeof(parsed) == typeof(data)
@@ -1363,10 +1363,10 @@ end
                                 oid = LibPQ.column_oids(result)[1]
                                 func = result.column_funcs[1]
 
-                                if (
-                                    any(x -> typeof(data) <: x, binary_not_implemented_types) ||
-                                    any(occursin.(binary_not_implemented_oid, test_str))
-                                ) && binary_format
+                                if binary_format && (
+                                    any(T -> data isa T, binary_not_implemented_types) ||
+                                    any(occursin.(binary_not_implemented_pgtypes, test_str))
+                                )
                                     @test_broken parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
                                     @test_broken parsed == data
                                     @test_broken typeof(parsed) == typeof(data)
@@ -1572,228 +1572,228 @@ end
         end
     end
 
-    # @testset "Statements" begin
-    #     @testset "No Params, Output" begin
-    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+    @testset "Statements" begin
+        @testset "No Params, Output" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-    #         stmt = prepare(conn, "SELECT oid, typname FROM pg_type")
+            stmt = prepare(conn, "SELECT oid, typname FROM pg_type")
 
-    #         @test LibPQ.num_columns(stmt) == 2
-    #         @test LibPQ.num_params(stmt) == 0
-    #         @test LibPQ.column_names(stmt) == ["oid", "typname"]
+            @test LibPQ.num_columns(stmt) == 2
+            @test LibPQ.num_params(stmt) == 0
+            @test LibPQ.column_names(stmt) == ["oid", "typname"]
 
-    #         result = execute(stmt; throw_error=true)
+            result = execute(stmt; throw_error=true)
 
-    #         @test LibPQ.num_columns(result) == 2
-    #         @test LibPQ.column_names(result) == ["oid", "typname"]
-    #         @test LibPQ.column_types(result) == [LibPQ.Oid, String]
-    #         @test LibPQ.num_rows(result) > 0
+            @test LibPQ.num_columns(result) == 2
+            @test LibPQ.column_names(result) == ["oid", "typname"]
+            @test LibPQ.column_types(result) == [LibPQ.Oid, String]
+            @test LibPQ.num_rows(result) > 0
 
-    #         close(result)
+            close(result)
 
-    #         close(conn)
-    #     end
+            close(conn)
+        end
 
-    #     @testset "Params, Output" begin
-    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+        @testset "Params, Output" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-    #         stmt = prepare(conn, "SELECT oid, typname FROM pg_type WHERE oid = \$1")
+            stmt = prepare(conn, "SELECT oid, typname FROM pg_type WHERE oid = \$1")
 
-    #         @test LibPQ.num_columns(stmt) == 2
-    #         @test LibPQ.num_params(stmt) == 1
-    #         @test LibPQ.column_names(stmt) == ["oid", "typname"]
+            @test LibPQ.num_columns(stmt) == 2
+            @test LibPQ.num_params(stmt) == 1
+            @test LibPQ.column_names(stmt) == ["oid", "typname"]
 
-    #         result = execute(stmt, [16]; throw_error=true)
+            result = execute(stmt, [16]; throw_error=true)
 
-    #         @test LibPQ.num_columns(result) == 2
-    #         @test LibPQ.column_names(result) == ["oid", "typname"]
-    #         @test LibPQ.column_types(result) == [LibPQ.Oid, String]
-    #         @test LibPQ.num_rows(result) == 1
+            @test LibPQ.num_columns(result) == 2
+            @test LibPQ.column_names(result) == ["oid", "typname"]
+            @test LibPQ.column_types(result) == [LibPQ.Oid, String]
+            @test LibPQ.num_rows(result) == 1
 
-    #         data = columntable(result)
-    #         @test data[:oid][1] == 16
-    #         @test data[:typname][1] == "bool"
+            data = columntable(result)
+            @test data[:oid][1] == 16
+            @test data[:typname][1] == "bool"
 
-    #         close(result)
+            close(result)
 
-    #         close(conn)
-    #     end
-    # end
+            close(conn)
+        end
+    end
 
-    # @testset "AsyncResults" begin
-    #     trywait(ar::LibPQ.AsyncResult) = (try wait(ar) catch end; nothing)
+    @testset "AsyncResults" begin
+        trywait(ar::LibPQ.AsyncResult) = (try wait(ar) catch end; nothing)
 
-    #     @testset "Basic" begin
-    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+        @testset "Basic" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-    #         ar = async_execute(conn, "SELECT pg_sleep(2);"; throw_error=false)
-    #         yield()
-    #         @test !isready(ar)
-    #         @test !LibPQ.iserror(ar)
-    #         @test conn.async_result === ar
+            ar = async_execute(conn, "SELECT pg_sleep(2);"; throw_error=false)
+            yield()
+            @test !isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === ar
 
-    #         wait(ar)
-    #         @test isready(ar)
-    #         @test !LibPQ.iserror(ar)
-    #         @test conn.async_result === nothing
+            wait(ar)
+            @test isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === nothing
 
-    #         result = fetch(ar)
-    #         @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-    #         @test LibPQ.column_name(result, 1) == "pg_sleep"
+            result = fetch(ar)
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test LibPQ.column_name(result, 1) == "pg_sleep"
 
-    #         close(result)
-    #         close(conn)
-    #     end
+            close(result)
+            close(conn)
+        end
 
-    #     @testset "Parameters" begin
-    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+        @testset "Parameters" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-    #         ar = async_execute(
-    #             conn,
-    #             "SELECT typname FROM pg_type WHERE oid = \$1",
-    #             [16];
-    #             throw_error=false,
-    #         )
+            ar = async_execute(
+                conn,
+                "SELECT typname FROM pg_type WHERE oid = \$1",
+                [16];
+                throw_error=false,
+            )
 
-    #         wait(ar)
-    #         @test isready(ar)
-    #         @test !LibPQ.iserror(ar)
-    #         @test conn.async_result === nothing
+            wait(ar)
+            @test isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === nothing
 
-    #         result = fetch(ar)
-    #         @test result isa LibPQ.Result
-    #         @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-    #         @test isopen(result)
-    #         @test LibPQ.num_columns(result) == 1
-    #         @test LibPQ.num_rows(result) == 1
-    #         @test LibPQ.column_name(result, 1) == "typname"
+            result = fetch(ar)
+            @test result isa LibPQ.Result
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test isopen(result)
+            @test LibPQ.num_columns(result) == 1
+            @test LibPQ.num_rows(result) == 1
+            @test LibPQ.column_name(result, 1) == "typname"
 
-    #         data = columntable(result)
+            data = columntable(result)
 
-    #         @test data[:typname][1] == "bool"
+            @test data[:typname][1] == "bool"
 
-    #         close(result)
-    #         close(conn)
-    #     end
+            close(result)
+            close(conn)
+        end
 
-    #     # Ensures queries wait for previous query completion before starting
-    #     @testset "Wait in line to complete" begin
-    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+        # Ensures queries wait for previous query completion before starting
+        @testset "Wait in line to complete" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-    #         first_ar = async_execute(conn, "SELECT pg_sleep(4);")
-    #         yield()
-    #         second_ar = async_execute(conn, "SELECT pg_sleep(2);")
-    #         @test !isready(first_ar)
-    #         @test !isready(second_ar)
+            first_ar = async_execute(conn, "SELECT pg_sleep(4);")
+            yield()
+            second_ar = async_execute(conn, "SELECT pg_sleep(2);")
+            @test !isready(first_ar)
+            @test !isready(second_ar)
 
-    #         # wait(first_ar)  # this is needed if I use @par for some reason
-    #         second_result = fetch(second_ar)
-    #         @test isready(first_ar)
-    #         @test isready(second_ar)
-    #         @test !LibPQ.iserror(first_ar)
-    #         @test !LibPQ.iserror(second_ar)
-    #         @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-    #         @test conn.async_result === nothing
+            # wait(first_ar)  # this is needed if I use @par for some reason
+            second_result = fetch(second_ar)
+            @test isready(first_ar)
+            @test isready(second_ar)
+            @test !LibPQ.iserror(first_ar)
+            @test !LibPQ.iserror(second_ar)
+            @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test conn.async_result === nothing
 
-    #         first_result = fetch(first_ar)
-    #         @test isready(first_ar)
-    #         @test !LibPQ.iserror(first_ar)
-    #         @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-    #         @test conn.async_result === nothing
+            first_result = fetch(first_ar)
+            @test isready(first_ar)
+            @test !LibPQ.iserror(first_ar)
+            @test status(second_result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test conn.async_result === nothing
 
-    #         close(second_result)
-    #         close(first_result)
-    #         close(conn)
-    #     end
+            close(second_result)
+            close(first_result)
+            close(conn)
+        end
 
-    #     @testset "Cancel" begin
-    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+        @testset "Cancel" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-    #         # final query needs to be one that actually does something
-    #         # on Windows, first query also needs to do something
-    #         ar = async_execute(
-    #             conn,
-    #             "SELECT * FROM pg_opclass; SELECT pg_sleep(3); SELECT * FROM pg_type;",
-    #         )
-    #         yield()
-    #         @test !isready(ar)
-    #         @test !LibPQ.iserror(ar)
-    #         @test conn.async_result === ar
+            # final query needs to be one that actually does something
+            # on Windows, first query also needs to do something
+            ar = async_execute(
+                conn,
+                "SELECT * FROM pg_opclass; SELECT pg_sleep(3); SELECT * FROM pg_type;",
+            )
+            yield()
+            @test !isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === ar
 
-    #         cancel(ar)
-    #         trywait(ar)
-    #         @test isready(ar)
-    #         @test LibPQ.iserror(ar)
-    #         @test conn.async_result === nothing
+            cancel(ar)
+            trywait(ar)
+            @test isready(ar)
+            @test LibPQ.iserror(ar)
+            @test conn.async_result === nothing
 
-    #         local err_msg = ""
-    #         try
-    #             wait(ar)
-    #         catch e
-    #             err_msg = sprint(showerror, e)
-    #         end
+            local err_msg = ""
+            try
+                wait(ar)
+            catch e
+                err_msg = sprint(showerror, e)
+            end
 
-    #         @test occursin("canceling statement due to user request", err_msg)
+            @test occursin("canceling statement due to user request", err_msg)
 
-    #         close(conn)
-    #     end
+            close(conn)
+        end
 
-    #     @testset "Canceled by closing connection" begin
-    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+        @testset "Canceled by closing connection" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-    #         # final query needs to be one that actually does something
-    #         # on Windows, first query also needs to do something
-    #         ar = async_execute(
-    #             conn,
-    #             "SELECT * FROM pg_opclass; SELECT pg_sleep(3); SELECT * FROM pg_type;",
-    #         )
-    #         yield()
-    #         @test !isready(ar)
-    #         @test !LibPQ.iserror(ar)
-    #         @test conn.async_result === ar
+            # final query needs to be one that actually does something
+            # on Windows, first query also needs to do something
+            ar = async_execute(
+                conn,
+                "SELECT * FROM pg_opclass; SELECT pg_sleep(3); SELECT * FROM pg_type;",
+            )
+            yield()
+            @test !isready(ar)
+            @test !LibPQ.iserror(ar)
+            @test conn.async_result === ar
 
-    #         close(conn)
-    #         trywait(ar)
-    #         @test isready(ar)
-    #         @test LibPQ.iserror(ar)
-    #         @test conn.async_result === nothing
+            close(conn)
+            trywait(ar)
+            @test isready(ar)
+            @test LibPQ.iserror(ar)
+            @test conn.async_result === nothing
 
-    #         local err_msg = ""
-    #         try
-    #             wait(ar)
-    #         catch e
-    #             err_msg = sprint(showerror, e)
-    #         end
+            local err_msg = ""
+            try
+                wait(ar)
+            catch e
+                err_msg = sprint(showerror, e)
+            end
 
-    #         @test occursin("canceling statement due to user request", err_msg)
+            @test occursin("canceling statement due to user request", err_msg)
 
-    #         close(conn)
-    #     end
+            close(conn)
+        end
 
-    #     @testset "FDWatcher: bad file descriptor (EBADF)" begin
-    #         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+        @testset "FDWatcher: bad file descriptor (EBADF)" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-    #         ar = async_execute(conn, "SELECT pg_sleep(3); SELECT * FROM pg_type;")
-    #         yield()
-    #         @async Base.throwto(
-    #             ar.result_task,
-    #             Base.IOError("FDWatcher: bad file descriptor (EBADF)", -9),
-    #         )
-    #         try
-    #             wait(ar)
-    #             @test false
-    #         catch err
-    #             if VERSION >= v"1.3.0-alpha.110"
-    #                 while err isa TaskFailedException
-    #                     err = err.task.exception
-    #                 end
-    #             end
-    #             @test err isa LibPQ.Errors.JLConnectionError
-    #         end
+            ar = async_execute(conn, "SELECT pg_sleep(3); SELECT * FROM pg_type;")
+            yield()
+            @async Base.throwto(
+                ar.result_task,
+                Base.IOError("FDWatcher: bad file descriptor (EBADF)", -9),
+            )
+            try
+                wait(ar)
+                @test false
+            catch err
+                if VERSION >= v"1.3.0-alpha.110"
+                    while err isa TaskFailedException
+                        err = err.task.exception
+                    end
+                end
+                @test err isa LibPQ.Errors.JLConnectionError
+            end
 
-    #         close(conn)
-    #     end
-    # end
+            close(conn)
+        end
+    end
 end
 
 end

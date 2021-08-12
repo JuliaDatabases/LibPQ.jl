@@ -14,12 +14,12 @@ mutable struct AsyncResult{BinaryFormat}
 
     function AsyncResult{BinaryFormat}(
         jl_conn::Connection, result_kwargs::Ref
-    ) where {BinaryFormat}
+    ) where BinaryFormat
         return new{BinaryFormat}(jl_conn, result_kwargs, false)
     end
 end
 
-function AsyncResult{BinaryFormat}(jl_conn::Connection; kwargs...) where {BinaryFormat}
+function AsyncResult{BinaryFormat}(jl_conn::Connection; kwargs...) where BinaryFormat
     return AsyncResult{BinaryFormat}(jl_conn, Ref(kwargs))
 end
 
@@ -54,7 +54,7 @@ Any errors produced by the queries will be thrown together in a `CompositeExcept
 """
 function handle_result(
     async_result::AsyncResult{BinaryFormat}; throw_error=true
-) where {BinaryFormat}
+) where BinaryFormat
     errors = []
     result = nothing
     for result_ptr in _consume(async_result.jl_conn)
@@ -212,8 +212,8 @@ statement is returned.
 Any errors which occur during executed statements will be bundled together in a
 `CompositeException` and thrown.
 
-`binary_format` when set to true will trasnfer the data in binary format. Support for
-binary transfer is limited to a subset of basic data types.
+`binary_format`, when set to true, will transfer the data in binary format.
+Support for binary transfer is currently limited to a subset of basic data types.
 
 Queries without parameters can contain multiple SQL statements, and the result of the final
 statement is returned.
@@ -250,8 +250,7 @@ function async_execute(
     string_params = string_parameters(parameters)
     pointer_params = parameter_pointers(string_params)
 
-    async_result =
-        _async_execute(jl_conn; binary_format=binary_format, kwargs...) do jl_conn
+    async_result = _async_execute(jl_conn; binary_format=binary_format, kwargs...) do jl_conn
             _async_submit(jl_conn.conn, query, pointer_params; binary_format=binary_format)
         end
 

@@ -29,7 +29,7 @@ mutable struct Result{BinaryFormat}
         type_map::AbstractDict=PQTypeMap(),
         conversions::AbstractDict=PQConversions(),
         not_null=false,
-    ) where {BinaryFormat}
+    ) where BinaryFormat
         jl_result = new{BinaryFormat}(result, Atomic{Bool}(result == C_NULL))
 
         type_lookup = LayerDict(
@@ -57,8 +57,7 @@ mutable struct Result{BinaryFormat}
             column_type_map[column_number(jl_result, k)] = v
         end
 
-        jl_result.column_types =
-            col_types = collect(
+        jl_result.column_types = col_types = collect(
                 Type,
                 imap(enumerate(col_oids)) do itr
                     col_num, col_oid = itr
@@ -277,8 +276,8 @@ those in `type_map`.
 For information on the `column_types`, `type_map`, and `conversions` arguments, see
 [Type Conversions](@ref typeconv).
 
-`binary_format` when set to true will trasnfer the data in binary format. Support for
-binary transfer is limited to a subset of basic data types.
+`binary_format`, when set to true, will transfer the data in binary format.
+Support for binary transfer is currently limited to a subset of basic data types.
 """
 function execute end
 
@@ -394,7 +393,7 @@ function string_parameter(interval::AbstractInterval)
     return String(take!(io))
 end
 
-function string_parameter(parameter::InfExtendedTime{T}) where {T<:Dates.TimeType}
+function string_parameter(parameter::InfExtendedTime{T}) where T<:Dates.TimeType
     if isinf(parameter)
         return isposinf(parameter) ? "infinity" : "-infinity"
     else
