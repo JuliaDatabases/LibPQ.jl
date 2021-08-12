@@ -1,8 +1,15 @@
 module LibPQ
 
-export status, reset!, execute, prepare, async_execute, cancel,
-    num_columns, num_rows, num_params, num_affected_rows
-
+export status,
+    reset!,
+    execute,
+    prepare,
+    async_execute,
+    cancel,
+    num_columns,
+    num_rows,
+    num_params,
+    num_affected_rows
 
 using Base: Semaphore, acquire, release
 using Base.Iterators: zip, product
@@ -21,17 +28,17 @@ using Memento: Memento, getlogger, warn, info, error, debug
 using OffsetArrays
 using TimeZones
 
-const Parameter = Union{String, Missing}
+const Parameter = Union{String,Missing}
 const LOGGER = getlogger(@__MODULE__)
 
 function __init__()
     INTERVAL_REGEX[] = _interval_regex()
     Memento.register(LOGGER)
+    return nothing
 end
 
 # Docstring template for types using DocStringExtensions
-@template TYPES =
-    """
+@template TYPES = """
         $(TYPEDEF)
 
     $(DOCSTRING)
@@ -50,7 +57,7 @@ module libpq_c
         include(joinpath(@__DIR__, "..", "deps", "deps.jl"))
 
         function __init__()
-            check_deps()
+            return check_deps()
         end
     else
         using LibPQ_jll
@@ -82,6 +89,9 @@ Adding conversions to this constant will override the default conversions for al
 LibPQ.jl.
 """
 const LIBPQ_CONVERSIONS = PQConversions()
+
+const BINARY = true
+const TEXT = false
 
 include("connections.jl")
 include("results.jl")

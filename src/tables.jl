@@ -143,7 +143,7 @@ julia> LibPQ.load!(
 julia> execute(conn, "COMMIT;");
 ```
 """
-function load!(table::T, connection::Connection, query::AbstractString) where {T}
+function load!(table::T, connection::Connection, query::AbstractString) where T
     rows = Tables.rows(table)
     stmt = prepare(connection, query)
     state = iterate(rows)

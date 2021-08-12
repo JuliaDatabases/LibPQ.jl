@@ -53,7 +53,7 @@ function prepare(jl_conn::Connection, query::AbstractString)
 
     description = handle_result(Result(result, jl_conn); throw_error=true)
 
-    Statement(jl_conn, uid, query, description, num_params(description))
+    return Statement(jl_conn, uid, query, description, num_params(description))
 end
 
 """
@@ -62,12 +62,8 @@ end
 Show a PostgreSQL prepared statement and its query.
 """
 function Base.show(io::IO, stmt::Statement)
-    print(
-        io,
-        "PostgreSQL prepared statement named ",
-        stmt.name,
-        " with query ",
-        stmt.query,
+    return print(
+        io, "PostgreSQL prepared statement named ", stmt.name, " with query ", stmt.query
     )
 end
 
@@ -92,7 +88,7 @@ Return the name of the column at index `column_number` (1-based) that would be r
 executing the prepared statement.
 """
 function column_name(stmt::Statement, column_number::Integer)
-    column_name(stmt.description, column_number)
+    return column_name(stmt.description, column_number)
 end
 
 """
@@ -110,42 +106,48 @@ Return the index (1-based) of the column named `column_name` that would be retur
 executing the prepared statement.
 """
 function column_number(stmt::Statement, column_name::AbstractString)
-    column_number(stmt.description, column_name)
+    return column_number(stmt.description, column_name)
 end
 
 function execute(
     stmt::Statement,
-    parameters::Union{AbstractVector, Tuple};
+    parameters::Union{AbstractVector,Tuple};
     throw_error::Bool=true,
-    kwargs...
+    binary_format::Bool=false,
+    kwargs...,
 )
     num_params = length(parameters)
     string_params = string_parameters(parameters)
     pointer_params = parameter_pointers(string_params)
 
     result = lock(stmt.jl_conn) do
-        _execute_prepared(stmt.jl_conn.conn, stmt.name, pointer_params)
+        _execute_prepared(
+            stmt.jl_conn.conn, stmt.name, pointer_params; binary_format=binary_format
+        )
     end
 
-    return handle_result(Result(result, stmt.jl_conn; kwargs...); throw_error=throw_error)
+    return handle_result(
+        Result{binary_format}(result, stmt.jl_conn; kwargs...); throw_error=throw_error
+    )
 end
 
 function execute(
-    stmt::Statement;
-    throw_error::Bool=true,
-    kwargs...
+    stmt::Statement; throw_error::Bool=true, binary_format::Bool=false, kwargs...
 )
     result = lock(stmt.jl_conn) do
-        _execute_prepared(stmt.jl_conn.conn, stmt.name)
+        _execute_prepared(stmt.jl_conn.conn, stmt.name; binary_format=binary_format)
     end
 
-    return handle_result(Result(result, stmt.jl_conn; kwargs...); throw_error=throw_error)
+    return handle_result(
+        Result{binary_format}(result, stmt.jl_conn; kwargs...); throw_error=throw_error
+    )
 end
 
 function _execute_prepared(
     conn_ptr::Ptr{libpq_c.PGconn},
     stmt_name::AbstractString,
-    parameters::Vector{Ptr{UInt8}}=Ptr{UInt8}[],
+    parameters::Vector{Ptr{UInt8}}=Ptr{UInt8}[];
+    binary_format::Bool=false,
 )
     num_params = length(parameters)
 
@@ -156,6 +158,6 @@ function _execute_prepared(
         num_params == 0 ? C_NULL : parameters,
         C_NULL,  # paramLengths is ignored for text format parameters
         num_params == 0 ? C_NULL : zeros(Cint, num_params),  # all parameters in text format
-        zero(Cint),  # return result in text format
+        Cint(binary_format),  # return result in text format
     )
 end

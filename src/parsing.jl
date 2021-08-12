@@ -1,5 +1,5 @@
 "A wrapper for one value in a PostgreSQL result."
-struct PQValue{OID}
+struct PQValue{OID,BinaryFormat}
     "PostgreSQL result"
     jl_result::Result
 
@@ -9,10 +9,15 @@ struct PQValue{OID}
     "Column index of the result (0-indexed)"
     col::Cint
 
-    function PQValue{OID}(jl_result::Result, row::Integer, col::Integer) where OID
-        return new{OID}(jl_result, row - 1, col - 1)
+    function PQValue{OID}(
+        jl_result::Result{BinaryFormat}, row::Integer, col::Integer
+    ) where {OID,BinaryFormat}
+        return new{OID,BinaryFormat}(jl_result, row - 1, col - 1)
     end
 end
+
+const PQTextValue{OID} = PQValue{OID,TEXT}
+const PQBinaryValue{OID} = PQValue{OID,BINARY}
 
 """
     PQValue(jl_result::Result, row::Integer, col::Integer) -> PQValue
@@ -42,7 +47,7 @@ end
     num_bytes(pqv::PQValue) -> Cint
 
 The length in bytes of the `PQValue`'s corresponding data.
-LibPQ.jl currently always uses text format, so this is equivalent to C's `strlen`.
+When a query uses `LibPQ.TEXT` format, this is equivalent to C's `strlen`.
 
 See also: [`data_pointer`](@ref)
 """
@@ -119,7 +124,7 @@ By default, this uses any existing `parse` method for parsing a value of type `T
 You can implement default PostgreSQL-specific parsing for a given type by overriding
 `pqparse`.
 """
-Base.parse(::Type{T}, pqv::PQValue) where {T} = pqparse(T, string_view(pqv))
+Base.parse(::Type{T}, pqv::PQValue) where T = pqparse(T, string_view(pqv))
 
 """
     LibPQ.pqparse(::Type{T}, str::AbstractString) -> T
@@ -130,22 +135,38 @@ This is used to parse PostgreSQL's output format.
 function pqparse end
 
 # Fallback method
-pqparse(::Type{T}, str::AbstractString) where {T} = parse(T, str)
+pqparse(::Type{T}, str::AbstractString) where T = parse(T, str)
 
 # allow parsing as a Symbol anything which works as a String
 pqparse(::Type{Symbol}, str::AbstractString) = Symbol(str)
+
+function generate_binary_parser(symbol)
+    @eval function Base.parse(
+        ::Type{T}, pqv::PQBinaryValue{$(oid(symbol))}
+    ) where T<:Number
+        return convert(
+            T, ntoh(unsafe_load(Ptr{$(_DEFAULT_TYPE_MAP[symbol])}(data_pointer(pqv))))
+        )
+    end
+end
 
 ## integers
 _DEFAULT_TYPE_MAP[:int2] = Int16
 _DEFAULT_TYPE_MAP[:int4] = Int32
 _DEFAULT_TYPE_MAP[:int8] = Int64
 
+foreach(generate_binary_parser, (:int2, :int4, :int8))
+
 ## floating point
 _DEFAULT_TYPE_MAP[:float4] = Float32
 _DEFAULT_TYPE_MAP[:float8] = Float64
 
+foreach(generate_binary_parser, (:float4, :float8))
+
 ## oid
 _DEFAULT_TYPE_MAP[:oid] = Oid
+
+generate_binary_parser(:oid)
 
 ## numeric
 _DEFAULT_TYPE_MAP[:numeric] = Decimal
@@ -168,8 +189,8 @@ pqparse(::Type{Char}, str::AbstractString) = Char(pqparse(PQChar, str))
 _DEFAULT_TYPE_MAP[:bytea] = Vector{UInt8}
 
 # Needs it's own `parse` method as it uses bytes_view instead of string_view
-function Base.parse(::Type{Vector{UInt8}}, pqv::PQValue{PQ_SYSTEM_TYPES[:bytea]})
-    pqparse(Vector{UInt8}, bytes_view(pqv))
+function Base.parse(::Type{Vector{UInt8}}, pqv::PQTextValue{PQ_SYSTEM_TYPES[:bytea]})
+    return pqparse(Vector{UInt8}, bytes_view(pqv))
 end
 
 function pqparse(::Type{Vector{UInt8}}, bytes::Array{UInt8,1})
@@ -201,6 +222,10 @@ function pqparse(::Type{Bool}, str::AbstractString)
     else
         error("\"$str\" is not a valid boolean")
     end
+end
+
+function Base.parse(::Type{Bool}, pqv::PQBinaryValue{oid(:bool)})
+    return unsafe_load(Ptr{_DEFAULT_TYPE_MAP[:bool]}(data_pointer(pqv)))
 end
 
 ## dates and times
@@ -245,7 +270,7 @@ function pqparse(::Type{ZonedDateTime}, str::AbstractString)
         return ZonedDateTime(typemin(DateTime), tz"UTC")
     end
 
-    for fmt in TIMESTAMPTZ_FORMATS[1:end-1]
+    for fmt in TIMESTAMPTZ_FORMATS[1:(end - 1)]
         parsed = tryparse(ZonedDateTime, str, fmt)
         parsed !== nothing && return parsed
     end
@@ -280,7 +305,7 @@ function pqparse(::Type{Time}, str::AbstractString)
 end
 
 # InfExtendedTime support for Dates.TimeType
-function pqparse(::Type{InfExtendedTime{T}}, str::AbstractString) where {T<:Dates.TimeType}
+function pqparse(::Type{InfExtendedTime{T}}, str::AbstractString) where T<:Dates.TimeType
     if str == "infinity"
         return InfExtendedTime{T}(∞)
     elseif str == "-infinity"
@@ -291,12 +316,12 @@ function pqparse(::Type{InfExtendedTime{T}}, str::AbstractString) where {T<:Date
 end
 
 # UNIX timestamps
-function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
-    unix2datetime(parse(Int64, pqv))
+function Base.parse(::Type{DateTime}, pqv::PQTextValue{PQ_SYSTEM_TYPES[:int8]})
+    return unix2datetime(parse(Int64, pqv))
 end
 
-function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
-    TimeZones.unix2zdt(parse(Int64, pqv))
+function Base.parse(::Type{ZonedDateTime}, pqv::PQTextValue{PQ_SYSTEM_TYPES[:int8]})
+    return TimeZones.unix2zdt(parse(Int64, pqv))
 end
 
 ## intervals
@@ -320,7 +345,8 @@ function _interval_regex()
     for long_type in (Hour, Minute)
         print(io, _field_match(long_type))
     end
-    print(io,
+    print(
+        io,
         _field_match(Second, "(?<whole_seconds>-?\\d+)(?:\\.(?<frac_seconds>\\d{1,9}))?"),
     )
     print(io, ")?\$")
@@ -368,7 +394,7 @@ function pqparse(::Type{Dates.CompoundPeriod}, str::AbstractString)
             period_coeff = fld1(len, 3)
             period_type = frac_periods[period_coeff]  # field regex prevents BoundsError
 
-            frac_seconds = parse(Int, frac_seconds_str) * 10 ^ (3 * period_coeff - len)
+            frac_seconds = parse(Int, frac_seconds_str) * 10^(3 * period_coeff - len)
             if frac_seconds != 0
                 push!(periods, period_type(frac_seconds))
             end
@@ -386,7 +412,7 @@ _DEFAULT_TYPE_MAP[:tsrange] = Interval{DateTime}
 _DEFAULT_TYPE_MAP[:tstzrange] = Interval{ZonedDateTime}
 _DEFAULT_TYPE_MAP[:daterange] = Interval{Date}
 
-function pqparse(::Type{Interval{T}}, str::AbstractString) where {T}
+function pqparse(::Type{Interval{T}}, str::AbstractString) where T
     str == "empty" && return Interval{T}()
     return parse(Interval{T}, str; element_parser=pqparse)
 end
@@ -395,15 +421,16 @@ end
 # numeric arrays never have double quotes and always use ',' as a separator
 parse_numeric_element(::Type{T}, str) where T = parse(T, str)
 
-parse_numeric_element(::Type{Union{T, Missing}}, str) where T =
-    str == "NULL" ? missing : parse(T, str)
+function parse_numeric_element(::Type{Union{T,Missing}}, str) where T
+    return str == "NULL" ? missing : parse(T, str)
+end
 
 function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
     eq_ind = findfirst(isequal('='), str)
 
     if eq_ind !== nothing
-        offset_str = str[1:eq_ind-1]
-        range_strs = split(str[1:eq_ind-1], ['[',']']; keepempty=false)
+        offset_str = str[1:(eq_ind - 1)]
+        range_strs = split(str[1:(eq_ind - 1)], ['[', ']']; keepempty=false)
 
         ranges = map(range_strs) do range_str
             lower, upper = split(range_str, ':'; limit=2)
@@ -411,7 +438,7 @@ function parse_numeric_array(eltype::Type{T}, str::AbstractString) where T
         end
 
         arr = OffsetArray{T}(undef, ranges...)
-        el_iter = eachmatch(r"[^\}\{,]+", str[eq_ind+1:end])
+        el_iter = eachmatch(r"[^\}\{,]+", str[(eq_ind + 1):end])
     else
         arr = Array{T}(undef, array_size(str)...)
         el_iter = eachmatch(r"[^\}\{,]+", str)
@@ -464,7 +491,7 @@ end
 for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
     array_oid = PQ_SYSTEM_TYPES[Symbol("_$pq_eltype")]
     jl_type = _DEFAULT_TYPE_MAP[Symbol(pq_eltype)]
-    jl_missingtype = Union{jl_type, Missing}
+    jl_missingtype = Union{jl_type,Missing}
 
     # could be an OffsetArray or Array of any dimensionality
     _DEFAULT_TYPE_MAP[array_oid] = AbstractArray{jl_missingtype}
@@ -472,24 +499,23 @@ for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
     for jl_eltype in (jl_type, jl_missingtype)
         @eval function pqparse(
             ::Type{A}, str::AbstractString
-        ) where A <: AbstractArray{$jl_eltype}
-            parse_numeric_array($jl_eltype, str)::A
+        ) where A<:AbstractArray{$jl_eltype}
+            return parse_numeric_array($jl_eltype, str)::A
         end
     end
 end
 
-struct FallbackConversion <: AbstractDict{Tuple{Oid, Type}, Base.Callable}
-end
+struct FallbackConversion <: AbstractDict{Tuple{Oid,Type},Base.Callable} end
 
-function Base.getindex(cmap::FallbackConversion, oid_typ::Tuple{Integer, Type})
+function Base.getindex(cmap::FallbackConversion, oid_typ::Tuple{Integer,Type})
     _, typ = oid_typ
 
     return function parse_type(pqv::PQValue)
-        parse(typ, pqv)
+        return parse(typ, pqv)
     end
 end
 
-Base.haskey(cmap::FallbackConversion, oid_typ::Tuple{Integer, Type}) = true
+Base.haskey(cmap::FallbackConversion, oid_typ::Tuple{Integer,Type}) = true
 
 """
 A fallback conversion mapping (like [`PQConversions`](@ref) which holds a single function

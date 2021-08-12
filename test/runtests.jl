@@ -222,21 +222,67 @@ end
         @test LibPQ.column_number(stmt, "no_nulls") == 0
         @test LibPQ.column_names(stmt) == []
 
-        result = execute(
-            conn,
-            "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
-            throw_error=true,
-        )
-        @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-        @test LibPQ.num_rows(result) == 2
-        @test LibPQ.num_columns(result) == 2
+        @testset for binary_format in (LibPQ.TEXT, LibPQ.BINARY)
+            result = execute(
+                conn,
+                "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
+                throw_error=true,
+                binary_format=binary_format,
+            )
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
 
-        table_data = columntable(result)
-        @test table_data[:no_nulls] == data[:no_nulls]
-        @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
-        @test table_data[:yes_nulls][2] === missing
+            table_data = columntable(result)
+            @test table_data[:no_nulls] == data[:no_nulls]
+            @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
+            @test table_data[:yes_nulls][2] === missing
 
-        close(result)
+            close(result)
+
+            ar = async_execute(
+                conn,
+                "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;";
+                throw_error=true,
+                binary_format=binary_format,
+            )
+            result = fetch(ar)
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
+
+            table_data = columntable(result)
+            @test table_data[:no_nulls] == data[:no_nulls]
+            @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
+            @test table_data[:yes_nulls][2] === missing
+
+            stmt = prepare(conn, "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;")
+
+            result = execute(stmt; binary_format=binary_format, throw_error=true)
+
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
+
+            table_data = columntable(result)
+            @test table_data[:no_nulls] == data[:no_nulls]
+            @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
+            @test table_data[:yes_nulls][2] === missing
+
+            close(result)
+
+            stmt = prepare(conn, "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls DESC;")
+
+            result = execute(stmt, []; binary_format=binary_format, throw_error=true)
+
+            @test LibPQ.num_rows(result) == 2
+            @test LibPQ.num_columns(result) == 2
+
+            table_data = columntable(result)
+            @test table_data[:no_nulls] == data[:no_nulls]
+            @test table_data[:yes_nulls][1] == data[:yes_nulls][1]
+            @test table_data[:yes_nulls][2] === missing
+
+            close(result)
+        end
 
         result = execute(
             conn,
@@ -1102,192 +1148,240 @@ end
             end
 
             @testset "Parsing" begin
-                @testset "Default Types" begin
-                    conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-                    test_data = [
-                        ("3", Cint(3)),
-                        ("3::int8", Int64(3)),
-                        ("3::int4", Int32(3)),
-                        ("3::int2", Int16(3)),
-                        ("3::float8", Float64(3)),
-                        ("3::float4", Float32(3)),
-                        ("3::oid", LibPQ.Oid(3)),
-                        ("3::numeric", decimal("3")),
-                        ("$(BigFloat(pi))::numeric", decimal(BigFloat(pi))),
-                        ("$(big"4608230166434464229556241992703")::numeric", parse(Decimal, "4608230166434464229556241992703")),
-                        ("E'\\\\xDEADBEEF'::bytea", hex2bytes("DEADBEEF")),
-                        ("E'\\\\000'::bytea", UInt8[0o000]),
-                        ("E'\\\\047'::bytea", UInt8[0o047]),
-                        ("E'\\''::bytea", UInt8[0o047]),
-                        ("E'\\\\134'::bytea", UInt8[0o134]),
-                        ("E'\\\\\\\\'::bytea", UInt8[0o134]),
-                        ("E'\\\\001'::bytea", UInt8[0o001]),
-                        ("E'\\\\176'::bytea", UInt8[0o176]),
-                        ("'hello'::char(10)", "hello"),
-                        ("'hello  '::char(10)", "hello"),
-                        ("'hello  '::varchar(10)", "hello  "),
-                        ("'3'::\"char\"", LibPQ.PQChar('3')),
-                        ("'t'::bool", true),
-                        ("'T'::bool", true),
-                        ("'true'::bool", true),
-                        ("'TRUE'::bool", true),
-                        ("'tRuE'::bool", true),
-                        ("'y'::bool", true),
-                        ("'YEs'::bool", true),
-                        ("'on'::bool", true),
-                        ("1::bool", true),
-                        ("true", true),
-                        ("'f'::bool", false),
-                        ("'F'::bool", false),
-                        ("'false'::bool", false),
-                        ("'FALSE'::bool", false),
-                        ("'fAlsE'::bool", false),
-                        ("'n'::bool", false),
-                        ("'nO'::bool", false),
-                        ("'off'::bool", false),
-                        ("0::bool", false),
-                        ("false", false),
-                        ("TIMESTAMP '2004-10-19 10:23:54'", DateTime(2004, 10, 19, 10, 23, 54)),
-                        ("TIMESTAMP '2004-10-19 10:23:54.123'", DateTime(2004, 10, 19, 10, 23, 54,123)),
-                        ("TIMESTAMP '2004-10-19 10:23:54.1234'", DateTime(2004, 10, 19, 10, 23, 54,123)),
-                        ("'infinity'::timestamp", typemax(DateTime)),
-                        ("'-infinity'::timestamp", typemin(DateTime)),
-                        ("'epoch'::timestamp", DateTime(1970, 1, 1, 0, 0, 0)),
-                        ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-00'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC")),
-                        ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-02'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC-2")),
-                        ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54+10'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC+10")),
-                        ("'infinity'::timestamptz", ZonedDateTime(typemax(DateTime), tz"UTC")),
-                        ("'-infinity'::timestamptz", ZonedDateTime(typemin(DateTime), tz"UTC")),
-                        ("'epoch'::timestamptz", ZonedDateTime(1970, 1, 1, 0, 0, 0, tz"UTC")),
-                        ("DATE '2017-01-31'", Date(2017, 1, 31)),
-                        ("'infinity'::date", typemax(Date)),
-                        ("'-infinity'::date", typemin(Date)),
-                        ("TIME '13:13:13.131'", Time(13, 13, 13, 131)),
-                        ("TIME '13:13:13.131242'", Time(13, 13, 13, 131)),
-                        ("TIME '01:01:01'", Time(1, 1, 1)),
-                        ("'allballs'::time", Time(0, 0, 0)),
-                        ("INTERVAL '1 year 2 months 3 days 4 hours 5 minutes 6 seconds'", Dates.CompoundPeriod(Period[Year(1), Month(2), Day(3), Hour(4), Minute(5), Second(6)])),
-                        ("INTERVAL '6.1 seconds'", Dates.CompoundPeriod(Period[Second(6), Millisecond(100)])),
-                        ("INTERVAL '6.01 seconds'", Dates.CompoundPeriod(Period[Second(6), Millisecond(10)])),
-                        ("INTERVAL '6.001 seconds'", Dates.CompoundPeriod(Period[Second(6), Millisecond(1)])),
-                        ("INTERVAL '6.0001 seconds'", Dates.CompoundPeriod(Period[Second(6), Microsecond(100)])),
-                        ("INTERVAL '6.1001 seconds'", Dates.CompoundPeriod(Period[Second(6), Microsecond(100100)])),
-                        ("INTERVAL '1000 years 7 weeks'", Dates.CompoundPeriod(Period[Year(1000), Day(7 * 7)])),
-                        ("INTERVAL '1 day -1 hour'", Dates.CompoundPeriod(Period[Day(1), Hour(-1)])),
-                        ("INTERVAL '-1 month 1 day'", Dates.CompoundPeriod(Period[Month(-1), Day(1)])),
-                        ("'{{{1,2,3},{4,5,6}}}'::int2[]", Array{Union{Int16, Missing}}(reshape(Int16[1 2 3; 4 5 6], 1, 2, 3))),
-                        ("'{}'::int2[]", Union{Missing, Int16}[]),
-                        ("'{{{1,2,3},{4,5,6}}}'::int4[]", Array{Union{Int32, Missing}}(reshape(Int32[1 2 3; 4 5 6], 1, 2, 3))),
-                        ("'{{{1,2,3},{4,5,6}}}'::int8[]", Array{Union{Int64, Missing}}(reshape(Int64[1 2 3; 4 5 6], 1, 2, 3))),
-                        ("'{{{NULL,2,3},{4,NULL,6}}}'::int8[]", Array{Union{Int64, Missing}}(reshape(Union{Int64, Missing}[missing 2 3; 4 missing 6], 1, 2, 3))),
-                        ("'{{{1,2,3},{4,5,6}}}'::float4[]", Array{Union{Float32, Missing}}(reshape(Float32[1 2 3; 4 5 6], 1, 2, 3))),
-                        ("'{{{1,2,3},{4,5,6}}}'::float8[]", Array{Union{Float64, Missing}}(reshape(Float64[1 2 3; 4 5 6], 1, 2, 3))),
-                        ("'{{{NULL,2,3},{4,NULL,6}}}'::float8[]", Array{Union{Float64, Missing}}(reshape(Union{Float64, Missing}[missing 2 3; 4 missing 6], 1, 2, 3))),
-                        ("'{{{1,2,3},{4,5,6}}}'::oid[]", Array{Union{LibPQ.Oid, Missing}}(reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3))),
-                        ("'{{{1,2,3},{4,5,6}}}'::numeric[]", Array{Union{Decimal, Missing}}(reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3))),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copyto!(OffsetArray{Union{Missing, Int16}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copyto!(OffsetArray{Union{Missing, Int32}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copyto!(OffsetArray{Union{Missing, Int64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copyto!(OffsetArray{Union{Missing, Float32}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copyto!(OffsetArray{Union{Missing, Float64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copyto!(OffsetArray{Union{Missing, LibPQ.Oid}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copyto!(OffsetArray{Union{Missing, Decimal}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
-                        ("'[3,7)'::int4range", Interval{Int32, Closed, Open}(3, 7)),
-                        ("'(3,7)'::int4range", Interval{Int32, Closed, Open}(4, 7)),
-                        ("'[4,4]'::int4range", Interval{Int32, Closed, Open}(4, 5)),
-                        ("'[4,4)'::int4range", Interval{Int32}()),  # Empty interval
-                        ("'[3,7)'::int8range", Interval{Int64, Closed, Open}(3, 7)),
-                        ("'(3,7)'::int8range", Interval{Int64, Closed, Open}(4, 7)),
-                        ("'[4,4]'::int8range", Interval{Int64, Closed, Open}(4, 5)),
-                        ("'[4,4)'::int8range", Interval{Int64}()),  # Empty interval
-                        ("'[11.1,22.2)'::numrange", Interval{Decimal, Closed, Open}(11.1, 22.2)),
-                        ("'[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange", Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))),
-                        ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
-                        ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(2004, 10, 19, 13, 23, 54, tz"UTC"))),
-                        ("'[2004-10-19 10:23:54-02, Infinity)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"))),
-                        ("'(-Infinity, Infinity)'::tstzrange", Interval{Open, Open}(ZonedDateTime(typemin(DateTime), tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"))),
-                        ("'[2018/01/01, 2018/02/02)'::daterange", Interval{Closed, Open}(Date(2018, 1, 1), Date(2018, 2, 2))),
-                        # Unbounded ranges
-                        ("'[3,)'::int4range", Interval{Int32}(3, nothing)),
-                        ("'[3,]'::int4range", Interval{Int32}(3, nothing)),
-                        ("'(3,)'::int4range", Interval{Int32, Closed, Unbounded}(4, nothing)),  # Postgres normalizes `(3,)` to `[4,)`
-                        ("'(,3)'::int4range", Interval{Int32, Unbounded, Open}(nothing, 3)),
-                        ("'(,3]'::int4range", Interval{Int32, Unbounded, Open}(nothing, 4)),  # Postgres normalizes `(,3]` to `(,4)`
-                        ("'[,]'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
-                        ("'(,)'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
-                        ("'[2010-01-01 14:30,)'::tsrange", Interval{Closed, Unbounded}(DateTime(2010, 1, 1, 14, 30), nothing)),
-                        ("'[,2010-01-01 15:30-00)'::tstzrange", Interval{Unbounded, Open}(nothing, ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
-                        ("'[2018/01/01,]'::daterange", Interval{Closed, Unbounded}(Date(2018, 1, 1), nothing)),
-                    ]
+                binary_not_implemented_pgtypes = [
+                    "numeric",
+                    "timestamp",
+                    "timestamptz",
+                    "tstzrange",
+                ]
+                binary_not_implemented_types = [
+                    Decimal,
+                    DateTime,
+                    ZonedDateTime,
+                    Date,
+                    Time,
+                    Dates.CompoundPeriod,
+                    Array,
+                    OffsetArray,
+                    Interval,
+                ]
 
-                    @testset for (test_str, data) in test_data
-                        result = execute(conn, "SELECT $test_str;")
+                @testset for binary_format in (LibPQ.TEXT, LibPQ.BINARY)
+                    @testset "Default Types" begin
+                        conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-                        try
-                            @test LibPQ.num_rows(result) == 1
-                            @test LibPQ.num_columns(result) == 1
-                            @test LibPQ.column_types(result)[1] >: typeof(data)
+                        test_data = [
+                            ("3", Cint(3)),
+                            ("3::int8", Int64(3)),
+                            ("3::int4", Int32(3)),
+                            ("3::int2", Int16(3)),
+                            ("3::float8", Float64(3)),
+                            ("3::float4", Float32(3)),
+                            ("3::oid", LibPQ.Oid(3)),
+                            ("3::numeric", decimal("3")),
+                            ("$(BigFloat(pi))::numeric", decimal(BigFloat(pi))),
+                            ("$(big"4608230166434464229556241992703")::numeric", parse(Decimal, "4608230166434464229556241992703")),
+                            ("E'\\\\xDEADBEEF'::bytea", hex2bytes("DEADBEEF")),
+                            ("E'\\\\000'::bytea", UInt8[0o000]),
+                            ("E'\\\\047'::bytea", UInt8[0o047]),
+                            ("E'\\''::bytea", UInt8[0o047]),
+                            ("E'\\\\134'::bytea", UInt8[0o134]),
+                            ("E'\\\\\\\\'::bytea", UInt8[0o134]),
+                            ("E'\\\\001'::bytea", UInt8[0o001]),
+                            ("E'\\\\176'::bytea", UInt8[0o176]),
+                            ("'hello'::char(10)", "hello"),
+                            ("'hello  '::char(10)", "hello"),
+                            ("'hello  '::varchar(10)", "hello  "),
+                            ("'3'::\"char\"", LibPQ.PQChar('3')),
+                            ("'t'::bool", true),
+                            ("'T'::bool", true),
+                            ("'true'::bool", true),
+                            ("'TRUE'::bool", true),
+                            ("'tRuE'::bool", true),
+                            ("'y'::bool", true),
+                            ("'YEs'::bool", true),
+                            ("'on'::bool", true),
+                            ("1::bool", true),
+                            ("true", true),
+                            ("'f'::bool", false),
+                            ("'F'::bool", false),
+                            ("'false'::bool", false),
+                            ("'FALSE'::bool", false),
+                            ("'fAlsE'::bool", false),
+                            ("'n'::bool", false),
+                            ("'nO'::bool", false),
+                            ("'off'::bool", false),
+                            ("0::bool", false),
+                            ("false", false),
+                            ("TIMESTAMP '2004-10-19 10:23:54'", DateTime(2004, 10, 19, 10, 23, 54)),
+                            ("TIMESTAMP '2004-10-19 10:23:54.123'", DateTime(2004, 10, 19, 10, 23, 54,123)),
+                            ("TIMESTAMP '2004-10-19 10:23:54.1234'", DateTime(2004, 10, 19, 10, 23, 54,123)),
+                            ("'infinity'::timestamp", typemax(DateTime)),
+                            ("'-infinity'::timestamp", typemin(DateTime)),
+                            ("'epoch'::timestamp", DateTime(1970, 1, 1, 0, 0, 0)),
+                            ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-00'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC")),
+                            ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-02'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC-2")),
+                            ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54+10'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC+10")),
+                            ("'infinity'::timestamptz", ZonedDateTime(typemax(DateTime), tz"UTC")),
+                            ("'-infinity'::timestamptz", ZonedDateTime(typemin(DateTime), tz"UTC")),
+                            ("'epoch'::timestamptz", ZonedDateTime(1970, 1, 1, 0, 0, 0, tz"UTC")),
+                            ("DATE '2017-01-31'", Date(2017, 1, 31)),
+                            ("'infinity'::date", typemax(Date)),
+                            ("'-infinity'::date", typemin(Date)),
+                            ("TIME '13:13:13.131'", Time(13, 13, 13, 131)),
+                            ("TIME '13:13:13.131242'", Time(13, 13, 13, 131)),
+                            ("TIME '01:01:01'", Time(1, 1, 1)),
+                            ("'allballs'::time", Time(0, 0, 0)),
+                            ("INTERVAL '1 year 2 months 3 days 4 hours 5 minutes 6 seconds'", Dates.CompoundPeriod(Period[Year(1), Month(2), Day(3), Hour(4), Minute(5), Second(6)])),
+                            ("INTERVAL '6.1 seconds'", Dates.CompoundPeriod(Period[Second(6), Millisecond(100)])),
+                            ("INTERVAL '6.01 seconds'", Dates.CompoundPeriod(Period[Second(6), Millisecond(10)])),
+                            ("INTERVAL '6.001 seconds'", Dates.CompoundPeriod(Period[Second(6), Millisecond(1)])),
+                            ("INTERVAL '6.0001 seconds'", Dates.CompoundPeriod(Period[Second(6), Microsecond(100)])),
+                            ("INTERVAL '6.1001 seconds'", Dates.CompoundPeriod(Period[Second(6), Microsecond(100100)])),
+                            ("INTERVAL '1000 years 7 weeks'", Dates.CompoundPeriod(Period[Year(1000), Day(7 * 7)])),
+                            ("INTERVAL '1 day -1 hour'", Dates.CompoundPeriod(Period[Day(1), Hour(-1)])),
+                            ("INTERVAL '-1 month 1 day'", Dates.CompoundPeriod(Period[Month(-1), Day(1)])),
+                            ("'{{{1,2,3},{4,5,6}}}'::int2[]", Array{Union{Int16, Missing}}(reshape(Int16[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'{}'::int2[]", Union{Missing, Int16}[]),
+                            ("'{{{1,2,3},{4,5,6}}}'::int4[]", Array{Union{Int32, Missing}}(reshape(Int32[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'{{{1,2,3},{4,5,6}}}'::int8[]", Array{Union{Int64, Missing}}(reshape(Int64[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'{{{NULL,2,3},{4,NULL,6}}}'::int8[]", Array{Union{Int64, Missing}}(reshape(Union{Int64, Missing}[missing 2 3; 4 missing 6], 1, 2, 3))),
+                            ("'{{{1,2,3},{4,5,6}}}'::float4[]", Array{Union{Float32, Missing}}(reshape(Float32[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'{{{1,2,3},{4,5,6}}}'::float8[]", Array{Union{Float64, Missing}}(reshape(Float64[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'{{{NULL,2,3},{4,NULL,6}}}'::float8[]", Array{Union{Float64, Missing}}(reshape(Union{Float64, Missing}[missing 2 3; 4 missing 6], 1, 2, 3))),
+                            ("'{{{1,2,3},{4,5,6}}}'::oid[]", Array{Union{LibPQ.Oid, Missing}}(reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'{{{1,2,3},{4,5,6}}}'::numeric[]", Array{Union{Decimal, Missing}}(reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copyto!(OffsetArray{Union{Missing, Int16}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copyto!(OffsetArray{Union{Missing, Int32}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copyto!(OffsetArray{Union{Missing, Int64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float4[]", copyto!(OffsetArray{Union{Missing, Float32}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::float8[]", copyto!(OffsetArray{Union{Missing, Float64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::oid[]", copyto!(OffsetArray{Union{Missing, LibPQ.Oid}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::numeric[]", copyto!(OffsetArray{Union{Missing, Decimal}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
+                            ("'[3,7)'::int4range", Interval{Int32, Closed, Open}(3, 7)),
+                            ("'(3,7)'::int4range", Interval{Int32, Closed, Open}(4, 7)),
+                            ("'[4,4]'::int4range", Interval{Int32, Closed, Open}(4, 5)),
+                            ("'[4,4)'::int4range", Interval{Int32}()),  # Empty interval
+                            ("'[3,7)'::int8range", Interval{Int64, Closed, Open}(3, 7)),
+                            ("'(3,7)'::int8range", Interval{Int64, Closed, Open}(4, 7)),
+                            ("'[4,4]'::int8range", Interval{Int64, Closed, Open}(4, 5)),
+                            ("'[4,4)'::int8range", Interval{Int64}()),  # Empty interval
+                            ("'[11.1,22.2)'::numrange", Interval{Decimal, Closed, Open}(11.1, 22.2)),
+                            ("'[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange", Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))),
+                            ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
+                            ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(2004, 10, 19, 13, 23, 54, tz"UTC"))),
+                            ("'[2004-10-19 10:23:54-02, Infinity)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"))),
+                            ("'(-Infinity, Infinity)'::tstzrange", Interval{Open, Open}(ZonedDateTime(typemin(DateTime), tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"))),
+                            ("'[2018/01/01, 2018/02/02)'::daterange", Interval{Closed, Open}(Date(2018, 1, 1), Date(2018, 2, 2))),
+                            # Unbounded ranges
+                            ("'[3,)'::int4range", Interval{Int32}(3, nothing)),
+                            ("'[3,]'::int4range", Interval{Int32}(3, nothing)),
+                            ("'(3,)'::int4range", Interval{Int32, Closed, Unbounded}(4, nothing)),  # Postgres normalizes `(3,)` to `[4,)`
+                            ("'(,3)'::int4range", Interval{Int32, Unbounded, Open}(nothing, 3)),
+                            ("'(,3]'::int4range", Interval{Int32, Unbounded, Open}(nothing, 4)),  # Postgres normalizes `(,3]` to `(,4)`
+                            ("'[,]'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
+                            ("'(,)'::int4range", Interval{Int32, Unbounded, Unbounded}(nothing, nothing)),
+                            ("'[2010-01-01 14:30,)'::tsrange", Interval{Closed, Unbounded}(DateTime(2010, 1, 1, 14, 30), nothing)),
+                            ("'[,2010-01-01 15:30-00)'::tstzrange", Interval{Unbounded, Open}(nothing, ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
+                            ("'[2018/01/01,]'::daterange", Interval{Closed, Unbounded}(Date(2018, 1, 1), nothing)),
+                        ]
 
-                            oid = LibPQ.column_oids(result)[1]
-                            func = result.column_funcs[1]
-                            parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
-                            @test isequal(parsed, data)
-                            @test typeof(parsed) == typeof(data)
-                        finally
-                            close(result)
+                        @testset for (test_str, data) in test_data
+                            result = execute(
+                                conn,
+                                "SELECT $test_str;";
+                                binary_format=binary_format,
+                            )
+
+                            try
+                                @test LibPQ.num_rows(result) == 1
+                                @test LibPQ.num_columns(result) == 1
+                                @test LibPQ.column_types(result)[1] >: typeof(data)
+
+                                oid = LibPQ.column_oids(result)[1]
+                                func = result.column_funcs[1]
+                                if binary_format && any(T -> data isa T, binary_not_implemented_types)
+                                    @test_broken parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                                    @test_broken isequal(parsed, data)
+                                    @test_broken typeof(parsed) == typeof(data)
+                                    @test_broken parsed_no_oid = func(LibPQ.PQValue(result, 1, 1))
+                                    @test_broken isequal(parsed_no_oid, data)
+                                    @test_broken typeof(parsed_no_oid) == typeof(data)
+                                else
+                                    parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                                    @test isequal(parsed, data)
+                                    @test typeof(parsed) == typeof(data)
+                                    parsed_no_oid = func(LibPQ.PQValue(result, 1, 1))
+                                    @test isequal(parsed_no_oid, data)
+                                    @test typeof(parsed_no_oid) == typeof(data)
+                                end
+                            finally
+                                close(result)
+                            end
                         end
+
+                        close(conn)
                     end
 
-                    close(conn)
-                end
+                    @testset "Specified Types" begin
+                        conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-                @testset "Specified Types" begin
-                    conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+                        test_data = [
+                            ("3", UInt, UInt(3)),
+                            ("3::int8", UInt16, UInt16(3)),
+                            ("3::int4", Int32, Int32(3)),
+                            ("3::int2", UInt8, UInt8(3)),
+                            ("3::oid", UInt32, UInt32(3)),
+                            ("3::numeric", Float64, 3.0),
+                            ("'3'::\"char\"", Char, '3'),
+                            ("'foobar'", Symbol, :foobar),
+                            ("0::int8", DateTime, DateTime(1970, 1, 1, 0)),
+                            ("0::int8", ZonedDateTime, ZonedDateTime(1970, 1, 1, 0, tz"UTC")),
+                            ("'{{{1,2,3},{4,5,6}}}'::int2[]", AbstractArray{Int16}, reshape(Int16[1 2 3; 4 5 6], 1, 2, 3)),
+                            ("'infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(∞)),
+                            ("'-infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(-∞)),
+                            ("'infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(∞)),
+                            ("'-infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(-∞)),
+                            ("'[2004-10-19 10:23:54-02, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ∞)),
+                            ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{InfExtendedTime{ZonedDateTime}, Open, Open}(-∞, ∞)),
+                        ]
 
-                    test_data = [
-                        ("3", UInt, UInt(3)),
-                        ("3::int8", UInt16, UInt16(3)),
-                        ("3::int4", Int32, Int32(3)),
-                        ("3::int2", UInt8, UInt8(3)),
-                        ("3::oid", UInt32, UInt32(3)),
-                        ("3::numeric", Float64, 3.0),
-                        ("'3'::\"char\"", Char, '3'),
-                        ("'foobar'", Symbol, :foobar),
-                        ("0::int8", DateTime, DateTime(1970, 1, 1, 0)),
-                        ("0::int8", ZonedDateTime, ZonedDateTime(1970, 1, 1, 0, tz"UTC")),
-                        ("'{{{1,2,3},{4,5,6}}}'::int2[]", AbstractArray{Int16}, reshape(Int16[1 2 3; 4 5 6], 1, 2, 3)),
-                        ("'infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(∞)),
-                        ("'-infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(-∞)),
-                        ("'infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(∞)),
-                        ("'-infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(-∞)),
-                        ("'[2004-10-19 10:23:54-02, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ∞)),
-                        ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{InfExtendedTime{ZonedDateTime}, Open, Open}(-∞, ∞)),
-                    ]
+                        for (test_str, typ, data) in test_data
+                            result = execute(
+                                conn,
+                                "SELECT $test_str;",
+                                column_types=Dict(1 => typ),
+                                binary_format=binary_format,
+                            )
 
-                    for (test_str, typ, data) in test_data
-                        result = execute(
-                            conn,
-                            "SELECT $test_str;",
-                            column_types=Dict(1 => typ),
-                        )
+                            try
+                                @test LibPQ.num_rows(result) == 1
+                                @test LibPQ.num_columns(result) == 1
+                                @test LibPQ.column_types(result)[1] >: typeof(data)
 
-                        try
-                            @test LibPQ.num_rows(result) == 1
-                            @test LibPQ.num_columns(result) == 1
-                            @test LibPQ.column_types(result)[1] >: typeof(data)
+                                oid = LibPQ.column_oids(result)[1]
+                                func = result.column_funcs[1]
 
-                            oid = LibPQ.column_oids(result)[1]
-                            func = result.column_funcs[1]
-                            parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
-                            @test parsed == data
-                            @test typeof(parsed) == typeof(data)
-                        finally
-                            close(result)
+                                if binary_format && (
+                                    any(T -> data isa T, binary_not_implemented_types) ||
+                                    any(occursin.(binary_not_implemented_pgtypes, test_str))
+                                )
+                                    @test_broken parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                                    @test_broken parsed == data
+                                    @test_broken typeof(parsed) == typeof(data)
+                                else
+                                    parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                                    @test parsed == data
+                                    @test typeof(parsed) == typeof(data)
+                                end
+                            finally
+                                close(result)
+                            end
                         end
-                    end
 
-                    close(conn)
+                        close(conn)
+                    end
                 end
 
                 @testset "Interval Regex" begin
