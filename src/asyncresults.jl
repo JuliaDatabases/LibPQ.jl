@@ -205,12 +205,8 @@ If multiple `AsyncResult`s use the same `Connection`, they will execute serially
 
 `async_execute` does not yet support [`Statement`](@ref)s.
 
-`async_execute` optionally takes a `parameters` vector which passes query parameters
-as strings to PostgreSQL.
-Queries without parameters can contain multiple SQL statements, and the result of the final
-statement is returned.
-Any errors which occur during executed statements will be bundled together in a
-`CompositeException` and thrown.
+`async_execute` optionally takes a `parameters` vector which passes query parameters as
+strings to PostgreSQL.
 
 `binary_format`, when set to true, will transfer the data in binary format.
 Support for binary transfer is currently limited to a subset of basic data types.
