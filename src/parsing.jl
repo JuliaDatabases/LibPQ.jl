@@ -316,12 +316,28 @@ function pqparse(::Type{InfExtendedTime{T}}, str::AbstractString) where T<:Dates
 end
 
 # UNIX timestamps
-function Base.parse(::Type{DateTime}, pqv::PQTextValue{PQ_SYSTEM_TYPES[:int8]})
+function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
     return unix2datetime(parse(Int64, pqv))
 end
 
-function Base.parse(::Type{ZonedDateTime}, pqv::PQTextValue{PQ_SYSTEM_TYPES[:int8]})
+function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
     return TimeZones.unix2zdt(parse(Int64, pqv))
+end
+
+# All postgresql timestamptz are stored in UTC time with the epoch of 2000-01-01.
+const POSTGRES_EPOCH_DATE = DateTime("2000-01-01")
+
+# Note: Because postgresql stores the values as a Microsecond in Int64, the max (infinite)
+# value of date time in postgresql when querying binary is 294277-01-09T04:00:54.775
+# and the minimum is -290278-12-22T19:59:05.225.
+function Base.parse(::Type{ZonedDateTime}, pqv::PQBinaryValue{PQ_SYSTEM_TYPES[:timestamptz]})
+    return ZonedDateTime(POSTGRES_EPOCH_DATE, tz"UTC") +
+        Microsecond(ntoh(unsafe_load(Ptr{Int64}(LibPQ.data_pointer(pqv)))))
+end
+
+function Base.parse(::Type{DateTime}, pqv::PQBinaryValue{PQ_SYSTEM_TYPES[:timestamp]})
+    return POSTGRES_EPOCH_DATE +
+        Microsecond(ntoh(unsafe_load(Ptr{Int64}(LibPQ.data_pointer(pqv)))))
 end
 
 ## intervals

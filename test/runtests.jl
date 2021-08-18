@@ -1151,20 +1151,17 @@ end
 
                 binary_not_implemented_pgtypes = [
                     "numeric",
-                    "timestamp",
-                    "timestamptz",
                     "tstzrange",
                 ]
                 binary_not_implemented_types = [
                     Decimal,
-                    DateTime,
-                    ZonedDateTime,
                     Date,
                     Time,
                     Dates.CompoundPeriod,
                     Array,
                     OffsetArray,
                     Interval,
+                    InfExtendedTime,
                 ]
 
                 @testset for binary_format in (LibPQ.TEXT, LibPQ.BINARY)
@@ -1217,14 +1214,38 @@ end
                             ("TIMESTAMP '2004-10-19 10:23:54'", DateTime(2004, 10, 19, 10, 23, 54)),
                             ("TIMESTAMP '2004-10-19 10:23:54.123'", DateTime(2004, 10, 19, 10, 23, 54,123)),
                             ("TIMESTAMP '2004-10-19 10:23:54.1234'", DateTime(2004, 10, 19, 10, 23, 54,123)),
-                            ("'infinity'::timestamp", typemax(DateTime)),
-                            ("'-infinity'::timestamp", typemin(DateTime)),
+                            (
+                                "'infinity'::timestamp",
+                                Dict(
+                                    LibPQ.TEXT => typemax(DateTime),
+                                    LibPQ.BINARY => DateTime(294277, 01, 09, 04, 00, 54, 775),
+                                ),
+                            ),
+                            (
+                                "'-infinity'::timestamp",
+                                Dict(
+                                    LibPQ.TEXT => typemin(DateTime),
+                                    LibPQ.BINARY => DateTime(-290278, 12, 22, 19, 59, 05, 225),
+                                ),
+                            ),
                             ("'epoch'::timestamp", DateTime(1970, 1, 1, 0, 0, 0)),
                             ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-00'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC")),
                             ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-02'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC-2")),
                             ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54+10'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC+10")),
-                            ("'infinity'::timestamptz", ZonedDateTime(typemax(DateTime), tz"UTC")),
-                            ("'-infinity'::timestamptz", ZonedDateTime(typemin(DateTime), tz"UTC")),
+                            (
+                                "'infinity'::timestamptz",
+                                Dict(
+                                    LibPQ.TEXT => ZonedDateTime(typemax(DateTime), tz"UTC"),
+                                    LibPQ.BINARY => ZonedDateTime(294277, 1, 9, 4, 0, 54, 775, tz"UTC"),
+                                ),
+                            ),
+                            (
+                                "'-infinity'::timestamptz",
+                                Dict(
+                                    LibPQ.TEXT => ZonedDateTime(typemin(DateTime), tz"UTC"),
+                                    LibPQ.BINARY => ZonedDateTime(-290278, 12, 22, 19, 59, 5, 225, tz"UTC"),
+                                ),
+                            ),
                             ("'epoch'::timestamptz", ZonedDateTime(1970, 1, 1, 0, 0, 0, tz"UTC")),
                             ("DATE '2017-01-31'", Date(2017, 1, 31)),
                             ("'infinity'::date", typemax(Date)),
@@ -1293,6 +1314,12 @@ end
                                 "SELECT $test_str;";
                                 binary_format=binary_format,
                             )
+
+                            # Some date is different between text and binary format
+                            # (for example, 'infinity'::timestamp)
+                            if data isa Dict
+                                data = data[binary_format]
+                            end
 
                             try
                                 @test LibPQ.num_rows(result) == 1
