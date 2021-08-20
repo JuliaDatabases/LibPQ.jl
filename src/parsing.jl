@@ -344,6 +344,28 @@ function pqparse(::Type{Date}, ptr::Ptr)
     return POSTGRES_EPOCH_DATE + Day(ntoh(unsafe_load(Ptr{Int32}(ptr))))
 end
 
+function pqparse(::Type{InfExtendedTime{T}}, ptr::Ptr) where T<:Dates.AbstractDateTime
+    microseconds = ntoh(unsafe_load(Ptr{Int64}(ptr)))
+    if microseconds == typemax(Int64)
+        return InfExtendedTime{T}(∞)
+    elseif microseconds == typemin(Int64)
+        return InfExtendedTime{T}(-∞)
+    end
+
+    return InfExtendedTime{T}(pqparse(T, ptr))
+end
+
+function pqparse(::Type{InfExtendedTime{T}}, ptr::Ptr) where T<:Date
+    microseconds = ntoh(unsafe_load(Ptr{Int32}(ptr)))
+    if microseconds == typemax(Int32)
+        return InfExtendedTime{T}(∞)
+    elseif microseconds == typemin(Int32)
+        return InfExtendedTime{T}(-∞)
+    end
+
+    return InfExtendedTime{T}(pqparse(T, ptr))
+end
+
 function generate_binary_date_parser(symbol)
     @eval function Base.parse(
         ::Type{T}, pqv::PQBinaryValue{$(oid(symbol))}

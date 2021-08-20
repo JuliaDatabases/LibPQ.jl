@@ -1149,17 +1149,13 @@ end
 
             @testset "Parsing" begin
 
-                binary_not_implemented_pgtypes = [
-                    "numeric",
-                    "numrange",
-                ]
+                binary_not_implemented_pgtypes = ["numeric", "numrange"]
                 binary_not_implemented_types = [
                     Decimal,
                     Time,
                     Dates.CompoundPeriod,
                     Array,
                     OffsetArray,
-                    InfExtendedTime,
                 ]
 
                 @testset for binary_format in (LibPQ.TEXT, LibPQ.BINARY)
@@ -1395,8 +1391,8 @@ end
                             ("'-infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(-∞)),
                             ("'infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(∞)),
                             ("'-infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(-∞)),
-                            # ("'[2004-10-19 10:23:54-02, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ∞)),
-                            # ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{InfExtendedTime{ZonedDateTime}, Open, Open}(-∞, ∞)),
+                            ("'[2004-10-19 10:23:54-02, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ∞)),
+                            ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{InfExtendedTime{ZonedDateTime}, Open, Open}(-∞, ∞)),
                         ]
 
                         for (test_str, typ, data) in test_data
