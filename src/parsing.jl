@@ -326,17 +326,18 @@ end
 
 # All postgresql timestamptz are stored in UTC time with the epoch of 2000-01-01.
 const POSTGRES_EPOCH_DATE = Date("2000-01-01")
+const POSTGRES_EPOCH_DATETIME = DateTime("2000-01-01")
 
 # Note: Because postgresql stores the values as a Microsecond in Int64, the max (infinite)
 # value of date time in postgresql when querying binary is 294277-01-09T04:00:54.775
 # and the minimum is -290278-12-22T19:59:05.225.
 function pqparse(::Type{ZonedDateTime}, ptr::Ptr)
-    return ZonedDateTime(POSTGRES_EPOCH_DATE, tz"UTC") +
-        Microsecond(ntoh(unsafe_load(Ptr{Int64}(ptr))))
+    dt = POSTGRES_EPOCH_DATETIME + Microsecond(ntoh(unsafe_load(Ptr{Int64}(ptr))))
+    return ZonedDateTime(dt, tz"UTC", from_utc=true)
 end
 
 function pqparse(::Type{DateTime}, ptr::Ptr)
-    return DateTime(POSTGRES_EPOCH_DATE) + Microsecond(ntoh(unsafe_load(Ptr{Int64}(ptr))))
+    return POSTGRES_EPOCH_DATETIME + Microsecond(ntoh(unsafe_load(Ptr{Int64}(ptr))))
 end
 
 function pqparse(::Type{Date}, ptr::Ptr)
@@ -433,9 +434,8 @@ function pqparse(::Type{Dates.CompoundPeriod}, str::AbstractString)
     return Dates.CompoundPeriod(periods)
 end
 
-
 ## ranges
-_RANGE_TYPE_MAP = Dict{Symbol, Type}()
+_RANGE_TYPE_MAP = Dict{Symbol,Type}()
 _RANGE_TYPE_MAP[:int4range] = Int32
 _RANGE_TYPE_MAP[:int8range] = Int64
 _RANGE_TYPE_MAP[:numrange] = Decimal
@@ -461,8 +461,9 @@ const RANGE_LOWER_BOUND_NULL =      0b00100000
 const RANGE_UPPER_BOUND_NULL =      0b01000000
 
 function generate_range_binary_parser(symbol)
-    @eval function Base.parse(::Type{Interval{T}}, pqv::PQBinaryValue{$(oid(symbol))}) where T
-
+    @eval function Base.parse(
+        ::Type{Interval{T}}, pqv::PQBinaryValue{$(oid(symbol))}
+    ) where T
         current_pointer = data_pointer(pqv)
         flags = ntoh(unsafe_load(Ptr{UInt8}(current_pointer)))
         current_pointer += sizeof(UInt8)
@@ -491,15 +492,14 @@ function generate_range_binary_parser(symbol)
             upper_bound = !iszero(flags & RANGE_UPPER_BOUND_INCLUSIVE) ? Closed : Open
         end
 
-        return Interval{
-            T,
-            lower_bound,
-            upper_bound,
-        }(lower_value, upper_value)
+        return Interval{T,lower_bound,upper_bound}(lower_value, upper_value)
     end
 end
 
-foreach(generate_range_binary_parser, (:int4range, :int8range, :tsrange, :tstzrange, :daterange))
+foreach(
+    generate_range_binary_parser,
+    (:int4range, :int8range, :tsrange, :tstzrange, :daterange),
+)
 
 ## arrays
 # numeric arrays never have double quotes and always use ',' as a separator
