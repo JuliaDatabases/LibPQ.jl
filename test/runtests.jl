@@ -1387,6 +1387,8 @@ end
                             ("0::int8", DateTime, DateTime(1970, 1, 1, 0)),
                             ("0::int8", ZonedDateTime, ZonedDateTime(1970, 1, 1, 0, tz"UTC")),
                             ("'{{{1,2,3},{4,5,6}}}'::int2[]", AbstractArray{Int16}, reshape(Int16[1 2 3; 4 5 6], 1, 2, 3)),
+                            ("DATE '2017-01-31'", InfExtendedTime{Date}, InfExtendedTime{Date}(Date(2017, 1, 31))),
+                            ("'infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(∞)),
                             ("'infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(∞)),
                             ("'-infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(-∞)),
                             ("'infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(∞)),

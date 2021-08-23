@@ -333,7 +333,7 @@ const POSTGRES_EPOCH_DATETIME = DateTime("2000-01-01")
 # and the minimum is -290278-12-22T19:59:05.225.
 function pqparse(::Type{ZonedDateTime}, ptr::Ptr)
     dt = POSTGRES_EPOCH_DATETIME + Microsecond(ntoh(unsafe_load(Ptr{Int64}(ptr))))
-    return ZonedDateTime(dt, tz"UTC", from_utc=true)
+    return ZonedDateTime(dt, tz"UTC"; from_utc=true)
 end
 
 function pqparse(::Type{DateTime}, ptr::Ptr)
@@ -519,8 +519,7 @@ function generate_range_binary_parser(symbol)
 end
 
 foreach(
-    generate_range_binary_parser,
-    (:int4range, :int8range, :tsrange, :tstzrange, :daterange),
+    generate_range_binary_parser, (:int4range, :int8range, :tsrange, :tstzrange, :daterange),
 )
 
 ## arrays
