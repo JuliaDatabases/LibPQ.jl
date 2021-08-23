@@ -519,7 +519,7 @@ function generate_range_binary_parser(symbol)
 end
 
 foreach(
-    generate_range_binary_parser, (:int4range, :int8range, :tsrange, :tstzrange, :daterange),
+    generate_range_binary_parser, (:int4range, :int8range, :tsrange, :tstzrange, :daterange)
 )
 
 ## arrays
