@@ -1208,54 +1208,20 @@ end
                             ("TIMESTAMP '2004-10-19 10:23:54'", DateTime(2004, 10, 19, 10, 23, 54)),
                             ("TIMESTAMP '2004-10-19 10:23:54.123'", DateTime(2004, 10, 19, 10, 23, 54,123)),
                             ("TIMESTAMP '2004-10-19 10:23:54.1234'", DateTime(2004, 10, 19, 10, 23, 54,123)),
-                            (
-                                "'infinity'::timestamp",
-                                Dict(
-                                    LibPQ.TEXT => typemax(DateTime),
-                                    LibPQ.BINARY => DateTime(294277, 01, 09, 04, 00, 54, 775),
-                                ),
-                            ),
-                            (
-                                "'-infinity'::timestamp",
-                                Dict(
-                                    LibPQ.TEXT => typemin(DateTime),
-                                    LibPQ.BINARY => DateTime(-290278, 12, 22, 19, 59, 05, 225),
-                                ),
-                            ),
+                            ("'infinity'::timestamp", typemax(DateTime)),
+                            ("'infinity'::timestamp", typemax(DateTime)),
+                            ("'-infinity'::timestamp", typemin(DateTime)),
                             ("'epoch'::timestamp", DateTime(1970, 1, 1, 0, 0, 0)),
                             ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-00'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC")),
                             ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-02'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC-2")),
                             ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54+10'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC+10")),
-                            (
-                                "'infinity'::timestamptz",
-                                Dict(
-                                    LibPQ.TEXT => ZonedDateTime(typemax(DateTime), tz"UTC"),
-                                    LibPQ.BINARY => ZonedDateTime(294277, 1, 9, 4, 0, 54, 775, tz"UTC"),
-                                ),
-                            ),
-                            (
-                                "'-infinity'::timestamptz",
-                                Dict(
-                                    LibPQ.TEXT => ZonedDateTime(typemin(DateTime), tz"UTC"),
-                                    LibPQ.BINARY => ZonedDateTime(-290278, 12, 22, 19, 59, 5, 225, tz"UTC"),
-                                ),
-                            ),
+                            ("TIMESTAMP WITH TIME ZONE '294276-12-31T23:59:59.999'", ZonedDateTime(294276, 12, 31, 23, 59, 59, 999, tz"UTC")),
+                            ("'infinity'::timestamptz", ZonedDateTime(typemax(DateTime), tz"UTC")),
+                            ("'-infinity'::timestamptz", ZonedDateTime(typemin(DateTime), tz"UTC")),
                             ("'epoch'::timestamptz", ZonedDateTime(1970, 1, 1, 0, 0, 0, tz"UTC")),
                             ("DATE '2017-01-31'", Date(2017, 1, 31)),
-                            (
-                                "'infinity'::date",
-                                Dict(
-                                    LibPQ.TEXT => typemax(Date),
-                                    LibPQ.BINARY => Date(5881610, 07, 11),
-                                ),
-                            ),
-                            (
-                                "'-infinity'::date",
-                                Dict(
-                                    LibPQ.TEXT => typemin(Date),
-                                    LibPQ.BINARY => Date(-5877611, 06, 22),
-                                ),
-                            ),
+                            ("'infinity'::date", typemax(Date)),
+                            ("'-infinity'::date", typemin(Date)),
                             ("TIME '13:13:13.131'", Time(13, 13, 13, 131)),
                             ("TIME '13:13:13.131242'", Time(13, 13, 13, 131)),
                             ("TIME '01:01:01'", Time(1, 1, 1)),
@@ -1298,20 +1264,8 @@ end
                             ("'[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange", Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))),
                             ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
                             ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(2004, 10, 19, 13, 23, 54, tz"UTC"))),
-                            (
-                                "'[2004-10-19 10:23:54-02, Infinity)'::tstzrange",
-                                Dict(
-                                    LibPQ.TEXT => Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC")),
-                                    LibPQ.BINARY => Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(294277, 1, 9, 4, 0, 54, 775, tz"UTC")),
-                                ),
-                            ),
-                            (
-                                "'(-Infinity, Infinity)'::tstzrange",
-                                Dict(
-                                    LibPQ.TEXT => Interval{Open, Open}(ZonedDateTime(typemin(DateTime), tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC")),
-                                    LibPQ.BINARY => Interval{Open, Open}(ZonedDateTime(-290278, 12, 22, 19, 59, 5, 225, tz"UTC"), ZonedDateTime(294277, 1, 9, 4, 0, 54, 775, tz"UTC")),
-                                ),
-                            ),
+                            ("'[2004-10-19 10:23:54-02, Infinity)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"))),
+                            ("'(-Infinity, Infinity)'::tstzrange", Interval{Open, Open}(ZonedDateTime(typemin(DateTime), tz"UTC"), ZonedDateTime(typemax(DateTime), tz"UTC"))),
                             ("'[2018/01/01, 2018/02/02)'::daterange", Interval{Closed, Open}(Date(2018, 1, 1), Date(2018, 2, 2))),
                             # Unbounded ranges
                             ("'[3,)'::int4range", Interval{Int32}(3, nothing)),
@@ -1332,12 +1286,6 @@ end
                                 "SELECT $test_str;";
                                 binary_format=binary_format,
                             )
-
-                            # Some date is different between text and binary format
-                            # (for example, 'infinity'::timestamp)
-                            if data isa Dict
-                                data = data[binary_format]
-                            end
 
                             try
                                 @test LibPQ.num_rows(result) == 1

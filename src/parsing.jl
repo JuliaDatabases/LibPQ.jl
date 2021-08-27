@@ -137,7 +137,9 @@ function pqparse end
 # Fallback method
 pqparse(::Type{T}, str::AbstractString) where T = parse(T, str)
 
-pqparse(::Type{T}, ptr::Ptr) where T = return convert(T, ntoh(unsafe_load(ptr)))
+function pqparse(::Type{T}, ptr::Ptr{UInt8}) where T<:Number
+    return ntoh(unsafe_load(Ptr{T}(ptr)))
+end
 
 # allow parsing as a Symbol anything which works as a String
 pqparse(::Type{Symbol}, str::AbstractString) = Symbol(str)
@@ -146,7 +148,7 @@ function generate_binary_parser(symbol)
     @eval function Base.parse(
         ::Type{T}, pqv::PQBinaryValue{$(oid(symbol))}
     ) where T<:Number
-        return pqparse(T, Ptr{$(_DEFAULT_TYPE_MAP[symbol])}(data_pointer(pqv)))
+        return convert(T, pqparse($(_DEFAULT_TYPE_MAP[symbol]), data_pointer(pqv)))
     end
 end
 
@@ -331,20 +333,44 @@ const POSTGRES_EPOCH_DATETIME = DateTime("2000-01-01")
 # Note: Because postgresql stores the values as a Microsecond in Int64, the max (infinite)
 # value of date time in postgresql when querying binary is 294277-01-09T04:00:54.775
 # and the minimum is -290278-12-22T19:59:05.225.
-function pqparse(::Type{ZonedDateTime}, ptr::Ptr)
-    dt = POSTGRES_EPOCH_DATETIME + Microsecond(ntoh(unsafe_load(Ptr{Int64}(ptr))))
+function pqparse(::Type{ZonedDateTime}, ptr::Ptr{UInt8})
+    value = ntoh(unsafe_load(Ptr{Int64}(ptr)))
+    if value == typemax(Int64)
+        depwarn_timetype_inf()
+        return ZonedDateTime(typemax(DateTime), tz"UTC")
+    elseif value == typemin(Int64)
+        depwarn_timetype_inf()
+        return ZonedDateTime(typemin(DateTime), tz"UTC")
+    end
+    dt = POSTGRES_EPOCH_DATETIME + Microsecond(value)
     return ZonedDateTime(dt, tz"UTC"; from_utc=true)
 end
 
-function pqparse(::Type{DateTime}, ptr::Ptr)
+function pqparse(::Type{DateTime}, ptr::Ptr{UInt8})
+    value = ntoh(unsafe_load(Ptr{Int64}(ptr)))
+    if value == typemax(Int64)
+        depwarn_timetype_inf()
+        return typemax(DateTime)
+    elseif value == typemin(Int64)
+        depwarn_timetype_inf()
+        return typemin(DateTime)
+    end
     return POSTGRES_EPOCH_DATETIME + Microsecond(ntoh(unsafe_load(Ptr{Int64}(ptr))))
 end
 
-function pqparse(::Type{Date}, ptr::Ptr)
-    return POSTGRES_EPOCH_DATE + Day(ntoh(unsafe_load(Ptr{Int32}(ptr))))
+function pqparse(::Type{Date}, ptr::Ptr{UInt8})
+    value = ntoh(unsafe_load(Ptr{Int32}(ptr)))
+    if value == typemax(Int32)
+        depwarn_timetype_inf()
+        return typemax(Date)
+    elseif value == typemin(Int32)
+        depwarn_timetype_inf()
+        return typemin(Date)
+    end
+    return POSTGRES_EPOCH_DATE + Day(value)
 end
 
-function pqparse(::Type{InfExtendedTime{T}}, ptr::Ptr) where T<:Dates.AbstractDateTime
+function pqparse(::Type{InfExtendedTime{T}}, ptr::Ptr{UInt8}) where T<:Dates.AbstractDateTime
     microseconds = ntoh(unsafe_load(Ptr{Int64}(ptr)))
     if microseconds == typemax(Int64)
         return InfExtendedTime{T}(∞)
@@ -355,7 +381,7 @@ function pqparse(::Type{InfExtendedTime{T}}, ptr::Ptr) where T<:Dates.AbstractDa
     return InfExtendedTime{T}(pqparse(T, ptr))
 end
 
-function pqparse(::Type{InfExtendedTime{T}}, ptr::Ptr) where T<:Date
+function pqparse(::Type{InfExtendedTime{T}}, ptr::Ptr{UInt8}) where T<:Date
     microseconds = ntoh(unsafe_load(Ptr{Int32}(ptr)))
     if microseconds == typemax(Int32)
         return InfExtendedTime{T}(∞)
@@ -457,15 +483,12 @@ function pqparse(::Type{Dates.CompoundPeriod}, str::AbstractString)
 end
 
 ## ranges
-_RANGE_TYPE_MAP = Dict{Symbol,Type}()
-_RANGE_TYPE_MAP[:int4range] = Int32
-_RANGE_TYPE_MAP[:int8range] = Int64
-_RANGE_TYPE_MAP[:numrange] = Decimal
-_RANGE_TYPE_MAP[:tsrange] = DateTime
-_RANGE_TYPE_MAP[:tstzrange] = ZonedDateTime
-_RANGE_TYPE_MAP[:daterange] = Date
-
-foreach(x -> _DEFAULT_TYPE_MAP[x] = Interval{_RANGE_TYPE_MAP[x]}, keys(_RANGE_TYPE_MAP))
+_DEFAULT_TYPE_MAP[:int4range] = Interval{Int32}
+_DEFAULT_TYPE_MAP[:int8range] = Interval{Int64}
+_DEFAULT_TYPE_MAP[:numrange] = Interval{Decimal}
+_DEFAULT_TYPE_MAP[:tsrange] = Interval{DateTime}
+_DEFAULT_TYPE_MAP[:tstzrange] = Interval{ZonedDateTime}
+_DEFAULT_TYPE_MAP[:daterange] = Interval{Date}
 
 function pqparse(::Type{Interval{T}}, str::AbstractString) where T
     str == "empty" && return Interval{T}()
@@ -498,7 +521,7 @@ function generate_range_binary_parser(symbol)
         if iszero(flags & (RANGE_LOWER_BOUND_INFINITIY | RANGE_LOWER_BOUND_NULL))
             lower_value_length = ntoh(unsafe_load(Ptr{UInt32}(current_pointer)))
             current_pointer += sizeof(UInt32)
-            lower_value = pqparse(T, Ptr{$(_RANGE_TYPE_MAP[symbol])}(current_pointer))
+            lower_value = pqparse(T, current_pointer)
             current_pointer += lower_value_length
             lower_bound = !iszero(flags & RANGE_LOWER_BOUND_INCLUSIVE) ? Closed : Open
         end
@@ -509,7 +532,7 @@ function generate_range_binary_parser(symbol)
         if iszero(flags & (RANGE_UPPER_BOUND_INFINITIY | RANGE_UPPER_BOUND_NULL))
             upper_value_length = ntoh(unsafe_load(Ptr{UInt32}(current_pointer)))
             current_pointer += sizeof(UInt32)
-            upper_value = pqparse(T, Ptr{$(_RANGE_TYPE_MAP[symbol])}(current_pointer))
+            upper_value = pqparse(T, current_pointer)
             current_pointer += upper_value_length
             upper_bound = !iszero(flags & RANGE_UPPER_BOUND_INCLUSIVE) ? Closed : Open
         end
