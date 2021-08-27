@@ -1149,22 +1149,13 @@ end
 
             @testset "Parsing" begin
 
-                binary_not_implemented_pgtypes = [
-                    "numeric",
-                    "timestamp",
-                    "timestamptz",
-                    "tstzrange",
-                ]
+                binary_not_implemented_pgtypes = ["numeric", "numrange"]
                 binary_not_implemented_types = [
                     Decimal,
-                    DateTime,
-                    ZonedDateTime,
-                    Date,
                     Time,
                     Dates.CompoundPeriod,
                     Array,
                     OffsetArray,
-                    Interval,
                 ]
 
                 @testset for binary_format in (LibPQ.TEXT, LibPQ.BINARY)
@@ -1218,11 +1209,13 @@ end
                             ("TIMESTAMP '2004-10-19 10:23:54.123'", DateTime(2004, 10, 19, 10, 23, 54,123)),
                             ("TIMESTAMP '2004-10-19 10:23:54.1234'", DateTime(2004, 10, 19, 10, 23, 54,123)),
                             ("'infinity'::timestamp", typemax(DateTime)),
+                            ("'infinity'::timestamp", typemax(DateTime)),
                             ("'-infinity'::timestamp", typemin(DateTime)),
                             ("'epoch'::timestamp", DateTime(1970, 1, 1, 0, 0, 0)),
                             ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-00'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC")),
                             ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54-02'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC-2")),
                             ("TIMESTAMP WITH TIME ZONE '2004-10-19 10:23:54+10'", ZonedDateTime(2004, 10, 19, 10, 23, 54, tz"UTC+10")),
+                            ("TIMESTAMP WITH TIME ZONE '294276-12-31T23:59:59.999'", ZonedDateTime(294276, 12, 31, 23, 59, 59, 999, tz"UTC")),
                             ("'infinity'::timestamptz", ZonedDateTime(typemax(DateTime), tz"UTC")),
                             ("'-infinity'::timestamptz", ZonedDateTime(typemin(DateTime), tz"UTC")),
                             ("'epoch'::timestamptz", ZonedDateTime(1970, 1, 1, 0, 0, 0, tz"UTC")),
@@ -1301,7 +1294,10 @@ end
 
                                 oid = LibPQ.column_oids(result)[1]
                                 func = result.column_funcs[1]
-                                if binary_format && any(T -> data isa T, binary_not_implemented_types)
+                                if binary_format && (
+                                    any(T -> data isa T, binary_not_implemented_types) ||
+                                    any(occursin.(binary_not_implemented_pgtypes, test_str))
+                                )
                                     @test_broken parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
                                     @test_broken isequal(parsed, data)
                                     @test_broken typeof(parsed) == typeof(data)
@@ -1339,6 +1335,8 @@ end
                             ("0::int8", DateTime, DateTime(1970, 1, 1, 0)),
                             ("0::int8", ZonedDateTime, ZonedDateTime(1970, 1, 1, 0, tz"UTC")),
                             ("'{{{1,2,3},{4,5,6}}}'::int2[]", AbstractArray{Int16}, reshape(Int16[1 2 3; 4 5 6], 1, 2, 3)),
+                            ("DATE '2017-01-31'", InfExtendedTime{Date}, InfExtendedTime{Date}(Date(2017, 1, 31))),
+                            ("'infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(∞)),
                             ("'infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(∞)),
                             ("'-infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(-∞)),
                             ("'infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(∞)),

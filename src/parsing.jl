@@ -137,6 +137,10 @@ function pqparse end
 # Fallback method
 pqparse(::Type{T}, str::AbstractString) where T = parse(T, str)
 
+function pqparse(::Type{T}, ptr::Ptr{UInt8}) where T<:Number
+    return ntoh(unsafe_load(Ptr{T}(ptr)))
+end
+
 # allow parsing as a Symbol anything which works as a String
 pqparse(::Type{Symbol}, str::AbstractString) = Symbol(str)
 
@@ -144,9 +148,7 @@ function generate_binary_parser(symbol)
     @eval function Base.parse(
         ::Type{T}, pqv::PQBinaryValue{$(oid(symbol))}
     ) where T<:Number
-        return convert(
-            T, ntoh(unsafe_load(Ptr{$(_DEFAULT_TYPE_MAP[symbol])}(data_pointer(pqv))))
-        )
+        return convert(T, pqparse($(_DEFAULT_TYPE_MAP[symbol]), data_pointer(pqv)))
     end
 end
 
@@ -316,13 +318,91 @@ function pqparse(::Type{InfExtendedTime{T}}, str::AbstractString) where T<:Dates
 end
 
 # UNIX timestamps
-function Base.parse(::Type{DateTime}, pqv::PQTextValue{PQ_SYSTEM_TYPES[:int8]})
+function Base.parse(::Type{DateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
     return unix2datetime(parse(Int64, pqv))
 end
 
-function Base.parse(::Type{ZonedDateTime}, pqv::PQTextValue{PQ_SYSTEM_TYPES[:int8]})
+function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
     return TimeZones.unix2zdt(parse(Int64, pqv))
 end
+
+# All postgresql timestamptz are stored in UTC time with the epoch of 2000-01-01.
+const POSTGRES_EPOCH_DATE = Date("2000-01-01")
+const POSTGRES_EPOCH_DATETIME = DateTime("2000-01-01")
+
+# Note: Because postgresql stores the values as a Microsecond in Int64, the max (infinite)
+# value of date time in postgresql when querying binary is 294277-01-09T04:00:54.775
+# and the minimum is -290278-12-22T19:59:05.225.
+function pqparse(::Type{ZonedDateTime}, ptr::Ptr{UInt8})
+    value = ntoh(unsafe_load(Ptr{Int64}(ptr)))
+    if value == typemax(Int64)
+        depwarn_timetype_inf()
+        return ZonedDateTime(typemax(DateTime), tz"UTC")
+    elseif value == typemin(Int64)
+        depwarn_timetype_inf()
+        return ZonedDateTime(typemin(DateTime), tz"UTC")
+    end
+    dt = POSTGRES_EPOCH_DATETIME + Microsecond(value)
+    return ZonedDateTime(dt, tz"UTC"; from_utc=true)
+end
+
+function pqparse(::Type{DateTime}, ptr::Ptr{UInt8})
+    value = ntoh(unsafe_load(Ptr{Int64}(ptr)))
+    if value == typemax(Int64)
+        depwarn_timetype_inf()
+        return typemax(DateTime)
+    elseif value == typemin(Int64)
+        depwarn_timetype_inf()
+        return typemin(DateTime)
+    end
+    return POSTGRES_EPOCH_DATETIME + Microsecond(ntoh(unsafe_load(Ptr{Int64}(ptr))))
+end
+
+function pqparse(::Type{Date}, ptr::Ptr{UInt8})
+    value = ntoh(unsafe_load(Ptr{Int32}(ptr)))
+    if value == typemax(Int32)
+        depwarn_timetype_inf()
+        return typemax(Date)
+    elseif value == typemin(Int32)
+        depwarn_timetype_inf()
+        return typemin(Date)
+    end
+    return POSTGRES_EPOCH_DATE + Day(value)
+end
+
+function pqparse(
+    ::Type{InfExtendedTime{T}}, ptr::Ptr{UInt8}
+) where T<:Dates.AbstractDateTime
+    microseconds = ntoh(unsafe_load(Ptr{Int64}(ptr)))
+    if microseconds == typemax(Int64)
+        return InfExtendedTime{T}(∞)
+    elseif microseconds == typemin(Int64)
+        return InfExtendedTime{T}(-∞)
+    end
+
+    return InfExtendedTime{T}(pqparse(T, ptr))
+end
+
+function pqparse(::Type{InfExtendedTime{T}}, ptr::Ptr{UInt8}) where T<:Date
+    microseconds = ntoh(unsafe_load(Ptr{Int32}(ptr)))
+    if microseconds == typemax(Int32)
+        return InfExtendedTime{T}(∞)
+    elseif microseconds == typemin(Int32)
+        return InfExtendedTime{T}(-∞)
+    end
+
+    return InfExtendedTime{T}(pqparse(T, ptr))
+end
+
+function generate_binary_date_parser(symbol)
+    @eval function Base.parse(
+        ::Type{T}, pqv::PQBinaryValue{$(oid(symbol))}
+    ) where T<:TimeType
+        return pqparse(T, data_pointer(pqv))
+    end
+end
+
+foreach(generate_binary_date_parser, (:timestamptz, :timestamp, :date))
 
 ## intervals
 # iso_8601
@@ -416,6 +496,56 @@ function pqparse(::Type{Interval{T}}, str::AbstractString) where T
     str == "empty" && return Interval{T}()
     return parse(Interval{T}, str; element_parser=pqparse)
 end
+
+# How to parse range binary fetch is shown here
+# https://github.com/postgres/postgres/blob/31079a4a8e66e56e48bad94d380fa6224e9ffa0d/src/backend/utils/adt/rangetypes.c#L162
+const RANGE_EMPTY =                 0b00000001
+const RANGE_LOWER_BOUND_INCLUSIVE = 0b00000010
+const RANGE_UPPER_BOUND_INCLUSIVE = 0b00000100
+const RANGE_LOWER_BOUND_INFINITIY = 0b00001000
+const RANGE_UPPER_BOUND_INFINITIY = 0b00010000
+const RANGE_LOWER_BOUND_NULL =      0b00100000
+const RANGE_UPPER_BOUND_NULL =      0b01000000
+
+function generate_range_binary_parser(symbol)
+    @eval function Base.parse(
+        ::Type{Interval{T}}, pqv::PQBinaryValue{$(oid(symbol))}
+    ) where T
+        current_pointer = data_pointer(pqv)
+        flags = ntoh(unsafe_load(Ptr{UInt8}(current_pointer)))
+        current_pointer += sizeof(UInt8)
+
+        Bool(flags & RANGE_EMPTY) && return Interval{T}()
+
+        lower_value = nothing
+        lower_bound = Unbounded
+        # if there is a lower bound
+        if iszero(flags & (RANGE_LOWER_BOUND_INFINITIY | RANGE_LOWER_BOUND_NULL))
+            lower_value_length = ntoh(unsafe_load(Ptr{UInt32}(current_pointer)))
+            current_pointer += sizeof(UInt32)
+            lower_value = pqparse(T, current_pointer)
+            current_pointer += lower_value_length
+            lower_bound = !iszero(flags & RANGE_LOWER_BOUND_INCLUSIVE) ? Closed : Open
+        end
+
+        upper_value = nothing
+        upper_bound = Unbounded
+        # if there is a upper bound
+        if iszero(flags & (RANGE_UPPER_BOUND_INFINITIY | RANGE_UPPER_BOUND_NULL))
+            upper_value_length = ntoh(unsafe_load(Ptr{UInt32}(current_pointer)))
+            current_pointer += sizeof(UInt32)
+            upper_value = pqparse(T, current_pointer)
+            current_pointer += upper_value_length
+            upper_bound = !iszero(flags & RANGE_UPPER_BOUND_INCLUSIVE) ? Closed : Open
+        end
+
+        return Interval{T,lower_bound,upper_bound}(lower_value, upper_value)
+    end
+end
+
+foreach(
+    generate_range_binary_parser, (:int4range, :int8range, :tsrange, :tstzrange, :daterange)
+)
 
 ## arrays
 # numeric arrays never have double quotes and always use ',' as a separator
