@@ -370,7 +370,9 @@ function pqparse(::Type{Date}, ptr::Ptr{UInt8})
     return POSTGRES_EPOCH_DATE + Day(value)
 end
 
-function pqparse(::Type{InfExtendedTime{T}}, ptr::Ptr{UInt8}) where T<:Dates.AbstractDateTime
+function pqparse(
+    ::Type{InfExtendedTime{T}}, ptr::Ptr{UInt8}
+) where T<:Dates.AbstractDateTime
     microseconds = ntoh(unsafe_load(Ptr{Int64}(ptr)))
     if microseconds == typemax(Int64)
         return InfExtendedTime{T}(∞)
