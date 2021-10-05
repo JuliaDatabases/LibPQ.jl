@@ -35,9 +35,9 @@ function generate_error_codes(io, html=error_code_html())
     id_names = Set{String}()
 
     class_enum_io = IOBuffer()
-    println(class_enum_io, "@cenum(Class,")
+    println(class_enum_io, "@cenum(\n    Class,")
     error_enum_io = IOBuffer()
-    println(error_enum_io, "@cenum(ErrorCode,")
+    println(error_enum_io, "@cenum(\n    ErrorCode,")
     alias_io = IOBuffer()
     error_names_io = IOBuffer()
     println(error_names_io, "const ERROR_NAMES = Dict(")
@@ -53,7 +53,10 @@ function generate_error_codes(io, html=error_code_html())
             suffix = class in (SUCCESS_CLASS, WARNING_CLASSES...) ? "Class" : "ErrorClass"
 
             println(class_enum_io, "    $class,")
-            println(alias_io, "\n\nconst $(id_name)$(suffix) = PQResultError{$class}\n")
+            println(
+                alias_io,
+                "\n# $id_name\nconst $(id_name)$(suffix) = PQResultError{$class}\n",
+            )
         end
 
         if class in WARNING_CLASSES
@@ -70,7 +73,7 @@ function generate_error_codes(io, html=error_code_html())
 
         push!(id_names, id_name)
 
-        println(alias_io, "const $(id_name) = PQResultError{$class, $error_code}")
+        println(alias_io, "const $(id_name) = PQResultError{$class,$error_code}")
         println(error_enum_io, "    $error_code,")
         println(error_names_io, "    $id_name => \"$id_name\",")
     end
@@ -79,8 +82,10 @@ function generate_error_codes(io, html=error_code_html())
     class = "CUN"
     error_code = "EUNOWN"
     println(class_enum_io, "    $class,")
-    println(alias_io, "\n\nconst UnknownErrorClass = PQResultError{$class}\n")
-    println(alias_io, "const UnknownError = PQResultError{$class, $error_code}")
+    println(
+        alias_io, "\n# Unknown Error\nconst UnknownErrorClass = PQResultError{$class}\n"
+    )
+    println(alias_io, "const UnknownError = PQResultError{$class,$error_code}")
     println(error_enum_io, "    $error_code,")
     println(error_names_io, "    UnknownError => \"UnknownError\",")
 
