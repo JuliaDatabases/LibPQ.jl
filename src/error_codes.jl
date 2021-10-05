@@ -264,6 +264,7 @@
     E57P02,
     E57P03,
     E57P04,
+    E57P05,
     E58000,
     E58030,
     E58P01,
@@ -672,6 +673,7 @@ const AdminShutdown = PQResultError{C57, E57P01}
 const CrashShutdown = PQResultError{C57, E57P02}
 const CannotConnectNow = PQResultError{C57, E57P03}
 const DatabaseDropped = PQResultError{C57, E57P04}
+const IdleSessionTimeout = PQResultError{C57, E57P05}
 
 
 const SystemErrorErrorClass = PQResultError{C58}
@@ -961,6 +963,7 @@ const ERROR_NAMES = Dict(
     CrashShutdown => "CrashShutdown",
     CannotConnectNow => "CannotConnectNow",
     DatabaseDropped => "DatabaseDropped",
+    IdleSessionTimeout => "IdleSessionTimeout",
     SystemError => "SystemError",
     IoError => "IoError",
     UndefinedFile => "UndefinedFile",
