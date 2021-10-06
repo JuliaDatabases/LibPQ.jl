@@ -48,6 +48,10 @@ jobs:
           - os: ubuntu-latest
             version: 1
             arch: x64
+            postgresql-version: '13'
+          - os: ubuntu-latest
+            version: 1
+            arch: x64
             postgresql-version: '12'
           - os: ubuntu-latest
             version: 1
@@ -61,10 +65,6 @@ jobs:
             version: 1
             arch: x64
             postgresql-version: '9.6'
-          - os: ubuntu-latest
-            version: 1
-            arch: x64
-            postgresql-version: '9.5'
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
