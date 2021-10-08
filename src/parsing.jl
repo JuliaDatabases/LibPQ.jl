@@ -434,7 +434,7 @@ function _interval_regex()
     return Regex(String(take!(io)))
 end
 
-function _split_period(period::T, P) where {T}
+function _split_period(period::T, ::Type{P}) where {T<:Period,P<:Period}
     q, r = divrem(period, convert(T, P(1)))
     return P(q), r
 end
@@ -456,7 +456,7 @@ function _split_periods(months, days, time)
 end
 
 # Parse binary into postgres interval
-function Base.parse(::Type{Dates.CompoundPeriod}, pqv::PQBinaryValue{oid(:interval)})
+function Base.parse(::Type{Dates.CompoundPeriod}, pqv::PQBinaryValue{PQ_SYSTEM_TYPES[:interval]})
     current_pointer = data_pointer(pqv)
 
     time = Microsecond(ntoh(unsafe_load(Ptr{Int64}(current_pointer))))
