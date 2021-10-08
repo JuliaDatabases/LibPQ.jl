@@ -441,13 +441,13 @@ end
 
 # Splits internal interval types into the expected period types from
 # https://www.postgresql.org/docs/10/datatype-datetime.html#DATATYPE-INTERVAL-INPUT
-function _split_periods(months, days, time)
+function _split_periods(months, days, microseconds)
     periods = Period[]
 
     push!(periods, _split_period(months, Year)...)
     push!(periods, _split_period(days, Week)...)
 
-    seconds, ms = _split_period(time, Second)
+    seconds, ms = _split_period(microseconds, Second)
     minutes, seconds = _split_period(seconds, Minute)
     hours, minutes = _split_period(minutes, Hour)
 
@@ -463,7 +463,7 @@ function Base.parse(
 )
     current_pointer = data_pointer(pqv)
 
-    time = Microsecond(ntoh(unsafe_load(Ptr{Int64}(current_pointer))))
+    microsecond = Microsecond(ntoh(unsafe_load(Ptr{Int64}(current_pointer))))
     current_pointer += sizeof(Int64)
 
     day = Day(ntoh(unsafe_load(Ptr{Int32}(current_pointer))))
@@ -472,7 +472,7 @@ function Base.parse(
     month = Month(ntoh(unsafe_load(Ptr{Int32}(current_pointer))))
 
     # Split combined periods to match the output from text queries
-    return _split_periods(Month(month), Day(day), Microsecond(time))
+    return _split_periods(Month(month), Day(day), Microsecond(microsecond))
 end
 
 # parse the iso_8601 interval output format
