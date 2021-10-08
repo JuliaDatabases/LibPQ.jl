@@ -439,6 +439,8 @@ function _split_period(period::T, ::Type{P}) where {T<:Period,P<:Period}
     return P(q), r
 end
 
+# Splits internal interval types into the expected period types from
+# https://www.postgresql.org/docs/10/datatype-datetime.html#DATATYPE-INTERVAL-INPUT
 function _split_periods(months, days, time)
     periods = Period[]
 
@@ -456,7 +458,9 @@ function _split_periods(months, days, time)
 end
 
 # Parse binary into postgres interval
-function Base.parse(::Type{Dates.CompoundPeriod}, pqv::PQBinaryValue{PQ_SYSTEM_TYPES[:interval]})
+function Base.parse(
+    ::Type{Dates.CompoundPeriod}, pqv::PQBinaryValue{PQ_SYSTEM_TYPES[:interval]}
+)
     current_pointer = data_pointer(pqv)
 
     time = Microsecond(ntoh(unsafe_load(Ptr{Int64}(current_pointer))))
