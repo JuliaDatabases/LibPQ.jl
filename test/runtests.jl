@@ -1153,7 +1153,6 @@ end
                 binary_not_implemented_types = [
                     Decimal,
                     Time,
-                    Dates.CompoundPeriod,
                     Array,
                     OffsetArray,
                 ]
@@ -1235,6 +1234,11 @@ end
                             ("INTERVAL '1000 years 7 weeks'", Dates.CompoundPeriod(Period[Year(1000), Day(7 * 7)])),
                             ("INTERVAL '1 day -1 hour'", Dates.CompoundPeriod(Period[Day(1), Hour(-1)])),
                             ("INTERVAL '-1 month 1 day'", Dates.CompoundPeriod(Period[Month(-1), Day(1)])),
+                            # With fields specification
+                            ("INTERVAL '1 day 2:03:04' HOUR TO MINUTE", Dates.CompoundPeriod(Period[Day(1), Hour(2), Minute(3)])),
+                            # With precision
+                            ("INTERVAL '6.1001 seconds' SECOND(0)", Dates.CompoundPeriod(Period[Second(6)])),
+                            ("INTERVAL '6.1001 seconds' SECOND(2)", Dates.CompoundPeriod(Period[Second(6), Millisecond(100)])),
                             ("'{{{1,2,3},{4,5,6}}}'::int2[]", Array{Union{Int16, Missing}}(reshape(Int16[1 2 3; 4 5 6], 1, 2, 3))),
                             ("'{}'::int2[]", Union{Missing, Int16}[]),
                             ("'{{{1,2,3},{4,5,6}}}'::int4[]", Array{Union{Int32, Missing}}(reshape(Int32[1 2 3; 4 5 6], 1, 2, 3))),
