@@ -434,6 +434,47 @@ function _interval_regex()
     return Regex(String(take!(io)))
 end
 
+function _split_period(period::T, ::Type{P}) where {T<:Period,P<:Period}
+    q, r = divrem(period, convert(T, P(1)))
+    return P(q), r
+end
+
+# Splits internal interval types into the expected period types from
+# https://www.postgresql.org/docs/10/datatype-datetime.html#DATATYPE-INTERVAL-INPUT
+function _split_periods(months, days, microseconds)
+    periods = Period[]
+
+    push!(periods, _split_period(months, Year)...)
+    push!(periods, _split_period(days, Week)...)
+
+    seconds, ms = _split_period(microseconds, Second)
+    minutes, seconds = _split_period(seconds, Minute)
+    hours, minutes = _split_period(minutes, Hour)
+
+    push!(periods, hours, minutes, seconds, ms)
+    filter!(!iszero, periods)
+
+    return Dates.CompoundPeriod(periods)
+end
+
+# Parse binary into postgres interval
+function Base.parse(
+    ::Type{Dates.CompoundPeriod}, pqv::PQBinaryValue{PQ_SYSTEM_TYPES[:interval]}
+)
+    current_pointer = data_pointer(pqv)
+
+    microsecond = Microsecond(ntoh(unsafe_load(Ptr{Int64}(current_pointer))))
+    current_pointer += sizeof(Int64)
+
+    day = Day(ntoh(unsafe_load(Ptr{Int32}(current_pointer))))
+    current_pointer += sizeof(Int32)
+
+    month = Month(ntoh(unsafe_load(Ptr{Int32}(current_pointer))))
+
+    # Split combined periods to match the output from text queries
+    return _split_periods(Month(month), Day(day), Microsecond(microsecond))
+end
+
 # parse the iso_8601 interval output format
 # https://www.postgresql.org/docs/10/datatype-datetime.html#DATATYPE-INTERVAL-OUTPUT
 function pqparse(::Type{Dates.CompoundPeriod}, str::AbstractString)
