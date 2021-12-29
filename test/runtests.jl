@@ -491,7 +491,12 @@ end
             @test isempty(LibPQ.error_message(result))
             close(result)
 
-            df = DataFrame(CSV.File(databuf, stringtype=String))
+            @static if VERSION >= v"1.3.0-1"
+                csvfile = CSV.File(databuf, stringtype=String)
+            else
+                csvfile = CSV.File(databuf)
+            end
+            df = DataFrame(csvfile)
             @test isequal(data, df)
 
             close(conn)
