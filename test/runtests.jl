@@ -505,7 +505,7 @@ end
         @testset "Wrong COPY TO" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
 
-            # test CopyOut!
+            # test CopyOut! with an error
             databuf = IOBuffer()
             copyout = LibPQ.CopyOut!(databuf, "SELECT libpqjl_test;")
 
@@ -516,6 +516,10 @@ end
             err_msg = LibPQ.error_message(result)
             @test occursin("ERROR", err_msg)
             close(result)
+
+            # parameters are not supported
+            copyout = LibPQ.CopyOut!(databuf, "COPY (SELECT * FROM libpqjl_test WHERE no_nulls = \$1) TO STDOUT (FORMAT CSV, HEADER);")
+            @test_throws ArgumentError execute(conn, copyout, ['z'])
 
             close(conn)
         end

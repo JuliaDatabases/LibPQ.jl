@@ -119,16 +119,12 @@ function execute(
 )
     level = throw_error ? error : warn
     if parameters !== nothing
-        string_params = string_parameters(parameters)
-        pointer_params = parameter_pointers(string_params)
+        # https://postgrespro.com/list/thread-id/1893680
+        throw(ArgumentError("COPY can't take any parameter"))
     end
 
     copy_end_result = lock(jl_conn) do
-        if parameters === nothing
-            result = _execute(jl_conn.conn, copy.query)
-        else
-            result = _execute(jl_conn.conn, copy.query, pointer_params)
-        end
+        result = _execute(jl_conn.conn, copy.query)
         result_status = libpq_c.PQresultStatus(result)
 
         if result_status != libpq_c.PGRES_COPY_OUT
@@ -154,8 +150,8 @@ function execute(
         seekstart(io)  # rewind iobuffer so future user read will begin from start
         if -2 == status_code
             level(LOGGER, Errors.JLResultError(
-                    "PQgetCopyData error: $(error_message(jl_conn))"
-                ))
+                "PQgetCopyData error: $(error_message(jl_conn))"
+            ))
         end
 
         libpq_c.PQgetResult(jl_conn.conn)
