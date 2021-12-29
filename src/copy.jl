@@ -128,11 +128,9 @@ function execute(
         result_status = libpq_c.PQresultStatus(result)
 
         if result_status != libpq_c.PGRES_COPY_OUT
-            if !(result_status in (libpq_c.PGRES_BAD_RESPONSE, libpq_c.PGRES_FATAL_ERROR))
-                level(LOGGER, Errors.JLResultError(
-                    "Expected PGRES_COPY_OUT after COPY query, got $result_status"
-                ))
-            end
+            level(LOGGER, Errors.JLResultError(
+                "Expected PGRES_COPY_OUT after COPY query, got $result_status"
+            ))
             return result
         end
 
@@ -148,11 +146,7 @@ function execute(
             end
         end
         seekstart(io)  # rewind iobuffer so future user read will begin from start
-        if -2 == status_code
-            level(LOGGER, Errors.JLResultError(
-                "PQgetCopyData error: $(error_message(jl_conn))"
-            ))
-        end
+        -2 == status_code && level(LOGGER, Errors.JLResultError("PQgetCopyData error: $(error_message(jl_conn))"))
 
         libpq_c.PQgetResult(jl_conn.conn)
     end
