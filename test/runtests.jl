@@ -501,6 +501,24 @@ end
 
             close(conn)
         end
+
+        @testset "Wrong COPY TO" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+
+            # test CopyOut!
+            databuf = IOBuffer()
+            copyout = LibPQ.CopyOut!(databuf, "SELECT libpqjl_test;")
+
+            result = execute(conn, copyout; throw_error=false)
+            @test isopen(result)
+            @test status(result) == LibPQ.libpq_c.PGRES_FATAL_ERROR
+
+            err_msg = LibPQ.error_message(result)
+            @test occursin("ERROR", err_msg)
+            close(result)
+
+            close(conn)
+        end
     end
 
     @testset "LibPQ.Connection" begin
