@@ -378,7 +378,11 @@ function string_parameter(parameter::AbstractVector)
     return String(take!(io))
 end
 
-_array_element(el::AbstractString) = "\"$el\""
+function _array_element(el::AbstractString)
+    el = replace(el, "\\" => "\\\\")
+    el = replace(el, "\"" => "\\\"")
+    return "\"$el\""
+end
 _array_element(el::Missing) = "NULL"
 _array_element(el) = string_parameter(el)
 

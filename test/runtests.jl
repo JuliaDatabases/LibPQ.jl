@@ -1410,33 +1410,38 @@ end
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
             @testset "Arrays" begin
-                result = execute(conn, "SELECT 'foo' = ANY(\$1)", [["bar", "foo"]])
-                @test first(first(result))
-                close(result)
+                tests = (
+                    ("SELECT 'foo' = ANY(\$1)", [["bar", "foo"]]),
+                    ("SELECT 'foo' = ANY(\$1)", (["bar", "foo"],)),
+                    ("SELECT 'foo' = ANY(\$1)", [Any["bar", "foo"]]),
+                    ("SELECT 'foo' = ANY(\$1)", Any[Any["bar", "foo"]]),
+                    ("SELECT 'f\"oo' = ANY(\$1)", [["b\"ar", "f\"oo"]]),
+                    ("SELECT 'f\\oo' = ANY(\$1)", [["b\\ar", "f\\oo"]]),
+                    ("SELECT 'f\\\\oo' = ANY(\$1)", [["b\\\\ar", "f\\\\oo"]]),
+                    ("SELECT 'f\\\"oo' = ANY(\$1)", [["b\\\"ar", "f\\\"oo"]]),
+                    ("SELECT 'f\"\\oo' = ANY(\$1)", [["b\"\\ar", "f\"\\oo"]]),
+                    ("SELECT ARRAY[1, 2] = \$1", [[1, 2]]),
+                    ("SELECT ARRAY[1, 2] = \$1", Any[Any[1, 2]])
+                )
 
-                result = execute(conn, "SELECT 'foo' = ANY(\$1)", (["bar", "foo"],))
-                @test first(first(result))
-                close(result)
+                @testset for (query, arr) in tests
+                    result = execute(conn, query, arr)
+                    @test first(first(result))
+                    close(result)
+                end
 
-                result = execute(conn, "SELECT 'foo' = ANY(\$1)", [Any["bar", "foo"]])
-                @test first(first(result))
-                close(result)
+                tests = (
+                    ("SELECT 'foo' = ANY(\$1)", [["bar", "foobar"]]),
+                    ("SELECT 'f\\\\oo' = ANY(\$1)", [["b\\ar", "f\\oo"]]),
+                    ("SELECT 'f\\oo' = ANY(\$1)", [["b\\\\ar", "f\\\\oo"]])
+                )
 
-                result = execute(conn, "SELECT 'foo' = ANY(\$1)", Any[Any["bar", "foo"]])
-                @test first(first(result))
-                close(result)
+                @testset for (query, arr) in tests
+                    result = execute(conn, query, arr)
+                    @test !first(first(result))
+                    close(result)
+                end
 
-                result = execute(conn, "SELECT 'foo' = ANY(\$1)", [["bar", "foobar"]])
-                @test !first(first(result))
-                close(result)
-
-                result = execute(conn, "SELECT ARRAY[1, 2] = \$1", [[1, 2]])
-                @test first(first(result))
-                close(result)
-
-                result = execute(conn, "SELECT ARRAY[1, 2] = \$1", Any[Any[1, 2]])
-                @test first(first(result))
-                close(result)
             end
 
             @testset "Intervals" begin
