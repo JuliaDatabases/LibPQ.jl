@@ -5,7 +5,23 @@
 [![Build Status](https://travis-ci.com/invenia/LibPQ.jl.svg?branch=master)](https://travis-ci.com/invenia/LibPQ.jl)
 [![CodeCov](https://codecov.io/gh/invenia/LibPQ.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/invenia/LibPQ.jl)
 
+## Overview
+
+LibPQ.jl is a Julia wrapper for the PostgreSQL libpq C library. It provides the ability to:
+- Automatically install libpq via BinaryProvider for MacOS, GNU Linux, and Windows
+- Connect via DSN
+- Create and execute queries with or without parameters
+- Create and execute prepared statements with or without parameters
+
+and much more! 
+
+You can install `LibPQ.jl` via the Julia REPL by typing:
+```julia
+] add LibPQ
+```
+
 ## Examples
+The below examples assume you already have a database created. If you don't have one setup yet, you will need to do so for the following snippets to work.
 
 ### Selection
 
