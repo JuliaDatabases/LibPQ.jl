@@ -53,15 +53,7 @@ include(joinpath(@__DIR__, "utils.jl"))
 module libpq_c
     export Oid
 
-    @static if VERSION < v"1.3.0"
-        include(joinpath(@__DIR__, "..", "deps", "deps.jl"))
-
-        function __init__()
-            return check_deps()
-        end
-    else
-        using LibPQ_jll
-    end
+    using LibPQ_jll
 
     include(joinpath(@__DIR__, "headers", "libpq-fe.jl"))
 end
