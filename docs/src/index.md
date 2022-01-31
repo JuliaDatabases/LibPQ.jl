@@ -8,12 +8,21 @@
 ## Overview
 
 LibPQ.jl is a Julia wrapper for the PostgreSQL libpq C library. It provides the ability to:
-- Automatically install libpq via BinaryProvider for MacOS, GNU Linux, and Windows
-- Connect via DSN
-- Create and execute queries with or without parameters
-- Create and execute prepared statements with or without parameters
 
-and much more! 
+* Build
+  * Installs `libpq` via `BinaryBuilder.jl` for MacOS, GNU Linux, and Windows
+* Connections
+  * Connect via DSN
+  * Connect via PostgreSQL connection string
+  * UTF-8 client encoding
+* Queries
+  * Create and execute queries with or without parameters
+  * Execute queries asynchronously
+  * Stream results using [Tables](https://github.com/JuliaData/Tables.jl)
+  * Configurably convert a variety of PostgreSQL types to corresponding Julia types (see the **Type Conversions** section of the docs)
+* Prepared Statements
+  * Create and execute prepared statements with or without parameters
+  * Stream table of parameters to execute the same statement multiple times with different data
 
 You can install `LibPQ.jl` via the Julia REPL by typing:
 ```julia
