@@ -1548,6 +1548,11 @@ end
             bar_id = 3
             result = execute(conn, sql`SELECT * from libpq_test_users where id = $bar_id`)
             @test first(result).name == "Bar"
+
+            # Async with SqlStrings
+            ar = async_execute(conn, sql`SELECT * from libpq_test_users where id = 1`)
+            result = fetch(ar)
+            @test first(result).name == "Foo"
         end
 
         @testset "Query Errors" begin

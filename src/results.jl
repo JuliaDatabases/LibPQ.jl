@@ -301,12 +301,11 @@ end
 
 function execute(
     jl_conn::Connection,
-    sql::SQLStrings.Sql;
-    throw_error::Bool=true,
+    query::SQLStrings.Sql;
     kwargs...
 )
-    query, parameters = SQLStrings.prepare(sql)
-    execute(jl_conn, query, parameters; throw_error=throw_error, kwargs...)
+    query_str, parameters = SQLStrings.prepare(query)
+    execute(jl_conn, query_str, parameters; kwargs...)
 end
 
 function execute(
