@@ -238,7 +238,7 @@ end
 
 function async_execute(jl_conn::Connection, query::SQLStrings.Sql; kwargs...)
     query_str, parameters = SQLStrings.prepare(query)
-    async_execute(jl_conn, query_str, parameters; kwargs...)
+    return async_execute(jl_conn, query_str, parameters; kwargs...)
 end
 
 function async_execute(

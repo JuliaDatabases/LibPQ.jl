@@ -301,7 +301,7 @@ end
 
 function execute(jl_conn::Connection, query::SQLStrings.Sql; kwargs...)
     query_str, parameters = SQLStrings.prepare(query)
-    execute(jl_conn, query_str, parameters; kwargs...)
+    return execute(jl_conn, query_str, parameters; kwargs...)
 end
 
 function execute(
