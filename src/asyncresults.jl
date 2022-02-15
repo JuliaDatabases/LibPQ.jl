@@ -236,11 +236,7 @@ function _multi_async_execute(jl_conn::Connection, query::AbstractString; kwargs
     return async_result
 end
 
-function async_execute(
-    jl_conn::Connection,
-    query::SQLStrings.Sql;
-    kwargs...
-)
+function async_execute(jl_conn::Connection, query::SQLStrings.Sql; kwargs...)
     query_str, parameters = SQLStrings.prepare(query)
     async_execute(jl_conn, query_str, parameters; kwargs...)
 end

@@ -299,11 +299,7 @@ function _multi_execute(
     return handle_result(Result(result, jl_conn; kwargs...); throw_error=throw_error)
 end
 
-function execute(
-    jl_conn::Connection,
-    query::SQLStrings.Sql;
-    kwargs...
-)
+function execute(jl_conn::Connection, query::SQLStrings.Sql; kwargs...)
     query_str, parameters = SQLStrings.prepare(query)
     execute(jl_conn, query_str, parameters; kwargs...)
 end
