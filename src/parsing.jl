@@ -295,15 +295,20 @@ end
 
 _DEFAULT_TYPE_MAP[:time] = Time
 function pqparse(::Type{Time}, str::AbstractString)
-    try
-        return parse(Time, str)
-    catch err
-        if !(err isa InexactError)
-            rethrow(err)
+    @static if v"1.6.6" <= VERSION < v"1.7.0" || VERSION > v"1.7.2"
+        result = tryparse(Time, str)
+        # If there's an error we want to see it here
+        return isnothing(result) ? parse(Time, _trunc_seconds(str)) : result
+    else
+        try
+            return parse(Time, str)
+        catch err
+            if !(err isa InexactError)
+                rethrow(err)
+            end
         end
+        return parse(Time, _trunc_seconds(str))
     end
-
-    return parse(Time, _trunc_seconds(str))
 end
 
 # InfExtendedTime support for Dates.TimeType
