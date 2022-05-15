@@ -81,21 +81,32 @@ An alternative to repeated `INSERT` queries is the PostgreSQL `COPY` query.
 `LibPQ.CopyIn` makes it easier to stream data to the server using a `COPY FROM STDIN` query.
 
 ```julia
-using LibPQ, DataFrames
+using LibPQ, DataFrames, CSV
 
 conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
 
-row_strings = imap(eachrow(df)) do row
-    if ismissing(row[:yes_nulls])
-        "$(row[:no_nulls]),\n"
-    else
-        "$(row[:no_nulls]),$(row[:yes_nulls])\n"
-    end
+result = execute(conn, """
+    CREATE TEMPORARY TABLE libpqjl_test (
+        no_nulls    varchar(10) PRIMARY KEY,
+        yes_nulls   varchar(10)
+    );
+""")
+
+no_nulls = map(string, 'a':'z')
+yes_nulls = Union{String, Missing}[isodd(Int(c)) ? string(c) : missing for c in 'a':'z']
+data = DataFrame(no_nulls=no_nulls, yes_nulls=yes_nulls)
+
+"""
+Function for upload of a Tables.jl compatible data structure (e.g. DataFrames.jl) into the db.
+"""
+function load_by_copy!(table, conn:: LibPQ.Connection, tablename:: AbstractString)
+    iter = CSV.RowWriter(table)
+    column_names = first(iter)
+    copyin = LibPQ.CopyIn("COPY $tablename ($column_names) FROM STDIN (FORMAT CSV, HEADER);", iter)
+    execute(conn, copyin)
 end
 
-copyin = LibPQ.CopyIn("COPY libpqjl_test FROM STDIN (FORMAT CSV);", row_strings)
-
-execute(conn, copyin)
+load_by_copy!(data, conn, "libpqjl_test")
 
 close(conn)
 ```

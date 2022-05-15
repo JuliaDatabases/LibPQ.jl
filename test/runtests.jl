@@ -13,6 +13,7 @@ using OffsetArrays
 using SQLStrings
 using TimeZones
 using Tables
+using CSV
 
 Memento.config!("critical")
 
@@ -31,6 +32,27 @@ macro test_nolog_on_windows(ex...)
         :(@test_log($(map(esc, ex)...)))
     end
 end
+
+"""
+    load_by_copy!(table, con:: LibPQ.Connection, tablename:: AbstractString)
+
+Fast data upload using the PostgreSQL `COPY FROM STDIN` method, which is usually much faster,
+especially for large data amounts, than SQL Inserts.
+
+`table` must be a Tables.jl compatible data structure.
+
+All columns given in `table` must have corresponding fields in the target DB table,
+the order of the columns does not matter.
+
+Columns in the target DB table, which are not provided by the input `table`, are filled 
+with `null` (provided they are nullable).
+"""
+function load_by_copy!(table, conn::LibPQ.Connection, table_name::AbstractString)
+    iter = CSV.RowWriter(table)
+    column_names = first(iter)
+    copyin = LibPQ.CopyIn("COPY $table_name ($column_names) FROM STDIN (FORMAT CSV, HEADER);", iter)
+    execute(conn, copyin)
+end   
 
 @testset "LibPQ" begin
 
@@ -387,6 +409,32 @@ end
             table_data = DataFrame(result)
             @test isequal(table_data, data)
             close(result)
+            close(conn)
+
+            # testing loading to database using CSV.jl row iterator
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+            result = execute(conn, """
+                CREATE TEMPORARY TABLE libpqjl_test (
+                    no_nulls    varchar(10) PRIMARY KEY,
+                    yes_nulls   varchar(10)
+                );
+            """)
+    
+            result = load_by_copy!(data, conn, "libpqjl_test")
+            @test isopen(result)
+            @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
+            @test isempty(LibPQ.error_message(result))
+            close(result)
+
+            result = execute(
+                conn,
+                "SELECT no_nulls, yes_nulls FROM libpqjl_test ORDER BY no_nulls ASC;";
+                throw_error=true
+            )
+            table_data = DataFrame(result)
+            @test isequal(table_data, data)
+            close(result)
+
 
             close(conn)
         end
