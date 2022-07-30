@@ -36,14 +36,6 @@ mutable struct Result{BinaryFormat}
             PQTypeMap(type_map), jl_conn.type_map, LIBPQ_TYPE_MAP, _DEFAULT_TYPE_MAP
         )
 
-        func_lookup = LayerDict(
-            PQConversions(conversions),
-            jl_conn.func_map,
-            LIBPQ_CONVERSIONS,
-            _DEFAULT_CONVERSIONS,
-            _FALLBACK_CONVERSION,
-        )
-
         jl_result.column_oids = col_oids = map(1:num_columns(jl_result)) do col_num
                 libpq_c.PQftype(jl_result.result, col_num - 1)
             end
@@ -66,6 +58,14 @@ mutable struct Result{BinaryFormat}
                     end
                 end,
             )
+
+        func_lookup = LayerDict(
+            PQConversions(conversions),
+            jl_conn.func_map,
+            LIBPQ_CONVERSIONS,
+            _DEFAULT_CONVERSIONS,
+            _FALLBACK_CONVERSION,
+        )
 
         jl_result.column_funcs = collect(
             Base.Callable,

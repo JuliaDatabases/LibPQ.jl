@@ -51,13 +51,11 @@ end
 
 # Columns
 
-struct Column{T} <: AbstractVector{T}
+struct Column{T, oid, typ} <: AbstractVector{T}
     result::Result
     col::Int
     col_name::Symbol
-    oid::Oid
     not_null::Bool
-    typ::Type
     func::Base.Callable
 end
 
@@ -96,7 +94,7 @@ function Column(jl_result::Result, col::Integer, name=Symbol(column_name(jl_resu
     func = jl_result.column_funcs[col]
     not_null = jl_result.not_null[col]
     element_type = not_null ? typ : Union{typ, Missing}
-    return Column{element_type}(jl_result, col, name, oid, not_null, typ, func)
+    return Column{element_type, oid, typ}(jl_result, col, name, not_null, func)
 end
 
 function Column(jl_result::Result, name::Symbol, col=column_number(jl_result, name))
@@ -107,13 +105,13 @@ result(c::Column) = getfield(c, :result)
 column_number(c::Column) = getfield(c, :col)
 column_name(c::Column) = getfield(c, :col_name)
 
-function Base.getindex(c::Column{T}, row::Integer)::T where T
+function Base.getindex(c::Column{T, oid, typ}, row::Integer)::T where {T, oid, typ}
     jl_result = result(c)
     col = column_number(c)
     if isnull(jl_result, row, col)
         return missing
     else
-        return c.func(PQValue{c.oid}(jl_result, row, col))::c.typ
+        return c.func(PQValue{oid}(jl_result, row, col))::typ
     end
 end
 
