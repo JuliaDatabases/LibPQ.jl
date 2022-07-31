@@ -51,7 +51,7 @@ end
 
 # Columns
 
-struct Column{T, oid, typ, Tresult<:Result, Tfunc<:Base.Callable} <: AbstractVector{T}
+struct Column{T,oid,typ,Tresult<:Result,Tfunc<:Base.Callable} <: AbstractVector{T}
     result::Tresult
     col::Int
     col_name::Symbol
@@ -84,7 +84,9 @@ function Tables.schema(cs::Columns)
     return Tables.Schema(map(Symbol, column_names(jl_result)), types)
 end
 
-function Column(jl_result::Tresult, col::Integer, name=Symbol(column_name(jl_result, col))) where {Tresult<:Result}
+function Column(
+    jl_result::Tresult, col::Integer, name=Symbol(column_name(jl_result, col))
+) where {Tresult<:Result}
     @boundscheck if !checkindex(Bool, Base.OneTo(num_columns(jl_result)), col)
         throw(BoundsError(Columns(jl_result), col))
     end
@@ -94,7 +96,9 @@ function Column(jl_result::Tresult, col::Integer, name=Symbol(column_name(jl_res
     func = jl_result.column_funcs[col]
     not_null = jl_result.not_null[col]
     element_type = not_null ? typ : Union{typ, Missing}
-    return Column{element_type, oid, typ, Tresult, typeof(func)}(jl_result, col, name, not_null, func)
+    return Column{element_type, oid, typ, Tresult, typeof(func)}(
+        jl_result, col, name, not_null, func
+    )
 end
 
 function Column(jl_result::Result, name::Symbol, col=column_number(jl_result, name))
@@ -105,7 +109,7 @@ result(c::Column) = getfield(c, :result)
 column_number(c::Column) = getfield(c, :col)
 column_name(c::Column) = getfield(c, :col_name)
 
-function Base.getindex(c::Column{T, oid, typ}, row::Integer)::T where {T, oid, typ}
+function Base.getindex(c::Column{T,oid,typ}, row::Integer)::T where {T, oid, typ}
     jl_result = result(c)
     col = column_number(c)
     if isnull(jl_result, row, col)
