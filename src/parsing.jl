@@ -1,12 +1,7 @@
-# Lightweight wrapper to avoid allocations and stuff.
-struct ResultWrapper{Tresult <: Result}
-    result::Tresult
-end
-
 "A wrapper for one value in a PostgreSQL result."
-struct PQValue{OID,BinaryFormat,Tresult<:Result}
+struct PQValue{OID,BinaryFormat}
     "PostgreSQL result"
-    jl_result::Tresult
+    jl_result::Result
 
     "Row index of the result (0-indexed)"
     row::Cint
@@ -17,7 +12,7 @@ struct PQValue{OID,BinaryFormat,Tresult<:Result}
     function PQValue{OID}(
         jl_result::Result{BinaryFormat}, row::Integer, col::Integer
     ) where {OID,BinaryFormat}
-        return new{OID,BinaryFormat,Result{BinaryFormat}}(jl_result, row - 1, col - 1)
+        return new{OID,BinaryFormat}(jl_result, row - 1, col - 1)
     end
 end
 
