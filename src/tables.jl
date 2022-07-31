@@ -95,8 +95,8 @@ function Column(
     typ = column_types(jl_result)[col]
     func = jl_result.column_funcs[col]
     not_null = jl_result.not_null[col]
-    element_type = not_null ? typ : Union{typ, Missing}
-    return Column{element_type, oid, typ, Tresult, typeof(func)}(
+    element_type = not_null ? typ : Union{typ,Missing}
+    return Column{element_type,oid,typ,Tresult,typeof(func)}(
         jl_result, col, name, not_null, func
     )
 end
@@ -109,7 +109,7 @@ result(c::Column) = getfield(c, :result)
 column_number(c::Column) = getfield(c, :col)
 column_name(c::Column) = getfield(c, :col_name)
 
-function Base.getindex(c::Column{T,oid,typ}, row::Integer)::T where {T, oid, typ}
+function Base.getindex(c::Column{T,oid,typ}, row::Integer)::T where {T,oid,typ}
     jl_result = result(c)
     col = column_number(c)
     if isnull(jl_result, row, col)
