@@ -1,7 +1,12 @@
+# Lightweight wrapper to avoid allocations and stuff.
+struct ResultWrapper{Tresult <: Result}
+    result::Tresult
+end
+
 "A wrapper for one value in a PostgreSQL result."
-struct PQValue{OID,BinaryFormat}
+struct PQValue{OID,BinaryFormat,Twrapped_result<:ResultWrapper}
     "PostgreSQL result"
-    jl_result::Result
+    wrapped_result::Twrapped_result
 
     "Row index of the result (0-indexed)"
     row::Cint
@@ -12,7 +17,7 @@ struct PQValue{OID,BinaryFormat}
     function PQValue{OID}(
         jl_result::Result{BinaryFormat}, row::Integer, col::Integer
     ) where {OID,BinaryFormat}
-        return new{OID,BinaryFormat}(jl_result, row - 1, col - 1)
+        return new{OID,BinaryFormat,ResultWrapper{Result{BinaryFormat}}}(ResultWrapper(jl_result), row - 1, col - 1)
     end
 end
 
@@ -51,7 +56,7 @@ When a query uses `LibPQ.TEXT` format, this is equivalent to C's `strlen`.
 
 See also: [`data_pointer`](@ref)
 """
-num_bytes(pqv::PQValue) = libpq_c.PQgetlength(pqv.jl_result.result, pqv.row, pqv.col)
+num_bytes(pqv::PQValue) = libpq_c.PQgetlength(pqv.wrapped_result.result.result, pqv.row, pqv.col)
 
 """
     data_pointer(pqv::PQValue) -> Ptr{UInt8}
@@ -60,7 +65,7 @@ Get a raw pointer to the data for one value in a PostgreSQL result.
 This data will be freed by libpq when the result is cleared, and should only be used
 temporarily.
 """
-data_pointer(pqv::PQValue) = libpq_c.PQgetvalue(pqv.jl_result.result, pqv.row, pqv.col)
+data_pointer(pqv::PQValue) = libpq_c.PQgetvalue(pqv.wrapped_result.result.result, pqv.row, pqv.col)
 
 """
     unsafe_string(pqv::PQValue) -> String
@@ -683,12 +688,16 @@ end
 
 struct FallbackConversion <: AbstractDict{Tuple{Oid,Type},Base.Callable} end
 
+struct ParseType{T} <: Function end
+
+(::ParseType{typ})(pqv::PQValue) where {typ} = parse(typ, pqv)
+
 function Base.getindex(cmap::FallbackConversion, oid_typ::Tuple{Integer,Type})
     _, typ = oid_typ
-
-    return function parse_type(pqv::PQValue)
-        return parse(typ, pqv)
-    end
+    return ParseType{typ}()
+    # return function parse_type(pqv::PQValue)
+    #     return parse(typ, pqv)
+    # end
 end
 
 Base.haskey(cmap::FallbackConversion, oid_typ::Tuple{Integer,Type}) = true
