@@ -695,9 +695,6 @@ struct ParseType{T} <: Function end
 function Base.getindex(cmap::FallbackConversion, oid_typ::Tuple{Integer,Type})
     _, typ = oid_typ
     return ParseType{typ}()
-    # return function parse_type(pqv::PQValue)
-    #     return parse(typ, pqv)
-    # end
 end
 
 Base.haskey(cmap::FallbackConversion, oid_typ::Tuple{Integer,Type}) = true
