@@ -4,9 +4,9 @@ struct ResultWrapper{Tresult <: Result}
 end
 
 "A wrapper for one value in a PostgreSQL result."
-struct PQValue{OID,BinaryFormat,Twrapped_result<:ResultWrapper}
+struct PQValue{OID,BinaryFormat,Tresult<:Result}
     "PostgreSQL result"
-    wrapped_result::Twrapped_result
+    jl_result::Tresult
 
     "Row index of the result (0-indexed)"
     row::Cint
@@ -17,7 +17,7 @@ struct PQValue{OID,BinaryFormat,Twrapped_result<:ResultWrapper}
     function PQValue{OID}(
         jl_result::Result{BinaryFormat}, row::Integer, col::Integer
     ) where {OID,BinaryFormat}
-        return new{OID,BinaryFormat,ResultWrapper{Result{BinaryFormat}}}(ResultWrapper(jl_result), row - 1, col - 1)
+        return new{OID,BinaryFormat,Result{BinaryFormat}}(jl_result, row - 1, col - 1)
     end
 end
 
@@ -56,7 +56,7 @@ When a query uses `LibPQ.TEXT` format, this is equivalent to C's `strlen`.
 
 See also: [`data_pointer`](@ref)
 """
-num_bytes(pqv::PQValue) = libpq_c.PQgetlength(pqv.wrapped_result.result.result, pqv.row, pqv.col)
+num_bytes(pqv::PQValue) = libpq_c.PQgetlength(pqv.jl_result.result, pqv.row, pqv.col)
 
 """
     data_pointer(pqv::PQValue) -> Ptr{UInt8}
@@ -65,7 +65,7 @@ Get a raw pointer to the data for one value in a PostgreSQL result.
 This data will be freed by libpq when the result is cleared, and should only be used
 temporarily.
 """
-data_pointer(pqv::PQValue) = libpq_c.PQgetvalue(pqv.wrapped_result.result.result, pqv.row, pqv.col)
+data_pointer(pqv::PQValue) = libpq_c.PQgetvalue(pqv.jl_result.result, pqv.row, pqv.col)
 
 """
     unsafe_string(pqv::PQValue) -> String
