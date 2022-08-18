@@ -33,9 +33,9 @@ macro test_nolog_on_windows(ex...)
 end
 
 # Copied from `@time`.
-function count_allocs(f)
+function count_allocs(f, args...)
     initial_count = Base.gc_num()
-    f()
+    f(args...)
     gc_diff = Base.GC_Diff(Base.gc_num(), initial_count)
     return Base.gc_alloc_count(gc_diff)
 end
@@ -1650,7 +1650,9 @@ end
                 col = columntable(result).my_string_column
 
                 # Ensure that getting an element from the column produces exactly 1 alloc.
-                @test count_allocs(() -> col[1]) == 1
+                foo(col) = col[1]
+                count_allocs(foo, col)
+                @test count_allocs(foo, col) == 2
 
                 close(result)
                 close(conn)
@@ -1685,7 +1687,10 @@ end
                 # Ensure that getting an element from the column produces exactly 1 alloc.
                 @test typeof(col[1]) == typeof(value)
                 @test col[1] == value
-                @test count_allocs(() -> col[1]) == 0
+
+                foo(col) = [col[1] for _ in 1:100]
+                count_allocs(foo, col)
+                @test count_allocs(foo, col) < 5
 
                 close(result)
                 close(conn)
