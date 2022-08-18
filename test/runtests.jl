@@ -1659,16 +1659,20 @@ end
             #     close(conn)
             # end
             @testset "$value, bin=$bin_fmt" for
-                ((value, pg_type_string), bin_fmt) in Iterators.product(
-                [
-                    (5.0, "float8"),
-                    (5f0, "float4"),
-                    (Int64(3), "int8"),
-                    (Int32(3), "int4"),
-                    (Int16(3), "int2"),
-                ],
-                [true, false],
-            )
+                (value, pg_type_string, out_val, bin_fmt, num_allocs) in [
+                    (5.0, "float8", 5.0, true, 0),
+                    (5f0, "float4", 5f0, true, 0),
+                    (Int64(3), "int8", Int64(3), true, 0),
+                    (Int32(3), "int4", Int32(3), true, 0),
+                    (Int16(3), "int2", Int16(3), true, 0),
+                    ("'hello'::char(5)", "varchar", "hello", true, 1),
+                    (5.0, "float8", 5.0, false, 2),
+                    (5f0, "float4", 5f0, false, 2),
+                    (Int64(3), "int8", Int64(3), false, 2),
+                    (Int32(3), "int4", Int32(3), false, 2),
+                    (Int16(3), "int2", Int16(3), false, 2),
+                    ("'hello'::char(5)", "varchar", "hello", false, 3),
+                ]
 
                 # Establish connection and construct temporary table.
                 conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
@@ -1691,12 +1695,12 @@ end
                 col = columntable(result).my_column
 
                 # Ensure that getting an element from the column produces exactly 1 alloc.
-                @test typeof(col[1]) == typeof(value)
-                @test col[1] == value
+                @test typeof(col[1]) == typeof(out_val)
+                @test col[1] == out_val
 
                 foo(col) = [col[1] for _ in 1:100]
                 count_allocs(foo, col)
-                max_expected_allocs = bin_fmt ? 5 : 205
+                max_expected_allocs = num_allocs * 100 + 5
                 @test count_allocs(foo, col) < max_expected_allocs
 
 
