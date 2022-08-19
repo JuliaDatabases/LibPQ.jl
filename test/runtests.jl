@@ -1334,7 +1334,7 @@ end
                     @testset "Specified Types" begin
                         conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
-                        for (test_str, typ, data) in [
+                        test_data = [
                             ("3", UInt, UInt(3)),
                             ("3::int8", UInt16, UInt16(3)),
                             ("3::int4", Int32, Int32(3)),
@@ -1355,6 +1355,8 @@ end
                             ("'[2004-10-19 10:23:54-02, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ∞)),
                             ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{InfExtendedTime{ZonedDateTime}, Open, Open}(-∞, ∞)),
                         ]
+
+                        for (test_str, typ, data) in test_data
                             result = execute(
                                 conn,
                                 "SELECT $test_str;",
