@@ -1619,53 +1619,42 @@ end
             @test !isopen(conn)
         end
 
-            @testset "getindex(::Column) performance" begin
-                @testset "$value, bin=$bin_fmt" for (
-                    value, pg_type_string, out_val, bin_fmt, num_allocs
-                ) in [
-                    (5.0, "float8", 5.0, true, 0),
-                    (5.0f0, "float4", 5.0f0, true, 0),
-                    (Int64(3), "int8", Int64(3), true, 0),
-                    (Int32(3), "int4", Int32(3), true, 0),
-                    (Int16(3), "int2", Int16(3), true, 0),
-                    ("'hello'::char(5)", "varchar", "hello", true, 1),
-                    (5.0, "float8", 5.0, false, 2),
-                    (5.0f0, "float4", 5.0f0, false, 2),
-                    (Int64(3), "int8", Int64(3), false, 2),
-                    (Int32(3), "int4", Int32(3), false, 2),
-                    (Int16(3), "int2", Int16(3), false, 2),
-                    ("'hello'::char(5)", "varchar", "hello", false, 3),
-                ]
+        @testset "getindex(::Column) performance" begin
+            @testset "$in_val, bin=$bin_fmt" for (
+                in_val, out_val, bin_fmt, num_allocs
+            ) in [
+                ("5::float8", 5.0, true, 0),
+                ("5::float4", 5.0f0, true, 0),
+                ("3::int8", Int64(3), true, 0),
+                ("3::int4", Int32(3), true, 0),
+                ("3::int2", Int16(3), true, 0),
+                ("'hello'::varchar", "hello", true, 1),
+                ("5::float8", 5.0, false, 2),
+                ("5::float4", 5.0f0, false, 2),
+                ("3::int8", Int64(3), false, 2),
+                ("3::int4", Int32(3), false, 2),
+                ("3::int2", Int16(3), false, 2),
+                ("'hello'::varchar", "hello", false, 3),
+            ]
 
                 # Establish connection and construct temporary table.
                 conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
-                result = execute(conn, "
-                    CREATE TEMPORARY TABLE libpqjl_test (
-                        id bigint,
-                        my_column $pg_type_string
-                    );
-                ")
-
-                # Put some data in the table.
-                execute(
-                    conn, "INSERT INTO libpqjl_test (my_column) VALUES ($value)"
-                )
 
                 # Get the column.
                 result = execute(
-                    conn, "SELECT my_column FROM libpqjl_test"; binary_format=bin_fmt,
+                    conn, "SELECT $in_val AS my_column;"; binary_format=bin_fmt,
                 )
                 col = columntable(result).my_column
 
-                # Ensure that getting an element from the column produces exactly 1 alloc.
+                # Ensure that element is of expected type and value.
                 @test typeof(col[1]) == typeof(out_val)
                 @test col[1] == out_val
 
+                # Ensure that getting an element from the column produces num_allocs allocs.
                 foo(col) = [col[1] for _ in 1:100]
                 count_allocs(foo, col)
                 max_expected_allocs = num_allocs * 100 + 5
                 @test count_allocs(foo, col) < max_expected_allocs
-
 
                 close(result)
                 close(conn)
