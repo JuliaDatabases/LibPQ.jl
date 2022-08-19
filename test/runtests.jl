@@ -1617,17 +1617,18 @@ end
             @test !isopen(conn)
         end
 
-        @testset "getindex(::Column) performance" begin
-            @testset "$value, bin=$bin_fmt" for
-                (value, pg_type_string, out_val, bin_fmt, num_allocs) in [
+            @testset "getindex(::Column) performance" begin
+                @testset "$value, bin=$bin_fmt" for (
+                    value, pg_type_string, out_val, bin_fmt, num_allocs
+                ) in [
                     (5.0, "float8", 5.0, true, 0),
-                    (5f0, "float4", 5f0, true, 0),
+                    (5.0f0, "float4", 5.0f0, true, 0),
                     (Int64(3), "int8", Int64(3), true, 0),
                     (Int32(3), "int4", Int32(3), true, 0),
                     (Int16(3), "int2", Int16(3), true, 0),
                     ("'hello'::char(5)", "varchar", "hello", true, 1),
                     (5.0, "float8", 5.0, false, 2),
-                    (5f0, "float4", 5f0, false, 2),
+                    (5.0f0, "float4", 5.0f0, false, 2),
                     (Int64(3), "int8", Int64(3), false, 2),
                     (Int32(3), "int4", Int32(3), false, 2),
                     (Int16(3), "int2", Int16(3), false, 2),
