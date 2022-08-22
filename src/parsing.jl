@@ -683,12 +683,13 @@ end
 
 struct FallbackConversion <: AbstractDict{Tuple{Oid,Type},Base.Callable} end
 
+struct ParseType{T} <: Function end
+
+(::ParseType{typ})(pqv::PQValue) where {typ} = parse(typ, pqv)
+
 function Base.getindex(cmap::FallbackConversion, oid_typ::Tuple{Integer,Type})
     _, typ = oid_typ
-
-    return function parse_type(pqv::PQValue)
-        return parse(typ, pqv)
-    end
+    return ParseType{typ}()
 end
 
 Base.haskey(cmap::FallbackConversion, oid_typ::Tuple{Integer,Type}) = true
