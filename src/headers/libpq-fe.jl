@@ -535,7 +535,7 @@ function PQconsumeInput(conn)
 end
 
 function PQnotifies(conn)
-    ccall((:PQnotifies, LIBPQ_HANDLE), Ptr{PGnotify}, (Ptr{PGconn},), conn)
+    ccall((:PQnotifies, LIBPQ_HANDLE), Ptr{pgNotify}, (Ptr{PGconn},), conn)
 end
 
 function PQputCopyData(conn, buffer, nbytes)
