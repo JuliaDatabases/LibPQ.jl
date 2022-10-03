@@ -96,7 +96,7 @@ LibPQ.error_message(::LibPQ.Result)
 using InteractiveUtils
 using TikzGraphs
 using TikzPictures
-using LightGraphs
+using Graphs
 using LibPQ
 
 function dograph()
