@@ -10,6 +10,7 @@ using IterTools: imap
 using Memento
 using Memento.TestUtils
 using OffsetArrays
+using SQLStrings
 using TimeZones
 using Tables
 
@@ -29,6 +30,12 @@ macro test_nolog_on_windows(ex...)
     else
         :(@test_log($(map(esc, ex)...)))
     end
+end
+
+# Copied from `@time`.
+function count_allocs(f, args...)
+    stats = @timed f(args...)
+    return Base.gc_alloc_count(stats.gcstats)
 end
 
 @testset "LibPQ" begin
@@ -1520,6 +1527,40 @@ end
             close(conn)
         end
 
+        @testset "SQLString" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+
+            execute(conn, sql```
+               CREATE TEMPORARY TABLE libpq_test_users (
+                   id integer primary key,
+                   name text
+               )```)
+            # The canonical SQL injection https://xkcd.com/327/
+            for (id,name) in [(1,"Foo"), (2, "Robert'); DROP TABLE libpq_test_users; --")]
+                execute(conn, sql```
+                        INSERT INTO libpq_test_users
+                        VALUES ( $id, $name )
+                        ```)
+            end
+            result = execute(conn, sql`SELECT * from libpq_test_users where id = 2`)
+            @test first(result).name == "Robert'); DROP TABLE libpq_test_users; --"
+
+            # Splatting example
+            user = (3,"Bar")
+            execute(conn, sql```
+                    INSERT INTO libpq_test_users
+                    VALUES ( $(user...) )
+                    ```)
+            bar_id = 3
+            result = execute(conn, sql`SELECT * from libpq_test_users where id = $bar_id`)
+            @test first(result).name == "Bar"
+
+            # Async with SqlStrings
+            ar = async_execute(conn, sql`SELECT * from libpq_test_users where id = 1`)
+            result = fetch(ar)
+            @test first(result).name == "Foo"
+        end
+
         @testset "Query Errors" begin
             @testset "Syntax Errors" begin
                 conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
@@ -1576,6 +1617,48 @@ end
 
             close(conn)
             @test !isopen(conn)
+        end
+
+        @testset "getindex(::Column) performance" begin
+            @testset "$in_val, bin=$bin_fmt" for (
+                in_val, out_val, bin_fmt, num_allocs
+            ) in [
+                ("5::float8", 5.0, true, 0),
+                ("5::float4", 5.0f0, true, 0),
+                ("3::int8", Int64(3), true, 0),
+                ("3::int4", Int32(3), true, 0),
+                ("3::int2", Int16(3), true, 0),
+                ("'hello'::varchar", "hello", true, 1),
+                ("5::float8", 5.0, false, 2),
+                ("5::float4", 5.0f0, false, 2),
+                ("3::int8", Int64(3), false, 2),
+                ("3::int4", Int32(3), false, 2),
+                ("3::int2", Int16(3), false, 2),
+                ("'hello'::varchar", "hello", false, 3),
+            ]
+
+                # Establish connection and construct temporary table.
+                conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+
+                # Get the column.
+                result = execute(
+                    conn, "SELECT $in_val AS my_column;"; binary_format=bin_fmt,
+                )
+                col = columntable(result).my_column
+
+                # Ensure that element is of expected type and value.
+                @test typeof(col[1]) == typeof(out_val)
+                @test col[1] == out_val
+
+                # Ensure that getting an element from the column produces num_allocs allocs.
+                foo(col) = [col[1] for _ in 1:100]
+                count_allocs(foo, col)
+                max_expected_allocs = num_allocs * 100 + 5
+                @test count_allocs(foo, col) < max_expected_allocs
+
+                close(result)
+                close(conn)
+            end
         end
     end
 
