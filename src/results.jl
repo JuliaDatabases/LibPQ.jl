@@ -259,6 +259,7 @@ end
         column_types::AbstractDict=ColumnTypeMap(),
         type_map::AbstractDict=LibPQ.PQTypeMap(),
         conversions::AbstractDict=LibPQ.PQConversions(),
+        not_null::Union{Bool, AbstractVector}=false,
     ) -> Result
 
 Run a query on the PostgreSQL database and return a `Result`.
@@ -273,6 +274,11 @@ strings to PostgreSQL.
 
 `column_types` accepts type overrides for columns in the result which take priority over
 those in `type_map`.
+
+`not_null` indicates whether parsed columns should be able to contain null values, parsed as
+`missing`. The argument can be a single `Bool` for all columns, a list of `Bool`, or a list
+of column names.
+
 For information on the `column_types`, `type_map`, and `conversions` arguments, see
 [Type Conversions](@ref typeconv).
 
