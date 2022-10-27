@@ -13,6 +13,7 @@ using OffsetArrays
 using SQLStrings
 using TimeZones
 using Tables
+using UUIDs: UUID
 
 Memento.config!("critical")
 
@@ -1191,6 +1192,7 @@ end
                             ("'hello  '::char(10)", "hello"),
                             ("'hello  '::varchar(10)", "hello  "),
                             ("'3'::\"char\"", LibPQ.PQChar('3')),
+                            ("'6dc2b682-a411-a51f-ce9e-af63d1ef7c1a'::uuid", UUID("6dc2b682-a411-a51f-ce9e-af63d1ef7c1a")),
                             ("'t'::bool", true),
                             ("'T'::bool", true),
                             ("'true'::bool", true),
@@ -1256,6 +1258,7 @@ end
                             ("'{{{NULL,2,3},{4,NULL,6}}}'::float8[]", Array{Union{Float64, Missing}}(reshape(Union{Float64, Missing}[missing 2 3; 4 missing 6], 1, 2, 3))),
                             ("'{{{1,2,3},{4,5,6}}}'::oid[]", Array{Union{LibPQ.Oid, Missing}}(reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3))),
                             ("'{{{1,2,3},{4,5,6}}}'::numeric[]", Array{Union{Decimal, Missing}}(reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3))),
+                            ("'{6dc2b682-a411-a51f-ce9e-af63d1ef7c1a}'::uuid[]", Union{UUID, Missing}[UUID("6dc2b682-a411-a51f-ce9e-af63d1ef7c1a")]),
                             ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copyto!(OffsetArray{Union{Missing, Int16}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                             ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copyto!(OffsetArray{Union{Missing, Int32}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                             ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copyto!(OffsetArray{Union{Missing, Int64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
@@ -1416,6 +1419,18 @@ end
         @testset "Parameters" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
+            @testset "UUID" begin
+                tests = (
+                    ("'6dc2b682-a411-a51f-ce9e-af63d1ef7c1a'::uuid", UUID("6dc2b682-a411-a51f-ce9e-af63d1ef7c1a")),
+                )
+
+                @testset for (pg_str, obj) in tests
+                    result = execute(conn, "SELECT $pg_str = \$1", [obj])
+                    @test first(first(result))
+                    close(result)
+                end
+            end
+
             @testset "Arrays" begin
                 tests = (
                     ("SELECT 'foo' = ANY(\$1)", [["bar", "foo"]]),
@@ -1428,7 +1443,8 @@ end
                     ("SELECT 'f\\\"oo' = ANY(\$1)", [["b\\\"ar", "f\\\"oo"]]),
                     ("SELECT 'f\"\\oo' = ANY(\$1)", [["b\"\\ar", "f\"\\oo"]]),
                     ("SELECT ARRAY[1, 2] = \$1", [[1, 2]]),
-                    ("SELECT ARRAY[1, 2] = \$1", Any[Any[1, 2]])
+                    ("SELECT ARRAY[1, 2] = \$1", Any[Any[1, 2]]),
+                    ("SELECT '{6dc2b682-a411-a51f-ce9e-af63d1ef7c1a}'::uuid[] = \$1", [[UUID("6dc2b682-a411-a51f-ce9e-af63d1ef7c1a")]]),
                 )
 
                 @testset for (query, arr) in tests
