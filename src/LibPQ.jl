@@ -28,6 +28,7 @@ using Memento: Memento, getlogger, warn, info, error, debug
 using OffsetArrays
 using SQLStrings
 using TimeZones
+using UUIDs: UUID
 
 const Parameter = Union{String,Missing}
 const LOGGER = getlogger(@__MODULE__)
