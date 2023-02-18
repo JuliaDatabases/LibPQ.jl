@@ -13,6 +13,7 @@ using OffsetArrays
 using SQLStrings
 using TimeZones
 using Tables
+using UTCDateTimes
 
 Memento.config!("critical")
 
@@ -1325,6 +1326,29 @@ end
                                 end
                             finally
                                 close(result)
+                            end
+
+                            # Test parsing timestamptz as UTCDateTime
+                            if data isa ZonedDateTime
+                                try
+                                    result = execute(
+                                        conn,
+                                        "SELECT $test_str;";
+                                        binary_format=binary_format,
+                                        type_map=Dict(:timestamptz => UTCDateTime),
+                                    )
+
+                                    oid = LibPQ.column_oids(result)[1]
+                                    func = result.column_funcs[1]
+                                    parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                                    @test isequal(parsed, data)
+                                    @test typeof(parsed) == UTCDateTime
+                                    parsed_no_oid = func(LibPQ.PQValue(result, 1, 1))
+                                    @test isequal(parsed_no_oid, data)
+                                    @test typeof(parsed_no_oid) == UTCDateTime
+                                finally
+                                    close(result)
+                                end
                             end
                         end
 
