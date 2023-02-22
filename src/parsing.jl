@@ -257,23 +257,24 @@ end
 
 # ISO, YMD
 _DEFAULT_TYPE_MAP[:timestamptz] = ZonedDateTime
-const TIMESTAMPTZ_FORMATS = Dict(
-    ZonedDateTime => (
-        dateformat"y-m-d HH:MM:SSz",
-        dateformat"y-m-d HH:MM:SS.sz",
-        dateformat"y-m-d HH:MM:SS.ssz",
-        dateformat"y-m-d HH:MM:SS.sssz",
-    ),
-    UTCDateTime => (
-        dateformat"y-m-d HH:MM:SS",
-        dateformat"y-m-d HH:MM:SS.s",
-        dateformat"y-m-d HH:MM:SS.ss",
-        dateformat"y-m-d HH:MM:SS.sss",
-    ),
+const TIMESTAMPTZ_ZDT_FORMATS = (
+    dateformat"y-m-d HH:MM:SSz",
+    dateformat"y-m-d HH:MM:SS.sz",
+    dateformat"y-m-d HH:MM:SS.ssz",
+    dateformat"y-m-d HH:MM:SS.sssz",
+)
+const TIMESTAMPTZ_UTC_FORMATS = (
+    dateformat"y-m-d HH:MM:SS",
+    dateformat"y-m-d HH:MM:SS.s",
+    dateformat"y-m-d HH:MM:SS.ss",
+    dateformat"y-m-d HH:MM:SS.sss",
 )
 
+timestamptz_formats(::Type{ZonedDateTime}) = TIMESTAMPTZ_ZDT_FORMATS
+timestamptz_formats(::Type{UTCDateTime}) = TIMESTAMPTZ_UTC_FORMATS
+
 function _pqparse(::Type{T}, str::AbstractString) where T<:Union{UTCDateTime, ZonedDateTime}
-    formats = TIMESTAMPTZ_FORMATS[T]
+    formats = timestamptz_formats(T)
     for fmt in formats[1:(end - 1)]
         parsed = tryparse(T, str, fmt)
         parsed !== nothing && return parsed
