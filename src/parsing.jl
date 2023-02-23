@@ -238,21 +238,31 @@ end
 # see https://github.com/invenia/LibPQ.jl/issues/33
 _trunc_seconds(str) = replace(str, r"(\.[\d]{3})\d+" => s"\g<1>")
 
+# Utility function for handling "infinity"  strings for datetime types to reduce duplication
+function _tryparse_datetime_inf(
+    typ::Type{T}, str, f=typ
+)::Union{T, Nothing} where T <: Dates.AbstractDateTime
+    if str == "infinity"
+        depwarn_timetype_inf()
+        return f(typemax(DateTime))
+    elseif str == "-infinity"
+        depwarn_timetype_inf()
+        return f(typemin(DateTime))
+    end
+
+    return nothing
+end
+
 _DEFAULT_TYPE_MAP[:timestamp] = DateTime
 const TIMESTAMP_FORMAT = dateformat"y-m-d HH:MM:SS.s"  # .s is optional here
 function pqparse(::Type{DateTime}, str::AbstractString)
-    if str == "infinity"
-        depwarn_timetype_inf()
-        return typemax(DateTime)
-    elseif str == "-infinity"
-        depwarn_timetype_inf()
-        return typemin(DateTime)
-    end
+    parsed = _tryparse_datetime_inf(DateTime, str)
+    isnothing(parsed) || return parsed
 
-    # Cut off digits after the third after the decimal point,
-    # since DateTime in Julia currently handles only milliseconds, see Issue #33
-    str = replace(str, r"(\.[\d]{3})\d+" => s"\g<1>")
-    return parse(DateTime, str, TIMESTAMP_FORMAT)
+    parsed = tryparse(DateTime, str, TIMESTAMP_FORMAT)
+    isnothing(parsed) || return parsed
+
+    return parse(DateTime, _trunc_seconds(str), TIMESTAMP_FORMAT)
 end
 
 # ISO, YMD
@@ -265,34 +275,29 @@ const TIMESTAMPTZ_FORMATS = (
 )
 
 function pqparse(::Type{ZonedDateTime}, str::AbstractString)
-    if str == "infinity"
-        depwarn_timetype_inf()
-        return ZonedDateTime(typemax(DateTime), tz"UTC")
-    elseif str == "-infinity"
-        depwarn_timetype_inf()
-        return ZonedDateTime(typemin(DateTime), tz"UTC")
-    end
+    parsed = _tryparse_datetime_inf(ZonedDateTime, str, Base.Fix2(ZonedDateTime, tz"UTC"))
+    isnothing(parsed) || return parsed
 
     for fmt in TIMESTAMPTZ_FORMATS[1:(end - 1)]
         parsed = tryparse(ZonedDateTime, str, fmt)
-        parsed !== nothing && return parsed
+        isnothing(parsed) || return parsed
     end
 
     return parse(ZonedDateTime, _trunc_seconds(str), TIMESTAMPTZ_FORMATS[end])
 end
 
 function pqparse(::Type{UTCDateTime}, str::AbstractString)
-    if str == "infinity"
-        depwarn_timetype_inf()
-        return UTCDateTime(typemax(DateTime))
-    elseif str == "-infinity"
-        depwarn_timetype_inf()
-        return UTCDateTime(typemin(DateTime))
-    end
+    parsed = _tryparse_datetime_inf(UTCDateTime, str)
+    isnothing(parsed) || return parsed
 
     # Postgres should always give us strings ending with +00 if our timezone is set to UTC
     # which is the default
-    return parse(UTCDateTime, _trunc_seconds(replace(str, "+00" => "")), TIMESTAMP_FORMAT)
+    str = replace(str, "+00" => "")
+
+    parsed = tryparse(UTCDateTime, str, TIMESTAMP_FORMAT)
+    isnothing(parsed) || return parsed
+
+    return parse(UTCDateTime, _trunc_seconds(str), TIMESTAMP_FORMAT)
 end
 
 _DEFAULT_TYPE_MAP[:date] = Date
