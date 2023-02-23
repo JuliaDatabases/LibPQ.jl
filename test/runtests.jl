@@ -1327,29 +1327,6 @@ end
                             finally
                                 close(result)
                             end
-
-                            # Test parsing timestamptz as UTCDateTime
-                            if data isa ZonedDateTime
-                                try
-                                    result = execute(
-                                        conn,
-                                        "SELECT $test_str;";
-                                        binary_format=binary_format,
-                                        type_map=Dict(:timestamptz => UTCDateTime),
-                                    )
-
-                                    oid = LibPQ.column_oids(result)[1]
-                                    func = result.column_funcs[1]
-                                    parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
-                                    @test isequal(parsed, data)
-                                    @test typeof(parsed) == UTCDateTime
-                                    parsed_no_oid = func(LibPQ.PQValue(result, 1, 1))
-                                    @test isequal(parsed_no_oid, data)
-                                    @test typeof(parsed_no_oid) == UTCDateTime
-                                finally
-                                    close(result)
-                                end
-                            end
                         end
 
                         close(conn)
@@ -1369,6 +1346,13 @@ end
                             ("'foobar'", Symbol, :foobar),
                             ("0::int8", DateTime, DateTime(1970, 1, 1, 0)),
                             ("0::int8", ZonedDateTime, ZonedDateTime(1970, 1, 1, 0, tz"UTC")),
+                            ("0::int8", UTCDateTime, UTCDateTime(1970, 1, 1, 0)),
+                            ("'2004-10-19 10:23:54+00'::timestamptz", UTCDateTime, UTCDateTime(2004, 10, 19, 10, 23, 54)),
+                            ("'2004-10-19 10:23:54-06'::timestamptz", UTCDateTime, UTCDateTime(2004, 10, 19, 16, 23, 54)),
+                            ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval{UTCDateTime}, Interval{Closed, Open}(UTCDateTime(2010, 1, 1, 14, 30), UTCDateTime(2010, 1, 1, 15, 30))),
+                            ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval{UTCDateTime}, Interval{Closed, Open}(UTCDateTime(2004, 10, 19, 12, 23, 54), UTCDateTime(2004, 10, 19, 13, 23, 54))),
+                            ("'[2004-10-19 10:23:54-02, Infinity)'::tstzrange", Interval{UTCDateTime}, Interval{Closed, Open}(UTCDateTime(2004, 10, 19, 12, 23, 54), UTCDateTime(typemax(DateTime)))),
+                            ("'(-Infinity, Infinity)'::tstzrange", Interval{UTCDateTime}, Interval{Open, Open}(UTCDateTime(typemin(DateTime)), UTCDateTime(typemax(DateTime)))),
                             ("'{{{1,2,3},{4,5,6}}}'::int2[]", AbstractArray{Int16}, reshape(Int16[1 2 3; 4 5 6], 1, 2, 3)),
                             ("DATE '2017-01-31'", InfExtendedTime{Date}, InfExtendedTime{Date}(Date(2017, 1, 31))),
                             ("'infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(∞)),
@@ -1378,6 +1362,10 @@ end
                             ("'-infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(-∞)),
                             ("'[2004-10-19 10:23:54-02, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ∞)),
                             ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{InfExtendedTime{ZonedDateTime}, Open, Open}(-∞, ∞)),
+                            ("'infinity'::timestamptz", InfExtendedTime{UTCDateTime}, InfExtendedTime{UTCDateTime}(∞)),
+                            ("'-infinity'::timestamptz", InfExtendedTime{UTCDateTime}, InfExtendedTime{UTCDateTime}(-∞)),
+                            ("'[2004-10-19 10:23:54-02, infinity)'::tstzrange", Interval{InfExtendedTime{UTCDateTime}}, Interval{Closed, Open}(UTCDateTime(2004, 10, 19, 12, 23, 54), ∞)),
+                            ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{UTCDateTime}}, Interval{InfExtendedTime{UTCDateTime}, Open, Open}(-∞, ∞)),
                         ]
 
                         for (test_str, typ, data) in test_data
