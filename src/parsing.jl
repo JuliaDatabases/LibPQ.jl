@@ -257,31 +257,12 @@ end
 
 # ISO, YMD
 _DEFAULT_TYPE_MAP[:timestamptz] = ZonedDateTime
-const TIMESTAMPTZ_ZDT_FORMATS = (
+const TIMESTAMPTZ_FORMATS = (
     dateformat"y-m-d HH:MM:SSz",
     dateformat"y-m-d HH:MM:SS.sz",
     dateformat"y-m-d HH:MM:SS.ssz",
     dateformat"y-m-d HH:MM:SS.sssz",
 )
-const TIMESTAMPTZ_UTC_FORMATS = (
-    dateformat"y-m-d HH:MM:SS",
-    dateformat"y-m-d HH:MM:SS.s",
-    dateformat"y-m-d HH:MM:SS.ss",
-    dateformat"y-m-d HH:MM:SS.sss",
-)
-
-timestamptz_formats(::Type{ZonedDateTime}) = TIMESTAMPTZ_ZDT_FORMATS
-timestamptz_formats(::Type{UTCDateTime}) = TIMESTAMPTZ_UTC_FORMATS
-
-function _pqparse(::Type{T}, str::AbstractString) where T<:Union{UTCDateTime, ZonedDateTime}
-    formats = timestamptz_formats(T)
-    for fmt in formats[1:(end - 1)]
-        parsed = tryparse(T, str, fmt)
-        parsed !== nothing && return parsed
-    end
-
-    return parse(T, _trunc_seconds(str), formats[end])
-end
 
 function pqparse(::Type{ZonedDateTime}, str::AbstractString)
     if str == "infinity"
@@ -292,7 +273,12 @@ function pqparse(::Type{ZonedDateTime}, str::AbstractString)
         return ZonedDateTime(typemin(DateTime), tz"UTC")
     end
 
-    return _pqparse(ZonedDateTime, str)
+    for fmt in TIMESTAMPTZ_FORMATS[1:(end - 1)]
+        parsed = tryparse(ZonedDateTime, str, fmt)
+        parsed !== nothing && return parsed
+    end
+
+    return parse(ZonedDateTime, _trunc_seconds(str), TIMESTAMPTZ_FORMATS[end])
 end
 
 function pqparse(::Type{UTCDateTime}, str::AbstractString)
@@ -304,11 +290,9 @@ function pqparse(::Type{UTCDateTime}, str::AbstractString)
         return UTCDateTime(typemin(DateTime))
     end
 
-    # Postgres should give us strings ending with +00, +00:00, -00:00
-    # We use the regex below to strip these character off before parsing, iff,
-    # the values after the `-`/`+` are `0` or `:`. This means parsing will fail if
-    # we're asked to parse a non-UTC string like +04:00.
-    return _pqparse(UTCDateTime, replace(str, r"[-|\+][0|:]*$" => ""))
+    # Postgres should always give us strings ending with +00 if our timezone is set to UTC
+    # which is the default
+    return parse(UTCDateTime, _trunc_seconds(replace(str, "+00" => "")), TIMESTAMP_FORMAT)
 end
 
 _DEFAULT_TYPE_MAP[:date] = Date
@@ -363,7 +347,7 @@ function Base.parse(::Type{ZonedDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
 end
 
 function Base.parse(::Type{UTCDateTime}, pqv::PQValue{PQ_SYSTEM_TYPES[:int8]})
-    return UTCDateTime(unix2datetime(parse(Int64, pqv)))
+    return UTCDateTime(parse(DateTime, pqv))
 end
 
 # All postgresql timestamptz are stored in UTC time with the epoch of 2000-01-01.
@@ -387,16 +371,7 @@ function pqparse(::Type{ZonedDateTime}, ptr::Ptr{UInt8})
 end
 
 function pqparse(::Type{UTCDateTime}, ptr::Ptr{UInt8})
-    value = ntoh(unsafe_load(Ptr{Int64}(ptr)))
-    if value == typemax(Int64)
-        depwarn_timetype_inf()
-        return UTCDateTime(typemax(DateTime))
-    elseif value == typemin(Int64)
-        depwarn_timetype_inf()
-        return UTCDateTime(typemin(DateTime))
-    end
-    dt = POSTGRES_EPOCH_DATETIME + Microsecond(value)
-    return UTCDateTime(dt)
+    return UTCDateTime(pqparse(DateTime, ptr))
 end
 
 function pqparse(::Type{DateTime}, ptr::Ptr{UInt8})
@@ -408,7 +383,7 @@ function pqparse(::Type{DateTime}, ptr::Ptr{UInt8})
         depwarn_timetype_inf()
         return typemin(DateTime)
     end
-    return POSTGRES_EPOCH_DATETIME + Microsecond(ntoh(unsafe_load(Ptr{Int64}(ptr))))
+    return POSTGRES_EPOCH_DATETIME + Microsecond(value)
 end
 
 function pqparse(::Type{Date}, ptr::Ptr{UInt8})
