@@ -259,10 +259,23 @@ function pqparse(::Type{DateTime}, str::AbstractString)
     parsed = _tryparse_datetime_inf(DateTime, str)
     isnothing(parsed) || return parsed
 
-    parsed = tryparse(DateTime, str, TIMESTAMP_FORMAT)
-    isnothing(parsed) || return parsed
+    # Please, do not remove @static, see https://github.com/iamed2/LibPQ.jl/issues/265
+    # for more details
+    @static if v"1.6.6" <= VERSION < v"1.7.0" || VERSION > v"1.7.2"
+        parsed = tryparse(DateTime, str, TIMESTAMP_FORMAT)
+        isnothing(parsed) || return parsed
 
-    return parse(DateTime, _trunc_seconds(str), TIMESTAMP_FORMAT)
+        return parse(DateTime, _trunc_seconds(str), TIMESTAMP_FORMAT)
+    else
+        try
+            return parse(DateTime, str, TIMESTAMP_FORMAT)
+        catch err
+            if !(err isa InexactError)
+                rethrow(err)
+            end
+        end
+        return parse(DateTime, _trunc_seconds(str), TIMESTAMP_FORMAT)
+    end
 end
 
 # ISO, YMD
