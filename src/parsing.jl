@@ -235,7 +235,7 @@ end
 
 # Cut off digits after the third after the decimal point,
 # since DateTime in Julia currently handles only milliseconds
-# see https://github.com/invenia/LibPQ.jl/issues/33
+# see https://github.com/iamed2/LibPQ.jl/issues/33
 _trunc_seconds(str) = replace(str, r"(\.[\d]{3})\d+" => s"\g<1>")
 
 # Utility function for handling "infinity"  strings for datetime types to reduce duplication
