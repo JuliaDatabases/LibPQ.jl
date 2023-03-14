@@ -111,10 +111,9 @@ Base.convert(::Type{String}, pqv::PQValue) = String(pqv)
 Base.length(pqv::PQValue) = length(string_view(pqv))
 Base.lastindex(pqv::PQValue) = lastindex(string_view(pqv))
 
-
 # Julia bug override, see https://github.com/iamed2/LibPQ.jl/issues/265 
 # and https://github.com/iamed2/LibPQ.jl/pull/248 for more details
-function _tryparse(::Type{T}, str, timeformat) where T
+function _tryparse(::Type{T}, str, timeformat) where {T}
     @static if v"1.6.6" <= VERSION < v"1.7.0" || VERSION > v"1.7.2"
         return tryparse(T, str, timeformat)
     else
@@ -129,7 +128,7 @@ function _tryparse(::Type{T}, str, timeformat) where T
     end
 end
 
-function _tryparse(::Type{T}, str) where T
+function _tryparse(::Type{T}, str) where {T}
     @static if v"1.6.6" <= VERSION < v"1.7.0" || VERSION > v"1.7.2"
         return tryparse(T, str)
     else
