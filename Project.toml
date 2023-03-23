@@ -5,6 +5,7 @@ version = "1.15.1"
 
 [deps]
 CEnum = "fa961155-64e5-5f13-b03f-caf6b980ea82"
+DBInterface = "a10d1c49-ce27-4219-8d33-6db1a4562965"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Decimals = "abce61dc-4473-55a0-ba07-351d65e31d42"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
@@ -25,6 +26,7 @@ UTCDateTimes = "0f7cfa37-7abf-4834-b969-a8aa512401c2"
 [compat]
 CEnum = "0.2, 0.3, 0.4"
 DataFrames = "0.20, 0.21, 0.22, 1"
+DBInterface = "2"
 Decimals = "0.4.1"
 DocStringExtensions = "0.8.0, 0.9.1"
 Infinity = "0.2"

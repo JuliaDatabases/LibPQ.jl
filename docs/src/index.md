@@ -99,3 +99,16 @@ execute(conn, copyin)
 
 close(conn)
 ```
+
+### `DBInterface Integration`
+
+LibPQ types can also be used with the generic [DBInterface.jl](https://github.com/JuliaDatabases/DBInterface.jl)
+package to connect to and query Postgres databases.
+
+```julia
+using LibPQ, DBInterface
+
+conn = DBInterface.connect(LibPQ.Connection, "dbname=postgres")
+res = DBInterface.execute(con, "SELECT * FROM table")
+DBInterface.close!(conn)
+```
