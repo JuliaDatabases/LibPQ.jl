@@ -152,6 +152,7 @@
     E2203D,
     E2203E,
     E2203F,
+    E2203G,
     E23000,
     E23001,
     E23502,
@@ -473,6 +474,7 @@ const SqlJsonObjectNotFound = PQResultError{C22,E2203C}
 const TooManyJsonArrayElements = PQResultError{C22,E2203D}
 const TooManyJsonObjectMembers = PQResultError{C22,E2203E}
 const SqlJsonScalarRequired = PQResultError{C22,E2203F}
+const SqlJsonItemCannotBeCastToTargetType = PQResultError{C22,E2203G}
 
 # IntegrityConstraintViolation
 const IntegrityConstraintViolationErrorClass = PQResultError{C23}
@@ -851,6 +853,7 @@ const ERROR_NAMES = Dict(
     TooManyJsonArrayElements => "TooManyJsonArrayElements",
     TooManyJsonObjectMembers => "TooManyJsonObjectMembers",
     SqlJsonScalarRequired => "SqlJsonScalarRequired",
+    SqlJsonItemCannotBeCastToTargetType => "SqlJsonItemCannotBeCastToTargetType",
     IntegrityConstraintViolation => "IntegrityConstraintViolation",
     RestrictViolation => "RestrictViolation",
     NotNullViolation => "NotNullViolation",
