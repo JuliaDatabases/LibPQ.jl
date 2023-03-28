@@ -1896,7 +1896,7 @@ end
         end
 
         @testset "DBInterface integration" begin
-            conn = DBInterface.connect("dbname=postgres user=$DATABASE_USER")
+            conn = DBInterface.connect(LibPQ.Connection, "dbname=postgres user=$DATABASE_USER")
             @test conn isa LibPQ.Connection
 
             result = DBInterface.execute(
