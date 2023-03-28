@@ -17,7 +17,7 @@ makedocs(;
         "API" => "pages/api.md",
         "FAQ" => "pages/faq.md",
     ],
-    repo="https://github.com/invenia/LibPQ.jl/blob/{commit}{path}#L{line}",
+    repo="https://github.com/iamed2/LibPQ.jl/blob/{commit}{path}#L{line}",
     sitename="LibPQ.jl",
     checkdocs=:exports,
     linkcheck=true,
@@ -27,5 +27,5 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/invenia/LibPQ.jl",
+    repo="github.com/iamed2/LibPQ.jl",
 )
