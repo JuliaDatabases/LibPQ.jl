@@ -1928,8 +1928,8 @@ end
             @test LibPQ.column_name(result, 1) == "foo"
             @test LibPQ.column_name(result, 2) == "typname"
 
-            DBInterface.close!(result)
-            @test !isopen(result)
+            DBInterface.close!(conn)
+            @test !isopen(conn)
 
         end
     end
