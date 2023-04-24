@@ -1,5 +1,6 @@
 using LibPQ
 using Test
+using CSV
 using Dates
 using DataFrames
 using DataFrames: eachrow
@@ -447,6 +448,86 @@ end
 
             copyin = LibPQ.CopyIn("COPY libpqjl_test FROM STDIN (FORMAT CSV);", row_strings)
             @test_throws LibPQ.Errors.DataExceptionErrorClass execute(conn, copyin; throw_error=true)
+
+            close(conn)
+        end
+    end
+
+    @testset "COPY TO" begin
+        @testset "Example COPY TO" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+
+            # make data
+            no_nulls = map(string, 'a':'z')
+            yes_nulls = Union{String, Missing}[isodd(Int(c)) ? string(c) : missing for c in 'a':'z']
+            data = DataFrame(no_nulls=no_nulls, yes_nulls=yes_nulls)
+
+            row_strings = imap(eachrow(data)) do row
+                if ismissing(row[:yes_nulls])
+                    "$(row[:no_nulls]),\n"
+                else
+                    "$(row[:no_nulls]),$(row[:yes_nulls])\n"
+                end
+            end
+
+            # setup db table
+            result = execute(conn, """
+                CREATE TEMPORARY TABLE libpqjl_test (
+                    no_nulls    varchar(10) PRIMARY KEY,
+                    yes_nulls   varchar(10)
+                );
+            """)
+            @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
+            close(result)
+
+            # populate db table
+            copyin = LibPQ.CopyIn("COPY libpqjl_test FROM STDIN (FORMAT CSV);", row_strings)
+
+            result = execute(conn, copyin)
+            @test isopen(result)
+            @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
+            @test isempty(LibPQ.error_message(result))
+            close(result)
+
+            # test CopyOut!
+            databuf = IOBuffer()
+            copyout = LibPQ.CopyOut!(databuf, "COPY (SELECT * FROM libpqjl_test) TO STDOUT (FORMAT CSV, HEADER, ENCODING 'UTF8');")
+
+            result = execute(conn, copyout)
+            @test isopen(result)
+            @test status(result) == LibPQ.libpq_c.PGRES_COMMAND_OK
+            @test isempty(LibPQ.error_message(result))
+            close(result)
+
+            @static if VERSION >= v"1.3.0-1"
+                csvfile = CSV.File(databuf, stringtype=String)
+            else
+                csvfile = CSV.File(databuf)
+            end
+            df = DataFrame(csvfile)
+            @test isequal(data, df)
+
+            close(conn)
+        end
+
+        @testset "Wrong COPY TO" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+
+            # test CopyOut! with an error
+            databuf = IOBuffer()
+            copyout = LibPQ.CopyOut!(databuf, "SELECT libpqjl_test;")
+
+            result = execute(conn, copyout; throw_error=false)
+            @test isopen(result)
+            @test status(result) == LibPQ.libpq_c.PGRES_FATAL_ERROR
+
+            err_msg = LibPQ.error_message(result)
+            @test occursin("ERROR", err_msg)
+            close(result)
+
+            # parameters are not supported
+            copyout = LibPQ.CopyOut!(databuf, "COPY (SELECT * FROM libpqjl_test WHERE no_nulls = \$1) TO STDOUT (FORMAT CSV, HEADER);")
+            @test_throws ArgumentError execute(conn, copyout, ['z'])
 
             close(conn)
         end

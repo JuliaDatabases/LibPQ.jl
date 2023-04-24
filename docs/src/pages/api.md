@@ -43,6 +43,8 @@ LibPQ.load!
 ```@docs
 LibPQ.CopyIn
 execute(::LibPQ.Connection, ::LibPQ.CopyIn)
+LibPQ.CopyOut!
+execute(::LibPQ.Connection, ::LibPQ.CopyOut!)
 ```
 
 ### Asynchronous

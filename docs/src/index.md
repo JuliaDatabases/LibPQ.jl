@@ -75,9 +75,9 @@ LibPQ.load!(
 execute(conn, "COMMIT;")
 ```
 
-### `COPY`
+### `COPY FROM`
 
-An alternative to repeated `INSERT` queries is the PostgreSQL `COPY` query.
+An alternative to repeated `INSERT` queries is the PostgreSQL `COPY FROM` query.
 `LibPQ.CopyIn` makes it easier to stream data to the server using a `COPY FROM STDIN` query.
 
 ```julia
@@ -96,6 +96,26 @@ end
 copyin = LibPQ.CopyIn("COPY libpqjl_test FROM STDIN (FORMAT CSV);", row_strings)
 
 execute(conn, copyin)
+
+close(conn)
+```
+
+### `COPY TO`
+
+An alternative to selection for large datasets in `SELECT` queries is the PostgreSQL `COPY TO` query.
+`LibPQ.CopyOut!` makes it easier to stream data out of the server using a `COPY TO STDIN` query.
+
+```julia
+using LibPQ, CSV, DataFrames
+
+conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER")
+
+databuf = IOBuffer()
+copyout = LibPQ.CopyOut!(databuf, "COPY (SELECT * FROM libpqjl_test) TO STDOUT (FORMAT CSV, HEADER);")
+
+execute(conn, copyout)
+
+df = DataFrame(CSV.File(databuf))
 
 close(conn)
 ```
