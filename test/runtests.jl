@@ -11,6 +11,7 @@ using Memento
 using Memento.TestUtils
 using OffsetArrays
 using SQLStrings
+using DBInterface
 using TimeZones
 using Tables
 using UTCDateTimes
@@ -1892,6 +1893,44 @@ end
             end
 
             close(conn)
+        end
+
+        @testset "DBInterface integration" begin
+            conn = DBInterface.connect(LibPQ.Connection, "dbname=postgres user=$DATABASE_USER")
+            @test conn isa LibPQ.Connection
+
+            result = DBInterface.execute(
+                conn,
+                "SELECT typname FROM pg_type WHERE oid = 16";
+            )
+            @test result isa LibPQ.Result
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test isopen(result)
+            @test LibPQ.num_columns(result) == 1
+            @test LibPQ.num_rows(result) == 1
+            @test LibPQ.column_name(result, 1) == "typname"
+            @test LibPQ.column_number(result, "typname") == 1
+            data = columntable(result)
+            @test data[:typname][1] == "bool"
+
+            qstr = "SELECT \$1::double precision as foo, typname FROM pg_type WHERE oid = \$2"
+            stmt = DBInterface.prepare(conn, qstr)
+            result = DBInterface.execute(
+                conn,
+                qstr,
+                (1.0, 16);
+            )
+            @test result isa LibPQ.Result
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test isopen(result)
+            @test LibPQ.num_columns(result) == 2
+            @test LibPQ.num_rows(result) == 1
+            @test LibPQ.column_name(result, 1) == "foo"
+            @test LibPQ.column_name(result, 2) == "typname"
+
+            DBInterface.close!(conn)
+            @test !isopen(conn)
+
         end
     end
 end
