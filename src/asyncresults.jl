@@ -250,7 +250,7 @@ function async_execute(
 )
     string_params = string_parameters(parameters)
     pointer_params = parameter_pointers(string_params)
-    
+
     async_result = _async_execute(jl_conn; binary_format=binary_format, kwargs...) do jl_conn
             GC.@preserve string_params _async_submit(jl_conn.conn, query, pointer_params; binary_format=binary_format)
         end
