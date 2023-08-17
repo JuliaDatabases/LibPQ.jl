@@ -201,7 +201,8 @@ All keyword arguments are the same as [`execute`](@ref) and are passed to the cr
 `Result`.
 
 Only one `AsyncResult` can be active on a [`Connection`](@ref) at once.
-If multiple `AsyncResult`s use the same `Connection`, they will execute serially.
+If multiple `AsyncResult`s use the same `Connection`, they will execute serially but
+without any guarantee of order.
 
 `async_execute` does not yet support [`Statement`](@ref)s.
 
