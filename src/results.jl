@@ -322,7 +322,9 @@ function execute(
     pointer_params = parameter_pointers(string_params)
 
     result = lock(jl_conn) do
-        GC.@preserve string_params _execute(jl_conn.conn, query, pointer_params; binary_format=binary_format)
+        GC.@preserve string_params _execute(
+            jl_conn.conn, query, pointer_params; binary_format=binary_format
+        )
     end
 
     return handle_result(
