@@ -121,7 +121,7 @@ function execute(
     pointer_params = parameter_pointers(string_params)
 
     result = lock(stmt.jl_conn) do
-        _execute_prepared(
+        GC.@preserve string_params _execute_prepared(
             stmt.jl_conn.conn, stmt.name, pointer_params; binary_format=binary_format
         )
     end

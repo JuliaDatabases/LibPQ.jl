@@ -52,7 +52,7 @@ function execute(
         if parameters === nothing
             result = _execute(jl_conn.conn, copy.query)
         else
-            result = _execute(jl_conn.conn, copy.query, pointer_params)
+            GC.@preserve string_params result = _execute(jl_conn.conn, copy.query, pointer_params)
         end
         result_status = libpq_c.PQresultStatus(result)
 
