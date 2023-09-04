@@ -316,10 +316,6 @@ function _async_submit(
         zeros(Cint, num_params),  # all parameters in text format
         Cint(binary_format),  # return result in text or binary format
     )
-
-    if isnonblocking(jl_conn) == 0
-        return send_status == 1
-    else
-        return flush(jl_conn)
-    end
+    # send_status must be 1, if nonblock, we also want to flush
+    return send_status == 1 && (isnonblocking(jl_conn) == 0 || flush(jl_conn))
 end
