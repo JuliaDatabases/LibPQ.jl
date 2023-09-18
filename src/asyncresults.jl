@@ -294,9 +294,9 @@ end
 function _async_submit(jl_conn::Connection, query::AbstractString)
     send_status = libpq_c.PQsendQuery(jl_conn.conn::Ptr{libpq_c.PGconn}, query)
     if isnonblocking(jl_conn)
-        return send_status == 1
-    else
         return _flush(jl_conn)
+    else
+        return send_status == 1
     end
 end
 
