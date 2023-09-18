@@ -41,23 +41,28 @@ jobs:
             version: "1.6"
             arch: x64
             postgresql-version: latest
+            nonblocking: "false"
           # Add older supported PostgreSQL Versions
           - os: ubuntu-latest
             version: 1
             arch: x64
             postgresql-version: '13'
+            nonblocking: "false"
           - os: ubuntu-latest
             version: 1
             arch: x64
             postgresql-version: '12'
+            nonblocking: "false"
           - os: ubuntu-latest
             version: 1
             arch: x64
             postgresql-version: '11'
+            nonblocking: "false"
           - os: ubuntu-latest
             version: 1
             arch: x64
             postgresql-version: '10'
+            nonblocking: "false"
           - os: ubuntu-latest
             version: 1
             arch: x64
@@ -74,11 +79,6 @@ jobs:
             postgresql-version: latest
             nonblocking: "true"
           - os: macOS-latest
-            version: 1
-            arch: x64
-            postgresql-version: latest
-            nonblocking: "true"
-          - os: ubuntu-latest
             version: 1
             arch: x64
             postgresql-version: latest
