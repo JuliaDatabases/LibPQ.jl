@@ -806,7 +806,7 @@ end
 socket(jl_conn::Connection) = socket(jl_conn.conn)
 
 """
-    isnonblocking(jl_conn::Connection)
+    setnonblocking(jl_conn::Connection; nonblocking=true)
 
 Sets the nonblocking connection status of the PG connections.
 While async_execute is non-blocking on the receiving side,
@@ -820,6 +820,7 @@ function setnonblocking(jl_conn::Connection; nonblocking=true)
 end
 
 """
+    isnonblocking(jl_conn::Connection)
 Checks whether the connection is non-blocking.
 Returns true if the connection is set to non-blocking, false otherwise
 
