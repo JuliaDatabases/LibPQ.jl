@@ -325,10 +325,15 @@ function Connection(
     end
 
     if nonblocking 
-        success = libpq_c.PQsetnonblocking(connection.conn, convert(Cint, nonblock)) == 0
-        if !success
+        success = libpq_c.PQsetnonblocking(connection.conn, convert(Cint, nonblocking)) == 0
+        if success
+            return connection
+        elseif throw_error
             close(connection)
             error(LOGGER, "Could not provide a non-blocking connection")
+        else
+            warn(LOGGER, "Could not provide a non-blocking connection")
+            return connection
         end
     end
     return connection
@@ -810,8 +815,8 @@ Returns true on success, false on failure
 
 https://www.postgresql.org/docs/current/libpq-async.html
 """
-function setnonblocking(jl_conn::Connection; nonblock=true)
-    return libpq_c.PQsetnonblocking(jl_conn.conn, convert(Cint, nonblock)) == 0
+function setnonblocking(jl_conn::Connection; nonblocking=true)
+    return libpq_c.PQsetnonblocking(jl_conn.conn, convert(Cint, nonblocking)) == 0
 end
 
 """

@@ -29,6 +29,9 @@ jobs:
         arch:
           - x64
           - x86
+        nonblocking:
+          - true
+          - false
         exclude:
           # Don't test 32-bit on macOS
           - os: macOS-latest
@@ -67,7 +70,7 @@ jobs:
           cache-name: cache-artifacts
         with:
           path: ~/.julia/artifacts
-          key: ${{ runner.os }}-${{ matrix.arch }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-test-${{ env.cache-name }}-nonblocking-${{ matrix.nonblocking }}-${{ hashFiles('**/Project.toml') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.arch }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-${{ matrix.arch }}-test-
@@ -100,6 +103,7 @@ jobs:
         run: |
           echo "PGUSER=$USER" >> $GITHUB_ENV
           echo "LIBPQJL_DATABASE_USER=$USER" >> $GITHUB_ENV
+          echo "LIBPQJL_CONNECTION_NONBLOCKING=${{ matrix.nonblocking }}" >> $GITHUB_ENV
         if: ${{ runner.os == 'macOS' }}
       - name: Start Homebrew PostgreSQL service
         run: pg_ctl -D /usr/local/var/postgresql@$(psql --version | cut -f3 -d' ' | cut -f1 -d.) start
