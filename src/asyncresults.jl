@@ -84,8 +84,10 @@ function _consume(jl_conn::Connection)
     # this is important?
     # https://github.com/postgres/postgres/blob/master/src/interfaces/libpq/fe-exec.c#L1266
     # if we used non-blocking connections we would need to check for `1` as well
-    # See flush(jl_conn::Connection) in connections.jl
-    flush(jl_conn)
+    # See _flush(jl_conn::Connection) in connections.jl
+    if !_flush(jl_conn)
+        error(LOGGER, Errors.PQConnectionError(jl_conn))
+    end
 
     async_result = jl_conn.async_result
     result_ptrs = Ptr{libpq_c.PGresult}[]
@@ -291,10 +293,10 @@ end
 
 function _async_submit(jl_conn::Connection, query::AbstractString)
     send_status = libpq_c.PQsendQuery(jl_conn.conn::Ptr{libpq_c.PGconn}, query)
-    if isnonblocking(jl_conn) == 0
+    if isnonblocking(jl_conn)
         return send_status == 1
     else
-        return flush(jl_conn)
+        return _flush(jl_conn)
     end
 end
 
@@ -317,6 +319,11 @@ function _async_submit(
         zeros(Cint, num_params),  # all parameters in text format
         Cint(binary_format),  # return result in text or binary format
     )
-    # send_status must be 1, if nonblock, we also want to flush
-    return send_status == 1 && (isnonblocking(jl_conn) == 0 || flush(jl_conn))
+    # send_status must be 1
+    # if nonblock, we also want to _flush
+    if isnonblocking(jl_conn)
+        return send_status == 1 && _flush(jl_conn)
+    else
+        return send_status == 1
+    end
 end
