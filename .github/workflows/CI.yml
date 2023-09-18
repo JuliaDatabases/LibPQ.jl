@@ -13,7 +13,7 @@ env:
   PGPASSWORD: root
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - PostgreSQL ${{ matrix.postgresql-version }} - ${{ matrix.os }} - ${{ matrix.arch }} - nonblocking connection(${{ matrix.nonblock}})
+    name: Julia ${{ matrix.version }} - PostgreSQL ${{ matrix.postgresql-version }} - ${{ matrix.os }} - ${{ matrix.arch }} - nonblocking connection(${{ matrix.nonblocking }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
