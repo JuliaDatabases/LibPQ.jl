@@ -30,7 +30,7 @@ jobs:
           - x64
           - x86
         nonblocking:
-          - false
+          - "false"
         exclude:
           # Don't test 32-bit on macOS
           - os: macOS-latest
@@ -62,27 +62,27 @@ jobs:
             version: 1
             arch: x64
             postgresql-version: latest
-            nonblocking: true
+            nonblocking: "true"
           - os: ubuntu-latest
             version: "1.6"
             arch: x64
             postgresql-version: latest
-            nonblocking: true
+            nonblocking: "true"
           - os: windows-latest
             version: 1
             arch: x64
             postgresql-version: latest
-            nonblocking: true
+            nonblocking: "true"
           - os: macOS-latest
             version: 1
             arch: x64
             postgresql-version: latest
-            nonblocking: true
+            nonblocking: "true"
           - os: ubuntu-latest
             version: 1
             arch: x64
             postgresql-version: latest
-            nonblocking: true
+            nonblocking: "true"
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
