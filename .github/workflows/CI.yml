@@ -103,7 +103,6 @@ jobs:
         run: |
           echo "PGUSER=$USER" >> $GITHUB_ENV
           echo "LIBPQJL_DATABASE_USER=$USER" >> $GITHUB_ENV
-          echo "LIBPQJL_CONNECTION_NONBLOCKING=${{ matrix.nonblocking }}" >> $GITHUB_ENV
         if: ${{ runner.os == 'macOS' }}
       - name: Start Homebrew PostgreSQL service
         run: pg_ctl -D /usr/local/var/postgresql@$(psql --version | cut -f3 -d' ' | cut -f1 -d.) start
@@ -120,6 +119,7 @@ jobs:
           pg_ctl -D $env:PGDATA status
         if: ${{ runner.os == 'Windows' }}
       # Run Tests
+      - run: echo "LIBPQJL_CONNECTION_NONBLOCKING=${{ matrix.nonblocking }}" >> $GITHUB_ENV
       - run: psql -c '\conninfo'
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
