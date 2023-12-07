@@ -24,9 +24,9 @@ TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 UTCDateTimes = "0f7cfa37-7abf-4834-b969-a8aa512401c2"
 
 [compat]
-CEnum = "0.2, 0.3, 0.4"
-DataFrames = "0.20, 0.21, 0.22, 1"
+CEnum = "0.2, 0.3, 0.4, 0.5"
 DBInterface = "2"
+DataFrames = "0.20, 0.21, 0.22, 1"
 Decimals = "0.4.1"
 DocStringExtensions = "0.8.0, 0.9.1"
 Infinity = "0.2"
