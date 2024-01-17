@@ -1,9 +1,10 @@
-DBInterface.connect(::Type{Connection}, args...; kws...) = Connection(args...; kws...)
-
-DBInterface.prepare(conn::Connection, args...; kws...) = prepare(conn, args...; kws...)
-
-function DBInterface.execute(conn::Union{Connection,Statement}, args...; kws...)
-    return execute(conn, args...; kws...)
+struct DBConnection <: DBInterface.Connection
+    conn::Connection
 end
 
-DBInterface.close!(conn::Connection) = close(conn)
+DBInterface.connect(::Type{Connection}, args...; kws...) = DBConnection(Connection(args...; kws...))
+DBInterface.prepare(conn::DBConnection, args...; kws...) = prepare(conn.conn, args...; kws...)
+DBInterface.execute(conn::DBConnection, args...; kws...) = execute(conn.conn, args...; kws...)
+DBInterface.execute(conn::DBConnection, str::AbstractString; kws...) = execute(conn.conn, str; kws...)
+DBInterface.execute(stmt::Statement, args...; kws...) = execute(stmt, args...; kws...)
+DBInterface.close!(conn::DBConnection) = close(conn)
