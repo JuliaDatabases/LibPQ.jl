@@ -33,6 +33,8 @@ jobs:
           # Don't test 32-bit on macOS
           - os: macOS-latest
             arch: x86
+        macos-postgresql-path:
+          - /opt/homebrew/opt/postgresql
         include:
           # Add a LTS job just to make sure we still support it
           - os: ubuntu-latest
@@ -56,6 +58,11 @@ jobs:
             version: 1
             arch: x64
             postgresql-version: '10'
+          - os: macos-13
+            version: 1
+            arch: x64
+            postgresql-version: latest
+            macos-postgresql-path: /usr/local/var/postgresql
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
@@ -102,7 +109,7 @@ jobs:
           echo "LIBPQJL_DATABASE_USER=$USER" >> $GITHUB_ENV
         if: ${{ runner.os == 'macOS' }}
       - name: Start Homebrew PostgreSQL service
-        run: pg_ctl -D /usr/local/var/postgresql@$(psql --version | cut -f3 -d' ' | cut -f1 -d.) start
+        run: pg_ctl -D ${{ matrix.macos-postgresql-path }}@$(psql --version | cut -f3 -d' ' | cut -f1 -d.) start
         if: ${{ runner.os == 'macOS' }}
       # Windows
       - name: Add PostgreSQL to Path
