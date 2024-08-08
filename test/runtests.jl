@@ -1311,12 +1311,21 @@ end
                                     any(T -> data isa T, binary_not_implemented_types) ||
                                     any(occursin.(binary_not_implemented_pgtypes, test_str))
                                 )
-                                    @test_broken parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
-                                    @test_broken isequal(parsed, data)
-                                    @test_broken typeof(parsed) == typeof(data)
-                                    @test_broken parsed_no_oid = func(LibPQ.PQValue(result, 1, 1))
-                                    @test_broken isequal(parsed_no_oid, data)
-                                    @test_broken typeof(parsed_no_oid) == typeof(data)
+                                    # this allows us to not care whether we error in the func call or in the tests, considering those both successful breaks
+                                    # an error will pass the outer @test_broken and skip the rest
+                                    @test_broken let
+                                        parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                                        @test_broken isequal(parsed, data)
+                                        @test_broken typeof(parsed) == typeof(data)
+                                        # Julia 1.10+ requires @test_broken receive a boolean
+                                        false
+                                    end
+                                    @test_broken let
+                                        parsed_no_oid = func(LibPQ.PQValue(result, 1, 1))
+                                        @test_broken isequal(parsed_no_oid, data)
+                                        @test_broken typeof(parsed_no_oid) == typeof(data)
+                                        false
+                                    end
                                 else
                                     parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
                                     @test isequal(parsed, data)
@@ -1389,9 +1398,15 @@ end
                                     any(T -> data isa T, binary_not_implemented_types) ||
                                     any(occursin.(binary_not_implemented_pgtypes, test_str))
                                 )
-                                    @test_broken parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
-                                    @test_broken parsed == data
-                                    @test_broken typeof(parsed) == typeof(data)
+                                    # this allows us to not care whether we error in the func call or in the tests, considering those both successful breaks
+                                    # an error will pass the outer @test_broken and skip the rest
+                                    @test_broken let
+                                        parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                                        @test_broken parsed == data
+                                        @test_broken typeof(parsed) == typeof(data)
+                                        # Julia 1.10+ requires @test_broken receive a boolean
+                                        false
+                                    end
                                 else
                                     parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
                                     @test parsed == data
