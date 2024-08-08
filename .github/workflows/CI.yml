@@ -112,7 +112,7 @@ jobs:
           echo "LIBPQJL_DATABASE_USER=$USER" >> $GITHUB_ENV
         if: ${{ runner.os == 'macOS' }}
       - name: Start Homebrew PostgreSQL service
-        run: pg_ctl -D ${{ matrix.macos-postgresql-path }}@${{ matrix.postgresql-version }} start
+        run: $(brew --prefix postgresql@${{matrix.postgresql-version }})/bin/pg_ctl -D ${{ matrix.macos-postgresql-path }}@${{ matrix.postgresql-version }} start
         if: ${{ runner.os == 'macOS' }}
       # Windows
       - name: Add PostgreSQL to Path
