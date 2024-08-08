@@ -24,15 +24,10 @@ jobs:
           - latest
         os:
           - ubuntu-latest
-          - macOS-latest
           - windows-latest
         arch:
           - x64
           - x86
-        exclude:
-          # Don't test 32-bit on macOS
-          - os: macOS-latest
-            arch: x86
         macos-postgresql-path:
           - /opt/homebrew/opt/postgresql
         include:
@@ -58,10 +53,15 @@ jobs:
             version: 1
             arch: x64
             postgresql-version: '10'
-          - os: macos-13
+          - os: macOS-latest
+            version: 1
+            arch: aarch64
+            postgresql-version: '13'
+            macos-postgresql-path: /opt/homebrew/var/postgresql
+          - os: macOS-13
             version: 1
             arch: x64
-            postgresql-version: latest
+            postgresql-version: '13'
             macos-postgresql-path: /usr/local/var/postgresql
     steps:
       - uses: actions/checkout@v2
@@ -103,13 +103,16 @@ jobs:
         run: echo "PGHOST=localhost" >> $GITHUB_ENV
         if: ${{ runner.os == 'Linux' }}
       # MacOS
+      - name: Install PostgreSQL
+        run: brew install postgresql@${{ matrix.postgresql-version }}
+        if: ${{ runner.os == 'macOS' }}
       - name: Set PGUSER on macOS
         run: |
           echo "PGUSER=$USER" >> $GITHUB_ENV
           echo "LIBPQJL_DATABASE_USER=$USER" >> $GITHUB_ENV
         if: ${{ runner.os == 'macOS' }}
       - name: Start Homebrew PostgreSQL service
-        run: pg_ctl -D ${{ matrix.macos-postgresql-path }}@$(psql --version | cut -f3 -d' ' | cut -f1 -d.) start
+        run: pg_ctl -D ${{ matrix.macos-postgresql-path }}@${{ matrix.postgresql-version }} start
         if: ${{ runner.os == 'macOS' }}
       # Windows
       - name: Add PostgreSQL to Path
