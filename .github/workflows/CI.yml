@@ -106,13 +106,16 @@ jobs:
       - name: Install PostgreSQL
         run: brew install postgresql@${{ matrix.postgresql-version }}
         if: ${{ runner.os == 'macOS' }}
+      - name: Add PostgreSQL to Path
+        run: echo "$(brew --prefix postgresql@${{matrix.postgresql-version }})/bin" >> $GITHUB_PATH
+        if: ${{ runner.os == 'macOS' }}
       - name: Set PGUSER on macOS
         run: |
           echo "PGUSER=$USER" >> $GITHUB_ENV
           echo "LIBPQJL_DATABASE_USER=$USER" >> $GITHUB_ENV
         if: ${{ runner.os == 'macOS' }}
       - name: Start Homebrew PostgreSQL service
-        run: $(brew --prefix postgresql@${{matrix.postgresql-version }})/bin/pg_ctl -D ${{ matrix.macos-postgresql-path }}@${{ matrix.postgresql-version }} start
+        run: pg_ctl -D ${{ matrix.macos-postgresql-path }}@${{ matrix.postgresql-version }} start
         if: ${{ runner.os == 'macOS' }}
       # Windows
       - name: Add PostgreSQL to Path
