@@ -24,6 +24,4 @@ makedocs(;
     authors="Eric Davies",
 )
 
-deploydocs(;
-    repo="github.com/JuliaDatabases/LibPQ.jl",
-)
+deploydocs(; repo="github.com/JuliaDatabases/LibPQ.jl")
