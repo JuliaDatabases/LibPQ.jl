@@ -25,5 +25,5 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/iamed2/LibPQ.jl",
+    repo="github.com/JuliaDatabases/LibPQ.jl",
 )
