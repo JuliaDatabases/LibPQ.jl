@@ -1944,7 +1944,7 @@ end
             @test LibPQ.column_name(result, 2) == "typname"
 
             DBInterface.close!(conn)
-            @test !isopen(conn)
+            @test !isopen(conn.conn)
 
         end
     end
