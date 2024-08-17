@@ -1912,7 +1912,7 @@ end
 
         @testset "DBInterface integration" begin
             conn = DBInterface.connect(LibPQ.Connection, "dbname=postgres user=$DATABASE_USER")
-            @test conn isa LibPQ.Connection
+            @test conn isa LibPQ.DBConnection
 
             result = DBInterface.execute(
                 conn,
@@ -1944,7 +1944,7 @@ end
             @test LibPQ.column_name(result, 2) == "typname"
 
             DBInterface.close!(conn)
-            @test !isopen(conn)
+            @test !isopen(conn.conn)
 
         end
     end
