@@ -16,7 +16,7 @@ A Julia wrapper for the PostgreSQL `libpq` [C library](https://www.postgresql.or
 ```julia
 using LibPQ, Tables
 
-conn = LibPQ.Connection("dbname=postgres")
+conn = LibPQ.Connection("dbname=postgres host=localhost port=5432")
 result = execute(conn, "SELECT typname FROM pg_type WHERE oid = 16")
 data = columntable(result)
 
