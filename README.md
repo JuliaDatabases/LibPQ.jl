@@ -6,8 +6,8 @@ LibPQ.jl is a Julia wrapper for the PostgreSQL `libpq` [C library](https://www.p
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://juliadatabases.org/LibPQ.jl/stable/)
 [![In Development](https://img.shields.io/badge/docs-dev-blue.svg)](https://juliadatabases.org/LibPQ.jl/dev/)
-[![CI](https://github.com/iamed2/LibPQ.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/iamed2/LibPQ.jl/actions/workflows/CI.yml)
-[![CodeCov](https://codecov.io/gh/iamed2/LibPQ.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/iamed2/LibPQ.jl)
+[![CI](https://github.com/JuliaDatabases/LibPQ.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/JuliaDatabases/LibPQ.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/JuliaDatabases/LibPQ.jl/graph/badge.svg?token=zBj6Hn98DS)](https://app.codecov.io/gh/JuliaDatabases/LibPQ.jl)
 
 ## Features
 
