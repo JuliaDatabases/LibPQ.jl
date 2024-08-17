@@ -8,4 +8,4 @@ DBInterface.execute(conn::DBConnection, args...; kws...) = execute(conn.conn, ar
 DBInterface.execute(conn::DBConnection, str::AbstractString; kws...) = execute(conn.conn, str; kws...)
 DBInterface.execute(conn::DBConnection, str::AbstractString, params; kws...) = execute(conn.conn, str, params; kws...)
 DBInterface.execute(stmt::Statement, args...; kws...) = execute(stmt, args...; kws...)
-DBInterface.close!(conn::DBConnection) = close(conn)
+DBInterface.close!(conn::DBConnection) = close(conn.conn)
