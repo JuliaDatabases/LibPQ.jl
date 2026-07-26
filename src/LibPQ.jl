@@ -25,7 +25,6 @@ using Intervals
 using IterTools: imap
 using LayerDicts
 using Logging: Logging, @logmsg
-using Memento: Memento, getlogger, warn, info, error, debug
 using OffsetArrays
 using SQLStrings
 using TimeZones
@@ -33,11 +32,9 @@ using UTCDateTimes
 using DBInterface
 
 const Parameter = Union{String,Missing}
-const LOGGER = getlogger(@__MODULE__)
 
 function __init__()
     INTERVAL_REGEX[] = _interval_regex()
-    Memento.register(LOGGER)
     return nothing
 end
 

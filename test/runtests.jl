@@ -8,7 +8,6 @@ using Infinity
 using Intervals
 using IterTools: imap
 using Logging
-using Memento
 using OffsetArrays
 using SQLStrings
 using DBInterface
@@ -16,8 +15,6 @@ using TimeZones
 using Tables
 using UTCDateTimes
 
-Memento.config!("critical")
-## Mirrors the Memento silencing above and use a TestLogger where appropriate
 Logging.global_logger(Logging.NullLogger())
 
 macro test_broken_on_windows(ex)
