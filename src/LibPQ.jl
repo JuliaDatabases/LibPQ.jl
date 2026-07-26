@@ -24,6 +24,7 @@ using Infinity: InfExtendedTime, isposinf, ∞
 using Intervals
 using IterTools: imap
 using LayerDicts
+using Logging: Logging, @logmsg
 using Memento: Memento, getlogger, warn, info, error, debug
 using OffsetArrays
 using SQLStrings

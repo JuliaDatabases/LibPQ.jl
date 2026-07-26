@@ -16,6 +16,7 @@ IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 LayerDicts = "6f188dcb-512c-564b-bc01-e0f76e72f166"
 LibPQ_jll = "08be9ffa-1c94-5ee5-a977-46a84ec9b350"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 Memento = "f28f55f0-a522-5efc-85c2-fe41dfb9b2d9"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 SQLStrings = "af517c2e-c243-48fa-aab8-efac3db270f5"
@@ -44,8 +45,7 @@ julia = "1.6"
 
 [extras]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "DataFrames", "Logging"]
+test = ["Test", "DataFrames"]

@@ -73,7 +73,8 @@ function handle_result(
     if throw_error && !isempty(errors)
         throw(CompositeException(errors))
     elseif result === nothing
-        error(LOGGER, Errors.JLResultError("Async query did not return result"))
+        err = Errors.JLResultError("Async query did not return result")
+        @error sprint(showerror, err); throw(err)
     else
         return result
     end
@@ -85,7 +86,8 @@ function _consume(jl_conn::Connection)
     # https://github.com/postgres/postgres/blob/master/src/interfaces/libpq/fe-exec.c#L1266
     # if we used non-blocking connections we would need to check for `1` as well
     if libpq_c.PQflush(jl_conn.conn) < 0
-        error(LOGGER, Errors.PQConnectionError(jl_conn))
+        err = Errors.PQConnectionError(jl_conn)
+        @error sprint(showerror, err); throw(err)
     end
 
     async_result = jl_conn.async_result
@@ -100,42 +102,41 @@ function _consume(jl_conn::Connection)
             last_log = curr - last_log > 5.0 ? curr : last_log
 
             if async_result.should_cancel
-                debug(LOGGER, "Received cancel signal for connection $(jl_conn.conn)")
+                @debug "Received cancel signal for connection $(jl_conn.conn)"
                 _cancel(jl_conn)
             end
 
             last_log == curr &&
-                debug(LOGGER, "Waiting to read from connection $(jl_conn.conn)")
+                @debug "Waiting to read from connection $(jl_conn.conn)"
             wait(watcher)
             last_log == curr &&
-                debug(LOGGER, "Consuming input from connection $(jl_conn.conn)")
+                @debug "Consuming input from connection $(jl_conn.conn)"
             success = libpq_c.PQconsumeInput(jl_conn.conn) == 1
-            !success && error(LOGGER, Errors.PQConnectionError(jl_conn))
+            if !success
+                err = Errors.PQConnectionError(jl_conn)
+                @error sprint(showerror, err); throw(err)
+            end
 
             while libpq_c.PQisBusy(jl_conn.conn) == 0
-                debug(LOGGER, "Checking the result from connection $(jl_conn.conn)")
+                @debug "Checking the result from connection $(jl_conn.conn)"
                 result_ptr = libpq_c.PQgetResult(jl_conn.conn)
                 if result_ptr == C_NULL
-                    debug(LOGGER, "Finished reading from connection $(jl_conn.conn)")
+                    @debug "Finished reading from connection $(jl_conn.conn)"
                     return result_ptrs
                 else
                     result_num = length(result_ptrs) + 1
-                    debug(
-                        LOGGER, "Saving result $result_num from connection $(jl_conn.conn)"
-                    )
+                    @debug "Saving result $result_num from connection $(jl_conn.conn)"
                     push!(result_ptrs, result_ptr)
                 end
             end
         end
     catch err
         if err isa Base.IOError && err.code == -9  # EBADF
-            debug(() -> sprint(showerror, err), LOGGER)
-            error(
-                LOGGER,
-                Errors.JLConnectionError(
-                    "PostgreSQL connection socket was unexpectedly closed"
-                ),
+            @debug sprint(showerror, err)
+            conn_err = Errors.JLConnectionError(
+                "PostgreSQL connection socket was unexpectedly closed"
             )
+            @error sprint(showerror, conn_err); throw(conn_err)
         else
             rethrow(err)
         end
@@ -165,12 +166,10 @@ function _cancel(jl_conn::Connection)
         errbuf = zeros(UInt8, errbuf_size)
         success = libpq_c.PQcancel(cancel_ptr, pointer(errbuf), errbuf_size) == 1
         if !success
-            warn(
-                LOGGER,
-                Errors.JLConnectionError("Failed cancelling query: $(String(errbuf))"),
-            )
+            err = Errors.JLConnectionError("Failed cancelling query: $(String(errbuf))")
+            @warn sprint(showerror, err)
         else
-            debug(LOGGER, "Cancelled query for connection $(jl_conn.conn)")
+            @debug "Cancelled query for connection $(jl_conn.conn)"
         end
     finally
         libpq_c.PQfreeCancel(cancel_ptr)
@@ -277,7 +276,8 @@ function _async_execute(
             # error if submission fails
             # does not respect `throw_error` as there's no result to return on this error
             if !submission_fn(jl_conn)
-                error(LOGGER, Errors.PQConnectionError(async_result.jl_conn))
+                err = Errors.PQConnectionError(async_result.jl_conn)
+                @error sprint(showerror, err); throw(err)
             end
 
             return handle_result(async_result; throw_error=throw_error)::Result
