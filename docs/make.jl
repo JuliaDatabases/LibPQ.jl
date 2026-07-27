@@ -1,6 +1,4 @@
-using Documenter, LibPQ, Memento
-
-setlevel!(getlogger(LibPQ), "critical")
+using Documenter, LibPQ
 
 DocMeta.setdocmeta!(LibPQ, :DocTestSetup, quote
     using LibPQ
