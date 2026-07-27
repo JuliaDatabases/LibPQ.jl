@@ -7,8 +7,7 @@ using Decimals
 using Infinity
 using Intervals
 using IterTools: imap
-using Memento
-using Memento.TestUtils
+using Logging
 using OffsetArrays
 using SQLStrings
 using DBInterface
@@ -16,7 +15,7 @@ using TimeZones
 using Tables
 using UTCDateTimes
 
-Memento.config!("critical")
+Logging.global_logger(Logging.NullLogger())
 
 macro test_broken_on_windows(ex)
     if Sys.iswindows()
@@ -26,11 +25,23 @@ macro test_broken_on_windows(ex)
     end
 end
 
-macro test_nolog_on_windows(ex...)
-    if Sys.iswindows()
-        :(@test_nolog($(map(esc, ex)...)))
-    else
-        :(@test_log($(map(esc, ex)...)))
+# Mimic the old mementor behaviour with Logging (checking level and string occursin)
+macro test_nolog_on_windows(level, msg, ex)
+    quote
+        test_logger = Test.TestLogger()
+        Logging.with_logger(test_logger) do
+            $(esc(ex))
+        end
+
+        found = any(test_logger.logs) do rec
+            rec.level == $(esc(level)) && occursin($(esc(msg)), rec.message)
+        end
+
+        if Sys.iswindows()
+            @test !found
+        else
+            @test found
+        end
     end
 end
 
@@ -597,14 +608,14 @@ end
                 end
 
                 withenv("PGTZ" => "") do
-                    @test_nolog_on_windows LibPQ.LOGGER "error" "invalid value for parameter" try
+                    @test_nolog_on_windows Logging.Error "invalid value for parameter" try
                         LibPQ.Connection(
                             "dbname=postgres user=$DATABASE_USER"; throw_error=true
                         )
                     catch
                     end
 
-                    @test_nolog_on_windows LibPQ.LOGGER "error" "invalid value for parameter" try
+                    @test_nolog_on_windows Logging.Error "invalid value for parameter" try
                         LibPQ.Connection(
                             "dbname=postgres user=$DATABASE_USER";
                             options=Dict("TimeZone" => "America/Danmarkshavn"),
@@ -613,7 +624,7 @@ end
                     catch
                     end
 
-                    @test_nolog_on_windows LibPQ.LOGGER "error" "invalid value for parameter" try
+                    @test_nolog_on_windows Logging.Error "invalid value for parameter" try
                         LibPQ.Connection(
                             "dbname=postgres user=$DATABASE_USER";
                             options=Dict("TimeZone" => ""),
