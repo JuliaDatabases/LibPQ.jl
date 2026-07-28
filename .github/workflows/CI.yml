@@ -32,36 +32,24 @@ jobs:
           - /opt/homebrew/opt/postgresql
         include:
           # Add a LTS job just to make sure we still support it
+          # Also use the oldest supported PostgreSQL version since we'll use `latest` everywhere else.
           - os: ubuntu-latest
-            version: "1.6"
+            version: "1.10"
             arch: x64
-            postgresql-version: latest
-          # Add older supported PostgreSQL Versions
-          - os: ubuntu-latest
-            version: 1
-            arch: x64
-            postgresql-version: '13'
+            postgresql-version: '14'
           - os: ubuntu-latest
             version: 1
             arch: x64
-            postgresql-version: '12'
-          - os: ubuntu-latest
-            version: 1
-            arch: x64
-            postgresql-version: '11'
-          - os: ubuntu-latest
-            version: 1
-            arch: x64
-            postgresql-version: '10'
+            postgresql-version: 'latest'
           - os: macOS-latest
             version: 1
             arch: aarch64
-            postgresql-version: '13'
+            postgresql-version: '18'
             macos-postgresql-path: /opt/homebrew/var/postgresql
           - os: macOS-13
             version: 1
             arch: x64
-            postgresql-version: '13'
+            postgresql-version: '18'
             macos-postgresql-path: /usr/local/var/postgresql
     steps:
       - uses: actions/checkout@v7
@@ -187,7 +175,7 @@ jobs:
       - name: Install Julia packages
         # Pin HTTP.jl to v1 as v2's rewritten TLS backend fails the handshake against postgresql.org.
         # https://github.com/JuliaWeb/HTTP.jl/issues/1338
-        run: julia -e 'using Pkg; Pkg.add([PackageSpec(name="EzXML"), PackageSpec(name="HTTP", version="1")]);'
+        run: julia -e 'using Pkg; Pkg.add([PackageSpec(name="EzXML"), PackageSpec(name="HTTP", version="1"), PackageSpec(name="OrderedCollections")]);'
       - name: Generate error codes
         run: julia deps/error_codes.jl error_codes_generated.jl
       - name: Compare error codes
