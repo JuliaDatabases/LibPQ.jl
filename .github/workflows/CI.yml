@@ -46,7 +46,7 @@ jobs:
             arch: aarch64
             postgresql-version: '18'
             macos-postgresql-path: /opt/homebrew/var/postgresql
-          - os: macOS-13
+          - os: macos-26-intel
             version: 1
             arch: x64
             postgresql-version: '18'
