@@ -173,9 +173,7 @@ jobs:
         with:
           version: '1'
       - name: Install Julia packages
-        # Pin HTTP.jl to v1 as v2's rewritten TLS backend fails the handshake against postgresql.org.
-        # https://github.com/JuliaWeb/HTTP.jl/issues/1338
-        run: julia -e 'using Pkg; Pkg.add([PackageSpec(name="EzXML"), PackageSpec(name="HTTP", version="1"), PackageSpec(name="OrderedCollections")]);'
+        run: julia -e 'using Pkg; Pkg.add(["EzXML", "HTTP", "OrderedCollections"]);'
       - name: Generate error codes
         run: julia deps/error_codes.jl error_codes_generated.jl
       - name: Compare error codes
