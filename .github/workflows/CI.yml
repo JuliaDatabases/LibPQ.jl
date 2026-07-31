@@ -32,44 +32,32 @@ jobs:
           - /opt/homebrew/opt/postgresql
         include:
           # Add a LTS job just to make sure we still support it
+          # Also use the oldest supported PostgreSQL version since we'll use `latest` everywhere else.
           - os: ubuntu-latest
-            version: "1.6"
+            version: "1.10"
             arch: x64
-            postgresql-version: latest
-          # Add older supported PostgreSQL Versions
-          - os: ubuntu-latest
-            version: 1
-            arch: x64
-            postgresql-version: '13'
+            postgresql-version: '14'
           - os: ubuntu-latest
             version: 1
             arch: x64
-            postgresql-version: '12'
-          - os: ubuntu-latest
-            version: 1
-            arch: x64
-            postgresql-version: '11'
-          - os: ubuntu-latest
-            version: 1
-            arch: x64
-            postgresql-version: '10'
+            postgresql-version: 'latest'
           - os: macOS-latest
             version: 1
             arch: aarch64
-            postgresql-version: '13'
+            postgresql-version: '18'
             macos-postgresql-path: /opt/homebrew/var/postgresql
-          - os: macOS-13
+          - os: macos-26-intel
             version: 1
             arch: x64
-            postgresql-version: '13'
+            postgresql-version: '18'
             macos-postgresql-path: /usr/local/var/postgresql
     steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: actions/cache@v2
+      - uses: actions/cache@v6
         env:
           cache-name: cache-artifacts
         with:
@@ -130,19 +118,21 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
       # Run Tests
       - run: psql -c '\conninfo'
-      - uses: julia-actions/julia-buildpkg@latest
-      - uses: julia-actions/julia-runtest@latest
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v1
-        with:
-          file: lcov.info
+      # TODO: re-enable once CODECOV_TOKEN secret is configured
+      # - uses: codecov/codecov-action@v7
+      #   with:
+      #     file: lcov.info
+      #     token: ${{ secrets.CODECOV_TOKEN }}
 
   docs:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
       - name: Setup documentation dependencies
@@ -178,12 +168,12 @@ jobs:
     name: Error Codes
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
       - name: Install Julia packages
-        run: julia -e 'using Pkg; Pkg.add(["EzXML", "HTTP"]);'
+        run: julia -e 'using Pkg; Pkg.add(["EzXML", "HTTP", "OrderedCollections"]);'
       - name: Generate error codes
         run: julia deps/error_codes.jl error_codes_generated.jl
       - name: Compare error codes
