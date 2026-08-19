@@ -1,5 +1,5 @@
 "A PostgreSQL prepared statement"
-struct Statement
+struct Statement <: DBInterface.Statement
     """
     A `Connection` for which this statement is valid.
     It may become invalid if the connection is reset.

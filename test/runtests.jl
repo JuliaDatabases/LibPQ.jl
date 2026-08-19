@@ -1930,10 +1930,30 @@ end
 
             qstr = "SELECT \$1::double precision as foo, typname FROM pg_type WHERE oid = \$2"
             stmt = DBInterface.prepare(conn, qstr)
+
+            # Test that Statement is a proper DBInterface.Statement subtype
+            @test stmt isa LibPQ.Statement
+            @test stmt isa DBInterface.Statement
+
+            # Test executing the prepared statement via DBInterface.execute
+            result = DBInterface.execute(stmt, (1.0, 16))
+            @test result isa LibPQ.Result
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test isopen(result)
+            @test LibPQ.num_columns(result) == 2
+            @test LibPQ.num_rows(result) == 1
+            @test LibPQ.column_name(result, 1) == "foo"
+            @test LibPQ.column_name(result, 2) == "typname"
+            close(result)
+
+            # Test DBInterface.close! on Statement (should be a no-op)
+            @test DBInterface.close!(stmt) === nothing
+
+            # Test that we can still execute via connection with query string
             result = DBInterface.execute(
                 conn,
                 qstr,
-                (1.0, 16);
+                (2.0, 16);
             )
             @test result isa LibPQ.Result
             @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
@@ -1942,10 +1962,24 @@ end
             @test LibPQ.num_rows(result) == 1
             @test LibPQ.column_name(result, 1) == "foo"
             @test LibPQ.column_name(result, 2) == "typname"
+            close(result)
+            
+            result = DBInterface.transaction(conn) do
+                DBInterface.execute(conn, "SELECT oid, typname FROM pg_type WHERE oid = \$1", [16])
+            end
+            @test LibPQ.num_columns(result) == 2
+            @test LibPQ.column_names(result) == ["oid", "typname"]
+            close(result)
 
+            result = DBInterface.transaction(conn) do
+                DBInterface.execute(conn, "SELECT oid, typname FROM pg_type WHERE oid = 16")
+            end
+            @test LibPQ.num_columns(result) == 2
+            @test LibPQ.column_names(result) == ["oid", "typname"]
+            close(result)
+    
             DBInterface.close!(conn)
             @test !isopen(conn.conn)
-
         end
     end
 end
