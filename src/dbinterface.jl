@@ -27,3 +27,5 @@ function DBInterface.execute(stmt::Statement, args...; kwargs...)
 end
 
 DBInterface.close!(conn::DBConnection) = close(conn.conn)
+
+DBInterface.close!(stmt::LibPQ.Statement) = nothing
