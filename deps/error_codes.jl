@@ -3,7 +3,7 @@
 # with a file argument, write the code to that file
 # e.g., julia deps/error_codes.jl src/error_codes.jl
 #
-# only needs to be re-run if the Travis diff job fails
+# Re-run when the CI Error Codes job detects changed PostgreSQL error codes.
 
 using EzXML
 using HTTP
