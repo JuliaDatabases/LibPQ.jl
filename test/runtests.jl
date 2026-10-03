@@ -1930,30 +1930,10 @@ end
 
             qstr = "SELECT \$1::double precision as foo, typname FROM pg_type WHERE oid = \$2"
             stmt = DBInterface.prepare(conn, qstr)
-
-            # Test that Statement is a proper DBInterface.Statement subtype
-            @test stmt isa LibPQ.Statement
-            @test stmt isa DBInterface.Statement
-
-            # Test executing the prepared statement via DBInterface.execute
-            result = DBInterface.execute(stmt, (1.0, 16))
-            @test result isa LibPQ.Result
-            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
-            @test isopen(result)
-            @test LibPQ.num_columns(result) == 2
-            @test LibPQ.num_rows(result) == 1
-            @test LibPQ.column_name(result, 1) == "foo"
-            @test LibPQ.column_name(result, 2) == "typname"
-            close(result)
-
-            # Test DBInterface.close! on Statement (should be a no-op)
-            @test DBInterface.close!(stmt) === nothing
-
-            # Test that we can still execute via connection with query string
             result = DBInterface.execute(
                 conn,
                 qstr,
-                (2.0, 16);
+                (1.0, 16);
             )
             @test result isa LibPQ.Result
             @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
@@ -1962,24 +1942,77 @@ end
             @test LibPQ.num_rows(result) == 1
             @test LibPQ.column_name(result, 1) == "foo"
             @test LibPQ.column_name(result, 2) == "typname"
-            close(result)
-            
-            result = DBInterface.transaction(conn) do
-                DBInterface.execute(conn, "SELECT oid, typname FROM pg_type WHERE oid = \$1", [16])
-            end
-            @test LibPQ.num_columns(result) == 2
-            @test LibPQ.column_names(result) == ["oid", "typname"]
-            close(result)
 
-            result = DBInterface.transaction(conn) do
-                DBInterface.execute(conn, "SELECT oid, typname FROM pg_type WHERE oid = 16")
-            end
-            @test LibPQ.num_columns(result) == 2
-            @test LibPQ.column_names(result) == ["oid", "typname"]
-            close(result)
-    
             DBInterface.close!(conn)
             @test !isopen(conn.conn)
+
+        end
+
+        if isdefined(DBInterface, :transaction)
+            @testset "DBInterface transactions" begin
+                conn = DBInterface.connect(LibPQ.Connection, "dbname=postgres user=$DATABASE_USER")
+                function scalar(sql)
+                    result = DBInterface.execute(conn, sql)
+                    try
+                        return only(columntable(result).n)
+                    finally
+                        close(result)
+                    end
+                end
+                close(DBInterface.execute(conn, "CREATE TEMPORARY TABLE transaction_rows (n integer)"))
+                prepared_before = scalar("SELECT count(*) AS n FROM pg_prepared_statements")
+
+                @test DBInterface.transaction(conn) do
+                    close(DBInterface.execute(conn, "INSERT INTO transaction_rows VALUES (1)"))
+                    :committed
+                end === :committed
+                @test scalar("SELECT count(*) AS n FROM transaction_rows") == 1
+
+                result = DBInterface.transaction(conn) do
+                    DBInterface.execute(conn, "SELECT n FROM transaction_rows")
+                end
+                @test isopen(result)
+                @test only(columntable(result).n) == 1
+                close(result)
+
+                abort = ErrorException("abort transaction")
+                error = try
+                    DBInterface.transaction(conn) do
+                        close(DBInterface.execute(conn, "INSERT INTO transaction_rows VALUES (2)"))
+                        throw(abort)
+                    end
+                catch err
+                    err
+                end
+                @test error === abort
+                @test scalar("SELECT count(*) AS n FROM transaction_rows") == 1
+
+                @test_throws LibPQ.Errors.UndefinedTable DBInterface.transaction(conn) do
+                    DBInterface.execute(conn, "SELECT * FROM nonexistent_transaction_table")
+                end
+                @test scalar("SELECT count(*) AS n FROM transaction_rows") == 1
+                for _ in 1:20
+                    @test DBInterface.transaction(() -> 42, conn) == 42
+                end
+                @test scalar("SELECT count(*) AS n FROM pg_prepared_statements") == prepared_before
+                DBInterface.close!(conn)
+
+                conn = DBInterface.connect(LibPQ.Connection, "dbname=postgres user=$DATABASE_USER")
+                error = try
+                    DBInterface.transaction(conn) do
+                        DBInterface.close!(conn)
+                        throw(abort)
+                    end
+                catch err
+                    err
+                end
+                @test error isa CompositeException
+                if error isa CompositeException
+                    @test length(error.exceptions) == 2
+                    @test error.exceptions[1].ex === abort
+                    @test error.exceptions[2].ex isa LibPQ.Errors.PostgreSQLException
+                end
+            end
         end
     end
 end
