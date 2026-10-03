@@ -82,12 +82,12 @@ jobs:
           postgresql user: ${{ env.PGUSER }}
           postgresql password: ${{ env.PGPASSWORD }}
       - name: Wait / Sleep
-        uses: jakejarvis/wait-action@v0.1.0
+        uses: jakejarvis/wait-action@v0.1.1
         if: ${{ runner.os == 'Linux' }}
         with:
           time: '1m'
       - name: Collect Docker Logs
-        uses: jwalton/gh-docker-logs@v1.0.0
+        uses: jwalton/gh-docker-logs@v2.2.2
         if: ${{ runner.os == 'Linux' }}
       - name: Check running containers
         run: docker ps -a
@@ -150,11 +150,11 @@ jobs:
           postgresql user: ${{ env.PGUSER }}
           postgresql password: ${{ env.PGPASSWORD }}
       - name: Wait / Sleep
-        uses: jakejarvis/wait-action@v0.1.0
+        uses: jakejarvis/wait-action@v0.1.1
         with:
           time: '1m'
       - name: Collect Docker Logs
-        uses: jwalton/gh-docker-logs@v1.0.0
+        uses: jwalton/gh-docker-logs@v2.2.2
       - name: Check running containers
         run: docker ps -a
       - name: Set PGHOST
