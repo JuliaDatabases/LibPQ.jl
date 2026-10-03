@@ -4,10 +4,10 @@
 
 LibPQ.jl is a Julia wrapper for the PostgreSQL `libpq` [C library](https://www.postgresql.org/docs/current/libpq.html).
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://invenia.github.io/LibPQ.jl/stable/)
-[![In Development](https://img.shields.io/badge/docs-dev-blue.svg)](https://invenia.github.io/LibPQ.jl/dev/)
-[![Build Status](https://travis-ci.com/invenia/LibPQ.jl.svg?branch=master)](https://travis-ci.com/invenia/LibPQ.jl)
-[![CodeCov](https://codecov.io/gh/invenia/LibPQ.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/invenia/LibPQ.jl)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://juliadatabases.org/LibPQ.jl/stable/)
+[![In Development](https://img.shields.io/badge/docs-dev-blue.svg)](https://juliadatabases.org/LibPQ.jl/dev/)
+[![CI](https://github.com/JuliaDatabases/LibPQ.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/JuliaDatabases/LibPQ.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/JuliaDatabases/LibPQ.jl/graph/badge.svg?token=zBj6Hn98DS)](https://app.codecov.io/gh/JuliaDatabases/LibPQ.jl)
 
 ## Features
 

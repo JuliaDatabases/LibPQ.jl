@@ -29,6 +29,7 @@ using OffsetArrays
 using SQLStrings
 using TimeZones
 using UTCDateTimes
+using DBInterface
 
 const Parameter = Union{String,Missing}
 const LOGGER = getlogger(@__MODULE__)
@@ -95,6 +96,7 @@ include("exceptions.jl")
 include("parsing.jl")
 include("copy.jl")
 include("tables.jl")
+include("dbinterface.jl")
 
 include("asyncresults.jl")
 
