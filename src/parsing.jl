@@ -111,33 +111,16 @@ Base.convert(::Type{String}, pqv::PQValue) = String(pqv)
 Base.length(pqv::PQValue) = length(string_view(pqv))
 Base.lastindex(pqv::PQValue) = lastindex(string_view(pqv))
 
-# Julia bug override, see https://github.com/iamed2/LibPQ.jl/issues/265 
-# and https://github.com/iamed2/LibPQ.jl/pull/248 for more details
-function _tryparse(::Type{T}, str, timeformat) where {T}
+# Older Julia parsers throw InexactError for submillisecond text instead of
+# returning nothing. Let the existing truncation fallback handle that precision.
+function _tryparse(::Type{T}, str, formats::Vararg{Any,N}) where {T,N}
     @static if v"1.6.6" <= VERSION < v"1.7.0" || VERSION > v"1.7.2"
-        return tryparse(T, str, timeformat)
+        return tryparse(T, str, formats...)
     else
         try
-            return tryparse(T, str, timeformat)
+            return tryparse(T, str, formats...)
         catch err
-            if !(err isa InexactError)
-                rethrow(err)
-            end
-        end
-        return nothing
-    end
-end
-
-function _tryparse(::Type{T}, str) where {T}
-    @static if v"1.6.6" <= VERSION < v"1.7.0" || VERSION > v"1.7.2"
-        return tryparse(T, str)
-    else
-        try
-            return tryparse(T, str)
-        catch err
-            if !(err isa InexactError)
-                rethrow(err)
-            end
+            err isa InexactError || rethrow()
         end
         return nothing
     end
@@ -294,7 +277,6 @@ function pqparse(::Type{DateTime}, str::AbstractString)
     parsed = _tryparse(DateTime, str, TIMESTAMP_FORMAT)
     isnothing(parsed) || return parsed
 
-    # If there's an error we want to see it here
     return parse(DateTime, _trunc_seconds(str), TIMESTAMP_FORMAT)
 end
 
@@ -316,7 +298,6 @@ function pqparse(::Type{ZonedDateTime}, str::AbstractString)
         isnothing(parsed) || return parsed
     end
 
-    # If there's an error we want to see it here
     return parse(ZonedDateTime, _trunc_seconds(str), TIMESTAMPTZ_FORMATS[end])
 end
 
@@ -331,7 +312,6 @@ function pqparse(::Type{UTCDateTime}, str::AbstractString)
     parsed = _tryparse(UTCDateTime, str, TIMESTAMP_FORMAT)
     isnothing(parsed) || return parsed
 
-    # If there's an error we want to see it here
     return parse(UTCDateTime, _trunc_seconds(str), TIMESTAMP_FORMAT)
 end
 
@@ -353,7 +333,6 @@ function pqparse(::Type{Time}, str::AbstractString)
     parsed = _tryparse(Time, str)
     isnothing(parsed) || return parsed
 
-    # If there's an error we want to see it here
     return parse(Time, _trunc_seconds(str))
 end
 

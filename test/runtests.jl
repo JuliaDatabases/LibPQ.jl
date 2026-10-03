@@ -42,6 +42,8 @@ end
 
 @testset "LibPQ" begin
 
+include("datetime.jl")
+
 @testset "ConninfoDisplay" begin
     @test parse(LibPQ.ConninfoDisplay, "") == LibPQ.Normal
     @test parse(LibPQ.ConninfoDisplay, "*") == LibPQ.Password
