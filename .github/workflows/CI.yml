@@ -15,6 +15,9 @@ jobs:
   test:
     name: Julia ${{ matrix.version }} - PostgreSQL ${{ matrix.postgresql-version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -130,11 +133,12 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
-      # TODO: re-enable once CODECOV_TOKEN secret is configured
-      # - uses: codecov/codecov-action@v7
-      #   with:
-      #     file: lcov.info
-      #     token: ${{ secrets.CODECOV_TOKEN }}
+      - uses: codecov/codecov-action@v7
+        if: matrix.version == '1' && matrix.os == 'ubuntu-latest' && matrix.arch == 'x64'
+        with:
+          files: lcov.info
+          fail_ci_if_error: true
+          use_oidc: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
   docs:
     name: Documentation
