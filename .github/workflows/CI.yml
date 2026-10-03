@@ -123,6 +123,10 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
       # Run Tests
       - run: psql -c '\conninfo'
+      - name: Test minimum supported Decimals
+        if: ${{ matrix.version == '1.6' }}
+        run: |
+          julia --project=. -e 'using Pkg; Pkg.add(PackageSpec(name="Decimals", version="0.4.1")); Pkg.pin("Decimals")'
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
