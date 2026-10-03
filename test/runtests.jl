@@ -1681,6 +1681,10 @@ end
                 # Ensure that getting an element from the column produces num_allocs allocs.
                 foo(col) = [col[1] for _ in 1:100]
                 count_allocs(foo, col)
+                # Julia 1.11 `Array` wraps the new `Memory` object https://github.com/JuliaLang/julia/blob/v1.11.0/NEWS.md#new-language-features.
+                # Functions like `push!` are faster now, but the extra indirection increased allocations by 1 for
+                # text-formatted numbers which calls `unsafe_wrap`.
+                num_allocs += VERSION >= v"1.11" && !bin_fmt && out_val isa Number
                 max_expected_allocs = num_allocs * 100 + 5
                 @test count_allocs(foo, col) < max_expected_allocs
 
