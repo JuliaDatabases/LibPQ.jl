@@ -1178,8 +1178,8 @@ end
                             ("3::float8", Float64(3)),
                             ("3::float4", Float32(3)),
                             ("3::oid", LibPQ.Oid(3)),
-                            ("3::numeric", decimal("3")),
-                            ("$(BigFloat(pi))::numeric", decimal(BigFloat(pi))),
+                            ("3::numeric", parse(Decimal, "3")),
+                            ("$(string(Decimal(BigFloat(pi))))::numeric", Decimal(BigFloat(pi))),
                             ("$(big"4608230166434464229556241992703")::numeric", parse(Decimal, "4608230166434464229556241992703")),
                             ("E'\\\\xDEADBEEF'::bytea", hex2bytes("DEADBEEF")),
                             ("E'\\\\000'::bytea", UInt8[0o000]),
@@ -1273,7 +1273,7 @@ end
                             ("'(3,7)'::int8range", Interval{Int64, Closed, Open}(4, 7)),
                             ("'[4,4]'::int8range", Interval{Int64, Closed, Open}(4, 5)),
                             ("'[4,4)'::int8range", Interval{Int64}()),  # Empty interval
-                            ("'[11.1,22.2)'::numrange", Interval{Decimal, Closed, Open}(11.1, 22.2)),
+                            ("'[11.1,22.2)'::numrange", Interval{Decimal, Closed, Open}(parse(Decimal, "11.1"), parse(Decimal, "22.2"))), # dec"11.1" requires Decimals 0.5
                             ("'[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange", Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))),
                             ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
                             ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(2004, 10, 19, 13, 23, 54, tz"UTC"))),
@@ -1483,7 +1483,7 @@ end
                 tests = (
                     ("'[3, 7)'::int4range", Interval{Int32, Closed, Open}(3, 7)),
                     ("'[4, 4]'::int4range", Interval{Int32, Closed, Closed}(4, 4)),
-                    ("'[11.1, 22.2]'::numrange", Interval{Decimal, Closed, Closed}(11.1, 22.2)),
+                    ("'[11.1, 22.2]'::numrange", Interval{Decimal, Closed, Closed}(parse(Decimal, "11.1"), parse(Decimal, "22.2"))), # dec"11.1" requires Decimals 0.5
                     ("'[2010-01-01T14:30:00, 2010-01-01T15:30:00)'::tsrange", Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))),
                     ("'[2010-01-01T14:30:00+00:00, 2010-01-01T15:30:00+00:00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
                     ("'[2010-01-01T14:30:00-02:00, 2010-01-01T15:30:00-02:00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC-2"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC-2"))),
