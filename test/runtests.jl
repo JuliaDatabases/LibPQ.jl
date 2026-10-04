@@ -52,6 +52,34 @@ include("datetime.jl")
     @test_throws LibPQ.Errors.JLConnectionError parse(LibPQ.ConninfoDisplay, "N")
 end
 
+@testset "Type map defaults" begin
+    type_map = LibPQ.PQTypeMap(Dict(:int2 => Int16))
+    calls = Ref(0)
+    default() = (calls[] += 1; :fallback)
+
+    for key in (21, LibPQ.Oid(21), :int2, "int2", SubString("_int2", 2))
+        @test get(type_map, key, nothing) === Int16
+        @test get(default, type_map, key) === Int16
+        @test get(Missing, type_map, key) === Int16
+    end
+    @test calls[] == 0
+
+    for key in (25, LibPQ.Oid(25), :text, "text", SubString("_text", 2))
+        @test get(type_map, key, :fallback) === :fallback
+        @test get(default, type_map, key) === :fallback
+        @test get(Missing, type_map, key) === missing
+    end
+    @test calls[] == 5
+    @test get(type_map, :text, nothing) === nothing
+    @test get(type_map, :text, missing) === missing
+    @test get(type_map, typemax(LibPQ.Oid), :fallback) === :fallback
+    @test_throws KeyError get(type_map, :unknown_postgresql_type, :fallback)
+    @test_throws KeyError get(default, type_map, :unknown_postgresql_type)
+    @test calls[] == 5
+    @test length(type_map) == 1
+    @test type_map[:int2] === Int16
+end
+
 @testset "Version Numbers" begin
     valid_versions = [
         (LibPQ.pqv"11", v"11"),
