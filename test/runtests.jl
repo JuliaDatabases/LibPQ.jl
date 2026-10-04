@@ -1160,6 +1160,35 @@ end
 
             @testset "Parsing" begin
 
+                @testset "bytea payloads are independent of their result" begin
+                    conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+                    try
+                        for binary_format in (LibPQ.TEXT, LibPQ.BINARY), data in (UInt8[], UInt8[0], UInt8[0, 39, 92, 255], UInt8.(0:255))
+                            result = execute(
+                                conn,
+                                "SELECT \$1::bytea AS bytes, NULL::bytea AS absent",
+                                [string(raw"\x", bytes2hex(data))];
+                                binary_format=binary_format,
+                            )
+                            parsed = nothing
+                            owns_data = false
+                            try
+                                row = first(Tables.rows(result))
+                                parsed = row.bytes
+                                @test parsed == data
+                                @test row.absent === missing
+                                owns_data = isempty(data) || pointer(parsed) != LibPQ.data_pointer(LibPQ.PQValue(result, 1, 1))
+                                @test owns_data
+                            finally
+                                close(result)
+                            end
+                            owns_data && @test parsed == data
+                        end
+                    finally
+                        close(conn)
+                    end
+                end
+
                 binary_not_implemented_pgtypes = ["numeric", "numrange"]
                 binary_not_implemented_types = [
                     Decimal,
@@ -1309,7 +1338,7 @@ end
 
                                 oid = LibPQ.column_oids(result)[1]
                                 func = result.column_funcs[1]
-                                if binary_format && (
+                                if binary_format && oid != LibPQ.oid(:bytea) && (
                                     any(T -> data isa T, binary_not_implemented_types) ||
                                     any(occursin.(binary_not_implemented_pgtypes, test_str))
                                 )

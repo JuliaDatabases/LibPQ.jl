@@ -205,9 +205,15 @@ pqparse(::Type{Char}, str::AbstractString) = Char(pqparse(PQChar, str))
 
 _DEFAULT_TYPE_MAP[:bytea] = Vector{UInt8}
 
-# Needs it's own `parse` method as it uses bytes_view instead of string_view
+# Text bytea must be unescaped; binary bytea already contains the raw bytes.
 function Base.parse(::Type{Vector{UInt8}}, pqv::PQTextValue{PQ_SYSTEM_TYPES[:bytea]})
     return pqparse(Vector{UInt8}, bytes_view(pqv))
+end
+
+function Base.parse(::Type{Vector{UInt8}}, pqv::PQBinaryValue{PQ_SYSTEM_TYPES[:bytea]})
+    GC.@preserve pqv begin
+        return copy(unsafe_wrap(Vector{UInt8}, data_pointer(pqv), num_bytes(pqv)))
+    end
 end
 
 function pqparse(::Type{Vector{UInt8}}, bytes::Array{UInt8,1})
