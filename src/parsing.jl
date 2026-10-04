@@ -188,6 +188,47 @@ generate_binary_parser(:oid)
 ## numeric
 _DEFAULT_TYPE_MAP[:numeric] = Decimal
 
+# Binary NUMERIC uses base-10000 digits and a separate decimal scale. Reconstruct
+# PostgreSQL's text representation to reuse the existing target-type parsers.
+function Base.parse(
+    ::Type{T}, pqv::PQBinaryValue{PQ_SYSTEM_TYPES[:numeric]}
+) where {T<:Number}
+    GC.@preserve pqv begin
+        byte_count = num_bytes(pqv)
+        byte_count >= 8 || throw(ArgumentError("invalid binary NUMERIC header"))
+        input = IOBuffer(bytes_view(pqv))
+        digit_count = Int(ntoh(read(input, UInt16)))
+        weight = Int(ntoh(read(input, Int16)))
+        sign = ntoh(read(input, UInt16))
+        scale = Int(ntoh(read(input, UInt16)))
+        byte_count == 8 + 2 * digit_count ||
+            throw(ArgumentError("invalid binary NUMERIC digit count"))
+
+        sign == 0xc000 && return pqparse(T, "NaN")
+        sign == 0xd000 && return pqparse(T, "Infinity")
+        sign == 0xf000 && return pqparse(T, "-Infinity")
+        sign in (0x0000, 0x4000) || throw(ArgumentError("invalid binary NUMERIC sign"))
+        scale <= 0x3fff || throw(ArgumentError("invalid binary NUMERIC scale"))
+
+        digits = [ntoh(read(input, UInt16)) for _ in 1:digit_count]
+        all(d -> d < 10000, digits) || throw(ArgumentError("invalid binary NUMERIC digit"))
+        output = IOBuffer()
+        sign == 0x4000 && print(output, '-')
+        first_position = max(weight, 0)
+        for position in first_position:-1:(-cld(scale, 4))
+            index = weight - position + 1
+            digit = 1 <= index <= digit_count ? digits[index] : UInt16(0)
+            position == -1 && print(output, '.')
+            group = lpad(string(digit), position == first_position ? 1 : 4, '0')
+            if position < 0 && -4 * position > scale
+                group = group[1:mod1(scale, 4)]
+            end
+            print(output, group)
+        end
+        return pqparse(T, String(take!(output)))
+    end
+end
+
 # no default for monetary; needs lconv and lc_monetary from result/connection
 
 ## character

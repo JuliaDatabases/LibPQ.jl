@@ -1489,9 +1489,93 @@ end
                     end
                 end
 
-                binary_not_implemented_pgtypes = ["numeric", "numrange"]
+                @testset "Binary numeric conversion" begin
+                    conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+                    inputs = (
+                        "0", "0.0000", "-0.0000", "1", "-12345", "12.34567",
+                        "0.12340", "0.012340", "0.0012340", "0.00012340",
+                        "0.00001230", "100000000.0000", "1e1000", "1e-1000",
+                        "1234567890123456789012345678901234567890.0123456789",
+                        "-0.50000000000000000001",
+                    )
+                    query = "SELECT \$1::numeric AS value, NULL::numeric AS absent"
+                    try
+                        for input in inputs
+                            text = execute(conn, query, [input])
+                            binary = execute(conn, query, [input]; binary_format=true)
+                            parsed = expected = nothing
+                            try
+                                expected = text[1, 1]
+                                parsed = binary[1, 1]
+                                @test parsed isa Decimal
+                                @test isequal(parsed, expected)
+                                @test string(parsed) == string(expected)
+                                @test binary[1, 2] === missing
+                            finally
+                                close(text)
+                                close(binary)
+                            end
+                            @test isequal(parsed, expected)
+                        end
+
+                        for input in ("NaN", "Infinity", "-Infinity"), binary_format in (false, true)
+                            result = execute(conn, query, [input]; binary_format=binary_format)
+                            try
+                                @test_throws ArgumentError result[1, 1]
+                            finally
+                                close(result)
+                            end
+                            result = execute(conn, query, [input]; binary_format=binary_format, type_map=Dict(:numeric => Float64))
+                            try
+                                @test isequal(result[1, 1], parse(Float64, input))
+                            finally
+                                close(result)
+                            end
+                        end
+
+                        for (input, typ) in (
+                            ("1.000000000000000111022302462515654042363166809082031250000000000000000000001", Float64),
+                            (repeat("1234567890", 40), BigInt),
+                        )
+                            result = execute(conn, query, [input]; binary_format=true, column_types=Dict(:value => typ))
+                            try
+                                @test result[1, 1] == parse(typ, input)
+                                @test result[1, 1] isa typ
+                            finally
+                                close(result)
+                            end
+                        end
+
+                        statement = prepare(conn, query)
+                        result = execute(statement, ["12.3456700"]; binary_format=true)
+                        try
+                            @test isequal(result[1, 1], parse(Decimal, "12.3456700"))
+                        finally
+                            close(result)
+                        end
+                        result = fetch(async_execute(conn, query, ["-0.00001230"]; binary_format=true))
+                        try
+                            @test isequal(result[1, 1], parse(Decimal, "-0.00001230"))
+                        finally
+                            close(result)
+                        end
+
+                        for payload in ("", "000000000000", "0001000000000000", "0000000000010000", "0000000000004000", "00010000000000002710", "00000000000000000000")
+                            result = execute(conn, "SELECT \$1::bytea", [raw"\x" * payload]; binary_format=true)
+                            try
+                                value = LibPQ.PQValue{LibPQ.oid(:numeric)}(result, 1, 1)
+                                @test_throws ArgumentError parse(Decimal, value)
+                            finally
+                                close(result)
+                            end
+                        end
+                    finally
+                        close(conn)
+                    end
+                end
+
+                binary_not_implemented_pgtypes = ["numrange"]
                 binary_not_implemented_types = [
-                    Decimal,
                     Time,
                     Array,
                     OffsetArray,

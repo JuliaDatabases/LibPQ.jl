@@ -150,6 +150,26 @@ characters. Unquoted `NULL` elements become `missing`; quoted `"NULL"` remains a
 string. Use `AbstractArray{String}` when the array cannot contain NULL elements.
 Binary text arrays are not currently supported.
 
+### NUMERIC values
+
+Scalar `NUMERIC` columns return `Decimals.Decimal` values in both text and binary
+result formats, preserving exact decimal values. The selected Julia type applies
+the same parsing rules as text results.
+
+```jldoctest
+julia> result = execute(conn, "SELECT 12.34567::numeric AS value"; binary_format=true);
+
+julia> string(first(columntable(result).value))
+"12.34567"
+
+julia> close(result)
+```
+
+`Decimal` cannot represent NaN or infinities and rejects those values in either
+format. Use a type override such as `type_map=Dict(:numeric => Float64)` when
+floating-point values are appropriate; this can round finite decimal values.
+Binary `NUMERIC` arrays and `numrange` values are not currently supported.
+
 ### Implementation
 
 #### Flow
