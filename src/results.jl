@@ -505,6 +505,7 @@ column_names(jl_result::Result) = copy(jl_result.column_names)
     column_number(jl_result::Result, column_name::Union{AbstractString, Symbol}) -> Int
 
 Return the index (1-based) of the column named `column_name`.
+Return 0 if no column has that name.
 """
 function column_number(jl_result::Result, column_name::Union{AbstractString,Symbol})::Int
     return something(findfirst(isequal(String(column_name)), jl_result.column_names), 0)
@@ -543,8 +544,14 @@ column_types(jl_result::Result) = jl_result.column_types
 Return the parsed value of the result at the row and column specified (1-indexed).
 The returned value will be `missing` if `NULL`, or will be of the type specified in
 [`column_types`](@ref).
+Indices outside the result throw a `BoundsError`.
 """
 function Base.getindex(jl_result::Result, row::Integer, col::Integer)
+    @boundscheck if !checkindex(Bool, Base.OneTo(num_rows(jl_result)), row) ||
+        !checkindex(Bool, Base.OneTo(num_columns(jl_result)), col)
+        throw(BoundsError(jl_result, (row, col)))
+    end
+
     if isnull(jl_result, row, col)
         return missing
     else

@@ -110,6 +110,7 @@ column_number(c::Column) = getfield(c, :col)
 column_name(c::Column) = getfield(c, :col_name)
 
 function Base.getindex(c::Column{T,oid,typ}, row::Integer)::T where {T,oid,typ}
+    @boundscheck checkbounds(c, row)
     jl_result = result(c)
     col = column_number(c)
     if isnull(jl_result, row, col)

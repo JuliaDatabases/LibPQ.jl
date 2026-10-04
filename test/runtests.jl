@@ -1008,6 +1008,69 @@ end
             close(conn)
         end
 
+        @testset "Bounds of result values" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+            try
+                for binary_format in (LibPQ.TEXT, LibPQ.BINARY), nonnull in (false, true)
+                    result = execute(
+                        conn,
+                        "SELECT 1::bigint AS value, NULL::bigint AS optional UNION ALL SELECT 2::bigint, NULL::bigint";
+                        binary_format=binary_format,
+                        not_null=nonnull ? [:value] : false,
+                    )
+                    row = first(result)
+                    values = LibPQ.Column(result, :value)
+                    optional = LibPQ.Column(result, :optional)
+                    try
+                        @test result[1, 1] === Int64(1)
+                        @test result[2, 1] === Int64(2)
+                        @test result[1, 2] === missing
+                        @test row.value === Int64(1)
+                        @test row.optional === missing
+                        @test values[2] === Int64(2)
+                        @test optional[2] === missing
+                        @test LibPQ.column_number(result, :absent) == 0
+                        @test_throws BoundsError row.absent
+                        for index in (-1, 0, 3, typemax(Int))
+                            @test_throws BoundsError result[index, 1]
+                            @test_throws BoundsError result[index, 2]
+                            @test_throws BoundsError LibPQ.Row(result, index).value
+                            @test_throws BoundsError values[index]
+                            @test_throws BoundsError optional[index]
+                            @test_throws BoundsError result[1, index]
+                            @test_throws BoundsError row[index]
+                        end
+                    finally
+                        close(result)
+                    end
+                    @test_throws BoundsError result[1, 1]
+                    @test_throws BoundsError row.value
+                    @test_throws BoundsError values[1]
+                end
+
+                for binary_format in (LibPQ.TEXT, LibPQ.BINARY)
+                    empty = execute(conn, "SELECT 1::bigint AS value WHERE FALSE"; binary_format=binary_format)
+                    try
+                        @test_throws BoundsError empty[1, 1]
+                        @test_throws BoundsError LibPQ.Row(empty, 1).value
+                        @test_throws BoundsError LibPQ.Column(empty, :value)[1]
+                    finally
+                        close(empty)
+                    end
+
+                    no_columns = execute(conn, "SELECT FROM generate_series(1, 2)"; binary_format=binary_format)
+                    try
+                        @test_throws BoundsError no_columns[1, 1]
+                        @test_throws BoundsError LibPQ.Row(no_columns, 1)[1]
+                    finally
+                        close(no_columns)
+                    end
+                end
+            finally
+                close(conn)
+            end
+        end
+
         @testset "Uppercase Columns" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
