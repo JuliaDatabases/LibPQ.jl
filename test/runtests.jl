@@ -2062,6 +2062,37 @@ end
     @testset "AsyncResults" begin
         trywait(ar::LibPQ.AsyncResult) = (try wait(ar) catch end; nothing)
 
+        @testset "Lazy debug messages" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+            function query_value()
+                result = fetch(async_execute(conn, "SELECT 1; SELECT 2;"))
+                try
+                    return result[1, 1]
+                finally
+                    close(result)
+                end
+            end
+
+            @test query_value() == 2
+            query_value()
+            @test (@allocated query_value()) < 128 * 1024
+            level = Memento.getlevel(LibPQ.LOGGER)
+            try
+                Memento.setlevel!(LibPQ.LOGGER, "debug")
+                for message in (
+                    "Checking the result from connection",
+                    "Saving result 1 from connection",
+                    "Saving result 2 from connection",
+                    "Finished reading from connection",
+                )
+                    @test_log LibPQ.LOGGER "debug" message @test query_value() == 2
+                end
+            finally
+                Memento.setlevel!(LibPQ.LOGGER, level)
+                close(conn)
+            end
+        end
+
         @testset "Basic" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
