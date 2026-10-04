@@ -1089,6 +1089,102 @@ end
             close(conn)
         end
 
+        @testset "Row tables" begin
+            conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+            uuid = UUID("6dc2b682-a411-a51f-ce9e-af63d1ef7c1a")
+            names = (:Column, Symbol("note μ"), :day, :uuid, :bytes)
+            try
+                for binary_format in (LibPQ.TEXT, LibPQ.BINARY), nonnull in (false, true), count in (0, 3)
+                    result = execute(
+                        conn,
+                        """
+                        SELECT n::bigint AS "Column",
+                               CASE WHEN n = 2 THEN NULL ELSE n::text END AS "note μ",
+                               DATE '2026-10-03' AS day,
+                               CASE WHEN n = 2 THEN NULL ELSE '$uuid'::uuid END AS uuid,
+                               CASE WHEN n = 2 THEN NULL ELSE decode('00ff', 'hex') END AS bytes
+                        FROM generate_series(1, $count) AS n
+                        """;
+                        binary_format=binary_format,
+                        type_map=Dict(:uuid => UUID),
+                        not_null=nonnull ? [:Column, :day] : false,
+                    )
+                    rows = nothing
+                    expected = [
+                        NamedTuple{names}((n, n == 2 ? missing : string(n), Date(2026, 10, 3), n == 2 ? missing : uuid, n == 2 ? missing : UInt8[0, 255]))
+                        for n in 1:count
+                    ]
+                    try
+                        rows = Tables.rowtable(result)
+                        types = Tuple{nonnull ? Int64 : Union{Int64, Missing}, Union{String, Missing}, nonnull ? Date : Union{Date, Missing}, Union{UUID, Missing}, Union{Vector{UInt8}, Missing}}
+                        @test length(rows) == count
+                        @test isequal(rows, expected)
+                        @test eltype(rows) === NamedTuple{names, types}
+                        @test isequal(rows, collect(Tables.namedtupleiterator(eltype(result), result)))
+                    finally
+                        close(result)
+                    end
+                    GC.gc()
+                    @test isequal(rows, expected)
+                end
+
+                for binary_format in (LibPQ.TEXT, LibPQ.BINARY), count in (0, 1, 3)
+                    result = execute(conn, "SELECT FROM generate_series(1, $count)"; binary_format=binary_format)
+                    try
+                        rows = Tables.rowtable(result)
+                        @test length(rows) == count
+                        @test rows == fill(NamedTuple(), count)
+                        @test eltype(rows) === typeof(NamedTuple())
+                    finally
+                        close(result)
+                    end
+                end
+
+                for binary_format in (LibPQ.TEXT, LibPQ.BINARY)
+                    calls = Ref(0)
+                    convert_byte = value -> begin
+                        calls[] += 1
+                        UInt8(parse(Int64, value))
+                    end
+                    result = execute(
+                        conn,
+                        "SELECT n::bigint AS value FROM generate_series(1, 3) AS n";
+                        binary_format=binary_format,
+                        column_types=[UInt8],
+                        conversions=Dict((:int8, UInt8) => convert_byte),
+                        not_null=true,
+                    )
+                    try
+                        rows = Tables.rowtable(result)
+                        @test rows == [(value=0x01,), (value=0x02,), (value=0x03,)]
+                        @test eltype(rows) === NamedTuple{(:value,), Tuple{UInt8}}
+                        @test calls[] == 3
+                    finally
+                        close(result)
+                    end
+                end
+
+                result = execute(
+                    conn,
+                    "SELECT n::bigint AS id, n::double precision AS score, (n % 2 = 0) AS flag, n::text AS note FROM generate_series(1, 512) AS n";
+                    binary_format=LibPQ.BINARY,
+                    not_null=true,
+                )
+                try
+                    rows = Tables.rowtable(result)
+                    @test length(rows) == 512
+                    @test rows[end] == (id=512, score=512.0, flag=true, note="512")
+                    # Keep row materialization from allocating boxed metadata for every cell.
+                    allocated = @allocated Tables.rowtable(result)
+                    @test allocated < 512 * 512
+                finally
+                    close(result)
+                end
+            finally
+                close(conn)
+            end
+        end
+
         @testset "PQResultError" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
