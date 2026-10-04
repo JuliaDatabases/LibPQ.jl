@@ -124,12 +124,12 @@ function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
 
         if throw_error
             close(jl_conn)
-            error(LOGGER, err)
+            @error sprint(showerror, err); throw(err)
         else
-            warn(LOGGER, err)
+            @warn sprint(showerror, err)
         end
     else
-        debug(LOGGER, "Connection established: $(jl_conn.conn)")
+        @debug "Connection established: $(jl_conn.conn)"
         # if connection is successful, set client_encoding
         reset_encoding!(jl_conn)
     end
@@ -140,7 +140,7 @@ function handle_new_connection(jl_conn::Connection; throw_error::Bool=true)
             # finalizers can't task swtich, but they can schedule tasks
             @async begin
                 if !atomic_cas!(closed, false, true)
-                    debug(LOGGER, "Closing connection $(conn_ptr) in finalizer")
+                    @debug "Closing connection $(conn_ptr) in finalizer"
                     # we don't need to acquire a lock, because if anyone else is holding a
                     # lock on the connection (using lock(::Connection)) then it won't be
                     # cleaned up by the gc yet
@@ -177,7 +177,7 @@ function _connect_poll(conn::Ptr{libpq_c.PGconn}, timer::Timer, timeout::Real)
 
     # Log initial state
     msg = get(CONNECTION_STATUS_MESSAGES, c_state, "Connecting")
-    debug(LOGGER, "Connection $conn: $msg")
+    @debug "Connection $conn: $msg"
 
     p_state = libpq_c.PGRES_POLLING_WRITING
     while p_state != libpq_c.PGRES_POLLING_FAILED && p_state != libpq_c.PGRES_POLLING_OK
@@ -193,14 +193,14 @@ function _connect_poll(conn::Ptr{libpq_c.PGconn}, timer::Timer, timeout::Real)
                 )
 
                 if event.timedout
-                    debug(LOGGER, "Connection $conn: timed out while waiting for socket")
+                    @debug "Connection $conn: timed out while waiting for socket"
                 end
             end
         catch err
             # catch the scenario when the socket is closed while we're waiting for it
             # the loop may repeat in order to get to the libpq_c.PGRES_POLLING_FAILED state
             if err isa Base.IOError && err.code == -9  # EBADF
-                debug(() -> sprint(showerror, err), LOGGER)
+                @debug sprint(showerror, err)
                 # handle_new_connection should see CONNECTION_BAD and report:
                 # "could not receive data from server: Bad file descriptor"
             else
@@ -215,7 +215,7 @@ function _connect_poll(conn::Ptr{libpq_c.PGconn}, timer::Timer, timeout::Real)
         if new_c_state != c_state
             c_state = new_c_state
             msg = get(CONNECTION_STATUS_MESSAGES, c_state, "Connecting")
-            debug(LOGGER, "Connection $conn: $msg")
+            @debug "Connection $conn: $msg"
         end
 
         # connection timed out
@@ -294,7 +294,7 @@ function Connection(
     end
 
     # Make the connection
-    debug(LOGGER, "Connecting to $str")
+    @debug "Connecting to $str"
     jl_conn = Connection(
         _connect_nonblocking(keywords, values, false; timeout=connect_timeout); kwargs...
     )
@@ -458,10 +458,11 @@ function encoding(jl_conn::Connection)
     encoding_id::Cint = libpq_c.PQclientEncoding(jl_conn.conn)
 
     if encoding_id == -1
-        error(LOGGER, Errors.JLConnectionError(
+        err = Errors.JLConnectionError(
             "libpq could not retrieve the connection's client encoding. " *
-            "Something is wrong with the connection."
-        ))
+            "Something is wrong with the connection.",
+        )
+        @error sprint(showerror, err); throw(err)
     end
 
     return unsafe_string(libpq_c.pg_encoding_to_char(encoding_id))
@@ -485,9 +486,10 @@ function set_encoding!(jl_conn::Connection, encoding::String)
         status = libpq_c.PQsetClientEncoding(jl_conn.conn, encoding)
 
         if status == -1
-            error(LOGGER, Errors.JLConnectionError(
+            err = Errors.JLConnectionError(
                 "libpq could not set the connection's client encoding to $encoding"
-            ))
+            )
+            @error sprint(showerror, err); throw(err)
         else
             jl_conn.encoding = encoding
         end
@@ -553,7 +555,7 @@ but only if `jl_conn.closed` is `false`, to avoid a double-free.
 """
 function Base.close(jl_conn::Connection)
     if !atomic_cas!(jl_conn.closed, false, true)
-        debug(LOGGER, "Closing connection $(jl_conn.conn)")
+        @debug "Closing connection $(jl_conn.conn)"
         async_result = jl_conn.async_result
         async_result === nothing || cancel(async_result)
         lock(jl_conn) do
@@ -561,7 +563,7 @@ function Base.close(jl_conn::Connection)
             jl_conn.conn = C_NULL
         end
     else
-        debug(LOGGER, "Tried to close a closed connection; doing nothing")
+        @debug "Tried to close a closed connection; doing nothing"
     end
     return nothing
 end
@@ -588,20 +590,19 @@ See [`handle_new_connection`](@ref) for information on the `throw_error` argumen
 """
 function reset!(jl_conn::Connection; throw_error::Bool=true)
     if !atomic_cas!(jl_conn.closed, false, true)
-        debug(LOGGER, "Closing connection $(jl_conn.conn)")
+        @debug "Closing connection $(jl_conn.conn)"
         async_result = jl_conn.async_result
         async_result === nothing || cancel(async_result)
         lock(jl_conn) do
             jl_conn.closed[] = false
-            debug(LOGGER, "Resetting connection $(jl_conn.conn)")
+            @debug "Resetting connection $(jl_conn.conn)"
             libpq_c.PQreset(jl_conn.conn)
         end
 
         handle_new_connection(jl_conn; throw_error=throw_error)
     else
-        error(LOGGER, Errors.JLConnectionError(
-            "Cannot reset a connection that has been closed"
-        ))
+        err = Errors.JLConnectionError("Cannot reset a connection that has been closed")
+        @error sprint(showerror, err); throw(err)
     end
 
     return nothing
@@ -639,9 +640,8 @@ function Base.parse(::Type{ConninfoDisplay}, str::AbstractString)::ConninfoDispl
     elseif first(str) == 'D'
         Debug
     else
-        error(LOGGER, Errors.JLConnectionError(
-            "Unexpected dispchar '$str' in PQconninfoOption"
-        ))
+        err = Errors.JLConnectionError("Unexpected dispchar '$str' in PQconninfoOption")
+        @error sprint(showerror, err); throw(err)
     end
 end
 
@@ -695,15 +695,12 @@ function conninfo(jl_conn::Connection)
     ci_ptr = libpq_c.PQconninfo(jl_conn.conn)
 
     if ci_ptr == C_NULL
-        if !isopen(jl_conn)
-            error(LOGGER, Errors.JLConnectionError(
-                "Cannot get connection info as the connection is closed."
-            ))
+        err = if !isopen(jl_conn)
+            Errors.JLConnectionError("Cannot get connection info as the connection is closed.")
         else
-            error(LOGGER, Errors.JLConnectionError(
-                "libpq could not allocate memory for connection info"
-            ))
+            Errors.JLConnectionError("libpq could not allocate memory for connection info")
         end
+        @error sprint(showerror, err); throw(err)
     end
 
     ci_array = conninfo(ci_ptr)
@@ -738,15 +735,17 @@ function conninfo(str::AbstractString)
     ci_ptr = libpq_c.PQconninfoParse(str, err_ref)
 
     if ci_ptr == C_NULL && err_ref[] == C_NULL
-        error(LOGGER, Errors.JLConnectionError(
+        err = Errors.JLConnectionError(
             "libpq could not allocate memory for connection info"
-        ))
+        )
+        @error sprint(showerror, err); throw(err)
     end
 
     if err_ref[] != C_NULL
         err_msg = unsafe_string(err_ref[])
         libpq_c.PQfreemem(err_ref[])
-        error(LOGGER, Errors.ConninfoParseError(err_msg))
+        err = Errors.ConninfoParseError(err_msg)
+        @error sprint(showerror, err); throw(err)
     end
 
     ci_array = conninfo(ci_ptr)
