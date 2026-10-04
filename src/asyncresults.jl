@@ -100,28 +100,29 @@ function _consume(jl_conn::Connection)
             last_log = curr - last_log > 5.0 ? curr : last_log
 
             if async_result.should_cancel
-                debug(LOGGER, "Received cancel signal for connection $(jl_conn.conn)")
+                debug(() -> "Received cancel signal for connection $(jl_conn.conn)", LOGGER)
                 _cancel(jl_conn)
             end
 
             last_log == curr &&
-                debug(LOGGER, "Waiting to read from connection $(jl_conn.conn)")
+                debug(() -> "Waiting to read from connection $(jl_conn.conn)", LOGGER)
             wait(watcher)
             last_log == curr &&
-                debug(LOGGER, "Consuming input from connection $(jl_conn.conn)")
+                debug(() -> "Consuming input from connection $(jl_conn.conn)", LOGGER)
             success = libpq_c.PQconsumeInput(jl_conn.conn) == 1
             !success && error(LOGGER, Errors.PQConnectionError(jl_conn))
 
             while libpq_c.PQisBusy(jl_conn.conn) == 0
-                debug(LOGGER, "Checking the result from connection $(jl_conn.conn)")
+                debug(() -> "Checking the result from connection $(jl_conn.conn)", LOGGER)
                 result_ptr = libpq_c.PQgetResult(jl_conn.conn)
                 if result_ptr == C_NULL
-                    debug(LOGGER, "Finished reading from connection $(jl_conn.conn)")
+                    debug(() -> "Finished reading from connection $(jl_conn.conn)", LOGGER)
                     return result_ptrs
                 else
                     result_num = length(result_ptrs) + 1
                     debug(
-                        LOGGER, "Saving result $result_num from connection $(jl_conn.conn)"
+                        () -> "Saving result $result_num from connection $(jl_conn.conn)",
+                        LOGGER,
                     )
                     push!(result_ptrs, result_ptr)
                 end
