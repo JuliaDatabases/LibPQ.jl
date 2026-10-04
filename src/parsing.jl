@@ -573,6 +573,7 @@ function pqparse(::Type{Dates.CompoundPeriod}, str::AbstractString)
             period_type = frac_periods[period_coeff]  # field regex prevents BoundsError
 
             frac_seconds = parse(Int, frac_seconds_str) * 10^(3 * period_coeff - len)
+            startswith(whole_seconds_str, "-") && (frac_seconds = -frac_seconds)
             if frac_seconds != 0
                 push!(periods, period_type(frac_seconds))
             end
