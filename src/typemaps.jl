@@ -177,6 +177,18 @@ Get the Julia type corresponding to the given PostgreSQL type (any type accepted
 Base.getindex(tmap::PQTypeMap, typ) = tmap.type_map[oid(typ)]
 
 """
+    Base.get(tmap::PQTypeMap, typ, default)
+    Base.get(default::Union{Function, Type}, tmap::PQTypeMap, typ)
+
+Get the Julia type corresponding to any PostgreSQL type accepted by [`oid`](@ref).
+If the type is not mapped, return `default` or call `default()` without changing `tmap`.
+As with indexing, type names must be present in [`PQ_SYSTEM_TYPES`](@ref).
+"""
+Base.get(tmap::PQTypeMap, typ, default) = get(tmap.type_map, oid(typ), default)
+Base.get(default::Union{Function,Type}, tmap::PQTypeMap, typ) =
+    get(default, tmap.type_map, oid(typ))
+
+"""
     Base.setindex!(tmap::PQTypeMap, val::Type, typ)
 
 Set the Julia type corresponding to the given PostgreSQL type (any type accepted by
