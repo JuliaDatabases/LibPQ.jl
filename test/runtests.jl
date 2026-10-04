@@ -1057,6 +1057,7 @@ end
                         @test length(rows) == count
                         @test isequal(rows, expected)
                         @test eltype(rows) === NamedTuple{names, types}
+                        @test isequal(rows, collect(Tables.namedtupleiterator(eltype(result), result)))
                     finally
                         close(result)
                     end
