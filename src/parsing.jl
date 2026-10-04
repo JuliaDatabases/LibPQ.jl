@@ -647,6 +647,49 @@ foreach(
 )
 
 ## arrays
+# PostgreSQL text output quotes elements containing array punctuation or whitespace
+# and escapes embedded double quotes and backslashes.
+const TEXT_ARRAY_ELEMENT = r"\"((?:[^\"\\]|\\.)*)\"|([^,{}\"\\]+)"s
+
+function pqparse(
+    ::Type{A}, str::AbstractString
+) where {A<:Union{AbstractArray{String},AbstractArray{Union{String,Missing}}}}
+    T = eltype(A)
+    eq_ind = startswith(str, "[") ? findfirst(isequal('='), str) : nothing
+    array_str = eq_ind === nothing ? str : SubString(str, nextind(str, eq_ind))
+    elements = collect(eachmatch(TEXT_ARRAY_ELEMENT, array_str))
+    shape = replace(array_str, TEXT_ARRAY_ELEMENT => "x")
+    if !startswith(shape, "{") ||
+        !endswith(shape, "}") ||
+        any(c -> c ∉ ('{', '}', ',', 'x'), shape)
+        throw(ArgumentError("invalid PostgreSQL text array: $str"))
+    end
+
+    if eq_ind === nothing
+        arr = Array{T}(undef, array_size(shape)...)
+    else
+        range_strs = split(str[1:(eq_ind - 1)], ['[', ']']; keepempty=false)
+        ranges = map(range_strs) do range_str
+            lower, upper = split(range_str, ':'; limit=2)
+            return parse(Int, lower):parse(Int, upper)
+        end
+        arr = OffsetArray{T}(undef, ranges...)
+    end
+    length(elements) == length(arr) ||
+        throw(ArgumentError("text array dimensions do not match its elements"))
+
+    idx_iter = imap(reverse, product(reverse(axes(arr))...))
+    for (idx, element) in zip(idx_iter, elements)
+        quoted, unquoted = element.captures
+        arr[idx...] = if quoted === nothing
+            unquoted == "NULL" ? missing : String(unquoted)
+        else
+            replace(quoted, r"\\(.)"s => s"\1")
+        end
+    end
+    return arr::A
+end
+
 # numeric arrays never have double quotes and always use ',' as a separator
 parse_numeric_element(::Type{T}, str) where T = parse(T, str)
 

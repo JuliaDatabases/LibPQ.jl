@@ -130,6 +130,26 @@ For UUID arrays in text results, set
 `type_map=Dict(:_uuid => AbstractArray{Union{UUID,Missing}})` to preserve dimensions,
 index offsets, and NULL elements. Binary UUID arrays are not currently supported.
 
+### Text arrays
+
+Text-array columns keep the default `String` conversion. To decode `text[]` values,
+set `type_map=Dict(:_text => AbstractArray{Union{String,Missing}})` on the connection
+or query. Use `:_varchar` for `varchar[]` columns.
+
+```jldoctest
+julia> result = execute(conn, "SELECT ARRAY['a,b', 'NULL', NULL]::text[] AS value"; type_map=Dict(:_text => AbstractArray{Union{String,Missing}}));
+
+julia> isequal(first(columntable(result).value), Union{String,Missing}["a,b", "NULL", missing])
+true
+
+julia> close(result)
+```
+
+The conversion preserves dimensions, index offsets, empty strings, and escaped
+characters. Unquoted `NULL` elements become `missing`; quoted `"NULL"` remains a
+string. Use `AbstractArray{String}` when the array cannot contain NULL elements.
+Binary text arrays are not currently supported.
+
 ### Implementation
 
 #### Flow

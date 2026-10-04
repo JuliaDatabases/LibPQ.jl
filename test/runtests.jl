@@ -1437,6 +1437,58 @@ end
                     end
                 end
 
+                @testset "Text array conversion is opt-in" begin
+                    conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+                    T = Union{String,Missing}
+                    values = T["plain", "", "NULL", "null", "a,b", "{braces}", "a\"b", "a\\b", " a ", "line\nfeed", "a\tb", "x=y", "[2:3]=value", "λ🍋", missing]
+                    placeholders = join(("\$$(i)::text" for i in eachindex(values)), ",")
+                    query = "SELECT \$1::text[] AS value, NULL::text[] AS absent"
+                    cases = (
+                        ("SELECT ARRAY[]::text[] AS value, NULL::text[] AS absent", String[], T[]),
+                        ("SELECT ARRAY[$placeholders] AS value, NULL::text[] AS absent", values, values),
+                        (query, [raw"{{a,NULL},{\"b,c\",\"{d}\"}}"], T["a" missing; "b,c" "{d}"]),
+                        (query, ["{{{a,b},{c,d}}}"], reshape(T["a" "b"; "c" "d"], 1, 2, 2)),
+                        (query, ["[0:1]={zero,NULL}"], OffsetArray(T["zero", missing], 0:1)),
+                        (query, ["[0:1][-2:-1]={{a,b},{c,d}}"], OffsetArray(T["a" "b"; "c" "d"], 0:1, -2:-1)),
+                    )
+                    try
+                        for (query, parameters, expected) in cases
+                            result = execute(conn, query, parameters)
+                            try
+                                @test result[1, 1] isa String
+                                @test result[1, 2] === missing
+                            finally
+                                close(result)
+                            end
+                            result = execute(conn, query, parameters; type_map=Dict(:_text => AbstractArray{T}))
+                            parsed = nothing
+                            try
+                                parsed = result[1, 1]
+                                @test isequal(parsed, expected)
+                                @test axes(parsed) == axes(expected)
+                                @test eltype(parsed) == T
+                                @test result[1, 2] === missing
+                            finally
+                                close(result)
+                            end
+                            @test isequal(parsed, expected)
+                        end
+                        result = execute(conn, "SELECT ARRAY['a,b', '']::varchar[] AS value"; column_types=Dict(:value => Vector{String}))
+                        try
+                            @test result[1, 1] == ["a,b", ""]
+                            @test eltype(result[1, 1]) == String
+                        finally
+                            close(result)
+                        end
+                        @test LibPQ.pqparse(Vector{String}, "{}") == String[]
+                        @test_throws MethodError LibPQ.pqparse(Vector{String}, "{NULL}")
+                        @test_throws ArgumentError LibPQ.pqparse(Vector{String}, "{\"unterminated}")
+                        @test_throws ArgumentError LibPQ.pqparse(AbstractArray{T}, "[0:2]={a,b}")
+                    finally
+                        close(conn)
+                    end
+                end
+
                 binary_not_implemented_pgtypes = ["numeric", "numrange"]
                 binary_not_implemented_types = [
                     Decimal,
