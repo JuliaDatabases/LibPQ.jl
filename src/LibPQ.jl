@@ -28,6 +28,8 @@ using Memento: Memento, getlogger, warn, info, error, debug
 using OffsetArrays
 using SQLStrings
 using TimeZones
+using UTCDateTimes
+using DBInterface
 using UUIDs: UUID
 
 const Parameter = Union{String,Missing}
@@ -95,6 +97,7 @@ include("exceptions.jl")
 include("parsing.jl")
 include("copy.jl")
 include("tables.jl")
+include("dbinterface.jl")
 
 include("asyncresults.jl")
 

@@ -738,7 +738,7 @@ function conninfo(str::AbstractString)
     ci_ptr = libpq_c.PQconninfoParse(str, err_ref)
 
     if ci_ptr == C_NULL && err_ref[] == C_NULL
-        error(LOGGER, JLConnectionError(
+        error(LOGGER, Errors.JLConnectionError(
             "libpq could not allocate memory for connection info"
         ))
     end

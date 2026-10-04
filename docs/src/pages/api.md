@@ -131,9 +131,9 @@ nothing
 ```
 
 ```@raw html
-<div style="text-align:center">
+<div style="text-align:center; padding-bottom:20px">
     <figure>
-        <img src="error_types.svg" alt="Exception Type Hierarchy">
+        <img src="../error_types.svg" alt="Exception Type Hierarchy">
         <figcaption>LibPQ Exception Type Hierarchy<figcaption>
     </figure>
 </div>

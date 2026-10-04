@@ -15,6 +15,9 @@ jobs:
   test:
     name: Julia ${{ matrix.version }} - PostgreSQL ${{ matrix.postgresql-version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -24,45 +27,45 @@ jobs:
           - latest
         os:
           - ubuntu-latest
-          - macOS-latest
           - windows-latest
         arch:
           - x64
           - x86
-        exclude:
-          # Don't test 32-bit on macOS
-          - os: macOS-latest
-            arch: x86
+        macos-postgresql-path:
+          - /opt/homebrew/opt/postgresql
         include:
-          # Add a LTS job just to make sure we still support it
+          # Check the minimum Julia version declared in Project.toml.
           - os: ubuntu-latest
             version: "1.6"
             arch: x64
-            postgresql-version: latest
-          # Add older supported PostgreSQL Versions
+            postgresql-version: '14'
+          # Add a LTS job just to make sure we still support it
+          # Also use the oldest supported PostgreSQL version since we'll use `latest` everywhere else.
+          - os: ubuntu-latest
+            version: "1.10"
+            arch: x64
+            postgresql-version: '14'
           - os: ubuntu-latest
             version: 1
             arch: x64
-            postgresql-version: '13'
-          - os: ubuntu-latest
+            postgresql-version: 'latest'
+          - os: macOS-latest
+            version: 1
+            arch: aarch64
+            postgresql-version: '18'
+            macos-postgresql-path: /opt/homebrew/var/postgresql
+          - os: macos-26-intel
             version: 1
             arch: x64
-            postgresql-version: '12'
-          - os: ubuntu-latest
-            version: 1
-            arch: x64
-            postgresql-version: '11'
-          - os: ubuntu-latest
-            version: 1
-            arch: x64
-            postgresql-version: '10'
+            postgresql-version: '18'
+            macos-postgresql-path: /usr/local/var/postgresql
     steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: actions/cache@v2
+      - uses: actions/cache@v6
         env:
           cache-name: cache-artifacts
         with:
@@ -96,13 +99,19 @@ jobs:
         run: echo "PGHOST=localhost" >> $GITHUB_ENV
         if: ${{ runner.os == 'Linux' }}
       # MacOS
+      - name: Install PostgreSQL
+        run: brew install postgresql@${{ matrix.postgresql-version }}
+        if: ${{ runner.os == 'macOS' }}
+      - name: Add PostgreSQL to Path
+        run: echo "$(brew --prefix postgresql@${{matrix.postgresql-version }})/bin" >> $GITHUB_PATH
+        if: ${{ runner.os == 'macOS' }}
       - name: Set PGUSER on macOS
         run: |
           echo "PGUSER=$USER" >> $GITHUB_ENV
           echo "LIBPQJL_DATABASE_USER=$USER" >> $GITHUB_ENV
         if: ${{ runner.os == 'macOS' }}
       - name: Start Homebrew PostgreSQL service
-        run: pg_ctl -D /usr/local/var/postgresql@$(psql --version | cut -f3 -d' ' | cut -f1 -d.) start
+        run: pg_ctl -D ${{ matrix.macos-postgresql-path }}@${{ matrix.postgresql-version }} start
         if: ${{ runner.os == 'macOS' }}
       # Windows
       - name: Add PostgreSQL to Path
@@ -117,35 +126,25 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
       # Run Tests
       - run: psql -c '\conninfo'
-      - uses: julia-actions/julia-buildpkg@latest
-      - uses: julia-actions/julia-runtest@latest
+      - name: Test minimum supported Decimals
+        if: ${{ matrix.version == '1.6' }}
+        run: |
+          julia --project=. -e 'using Pkg; Pkg.add(PackageSpec(name="Decimals", version="0.4.1")); Pkg.pin("Decimals")'
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@v7
         with:
-          file: lcov.info
-
-  slack:
-    name: Notify Slack Failure
-    needs: test
-    runs-on: ubuntu-latest
-    if: always() && github.event_name == 'schedule'
-    steps:
-      - uses: technote-space/workflow-conclusion-action@v2
-      - uses: voxmedia/github-action-slack-notify-build@v1
-        if: env.WORKFLOW_CONCLUSION == 'failure'
-        with:
-          channel: nightly-dev
-          status: FAILED
-          color: danger
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.DEV_SLACK_BOT_TOKEN }}
+          files: lcov.info
+          fail_ci_if_error: true
+          use_oidc: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
   docs:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
       - name: Setup documentation dependencies
@@ -181,12 +180,12 @@ jobs:
     name: Error Codes
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
       - name: Install Julia packages
-        run: julia -e 'using Pkg; Pkg.add(["EzXML", "HTTP"]);'
+        run: julia -e 'using Pkg; Pkg.add(["EzXML", "HTTP", "OrderedCollections"]);'
       - name: Generate error codes
         run: julia deps/error_codes.jl error_codes_generated.jl
       - name: Compare error codes

@@ -11,8 +11,10 @@ using Memento
 using Memento.TestUtils
 using OffsetArrays
 using SQLStrings
+using DBInterface
 using TimeZones
 using Tables
+using UTCDateTimes
 using UUIDs: UUID
 
 Memento.config!("critical")
@@ -40,6 +42,8 @@ function count_allocs(f, args...)
 end
 
 @testset "LibPQ" begin
+
+include("datetime.jl")
 
 @testset "ConninfoDisplay" begin
     @test parse(LibPQ.ConninfoDisplay, "") == LibPQ.Normal
@@ -1157,6 +1161,35 @@ end
 
             @testset "Parsing" begin
 
+                @testset "bytea payloads are independent of their result" begin
+                    conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+                    try
+                        for binary_format in (LibPQ.TEXT, LibPQ.BINARY), data in (UInt8[], UInt8[0], UInt8[0, 39, 92, 255], UInt8.(0:255))
+                            result = execute(
+                                conn,
+                                "SELECT \$1::bytea AS bytes, NULL::bytea AS absent",
+                                [string(raw"\x", bytes2hex(data))];
+                                binary_format=binary_format,
+                            )
+                            parsed = nothing
+                            owns_data = false
+                            try
+                                row = first(Tables.rows(result))
+                                parsed = row.bytes
+                                @test parsed == data
+                                @test row.absent === missing
+                                owns_data = isempty(data) || pointer(parsed) != LibPQ.data_pointer(LibPQ.PQValue(result, 1, 1))
+                                @test owns_data
+                            finally
+                                close(result)
+                            end
+                            owns_data && @test parsed == data
+                        end
+                    finally
+                        close(conn)
+                    end
+                end
+
                 binary_not_implemented_pgtypes = ["numeric", "numrange"]
                 binary_not_implemented_types = [
                     Decimal,
@@ -1177,8 +1210,8 @@ end
                             ("3::float8", Float64(3)),
                             ("3::float4", Float32(3)),
                             ("3::oid", LibPQ.Oid(3)),
-                            ("3::numeric", decimal("3")),
-                            ("$(BigFloat(pi))::numeric", decimal(BigFloat(pi))),
+                            ("3::numeric", parse(Decimal, "3")),
+                            ("$(string(Decimal(BigFloat(pi))))::numeric", Decimal(BigFloat(pi))),
                             ("$(big"4608230166434464229556241992703")::numeric", parse(Decimal, "4608230166434464229556241992703")),
                             ("E'\\\\xDEADBEEF'::bytea", hex2bytes("DEADBEEF")),
                             ("E'\\\\000'::bytea", UInt8[0o000]),
@@ -1274,7 +1307,7 @@ end
                             ("'(3,7)'::int8range", Interval{Int64, Closed, Open}(4, 7)),
                             ("'[4,4]'::int8range", Interval{Int64, Closed, Open}(4, 5)),
                             ("'[4,4)'::int8range", Interval{Int64}()),  # Empty interval
-                            ("'[11.1,22.2)'::numrange", Interval{Decimal, Closed, Open}(11.1, 22.2)),
+                            ("'[11.1,22.2)'::numrange", Interval{Decimal, Closed, Open}(parse(Decimal, "11.1"), parse(Decimal, "22.2"))), # dec"11.1" requires Decimals 0.5
                             ("'[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange", Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))),
                             ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
                             ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ZonedDateTime(2004, 10, 19, 13, 23, 54, tz"UTC"))),
@@ -1308,16 +1341,25 @@ end
 
                                 oid = LibPQ.column_oids(result)[1]
                                 func = result.column_funcs[1]
-                                if binary_format && (
+                                if binary_format && oid != LibPQ.oid(:bytea) && (
                                     any(T -> data isa T, binary_not_implemented_types) ||
                                     any(occursin.(binary_not_implemented_pgtypes, test_str))
                                 )
-                                    @test_broken parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
-                                    @test_broken isequal(parsed, data)
-                                    @test_broken typeof(parsed) == typeof(data)
-                                    @test_broken parsed_no_oid = func(LibPQ.PQValue(result, 1, 1))
-                                    @test_broken isequal(parsed_no_oid, data)
-                                    @test_broken typeof(parsed_no_oid) == typeof(data)
+                                    # this allows us to not care whether we error in the func call or in the tests, considering those both successful breaks
+                                    # an error will pass the outer @test_broken and skip the rest
+                                    @test_broken let
+                                        parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                                        @test_broken isequal(parsed, data)
+                                        @test_broken typeof(parsed) == typeof(data)
+                                        # Julia 1.10+ requires @test_broken receive a boolean
+                                        false
+                                    end
+                                    @test_broken let
+                                        parsed_no_oid = func(LibPQ.PQValue(result, 1, 1))
+                                        @test_broken isequal(parsed_no_oid, data)
+                                        @test_broken typeof(parsed_no_oid) == typeof(data)
+                                        false
+                                    end
                                 else
                                     parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
                                     @test isequal(parsed, data)
@@ -1348,6 +1390,13 @@ end
                             ("'foobar'", Symbol, :foobar),
                             ("0::int8", DateTime, DateTime(1970, 1, 1, 0)),
                             ("0::int8", ZonedDateTime, ZonedDateTime(1970, 1, 1, 0, tz"UTC")),
+                            ("0::int8", UTCDateTime, UTCDateTime(1970, 1, 1, 0)),
+                            ("'2004-10-19 10:23:54+00'::timestamptz", UTCDateTime, UTCDateTime(2004, 10, 19, 10, 23, 54)),
+                            ("'2004-10-19 10:23:54-06'::timestamptz", UTCDateTime, UTCDateTime(2004, 10, 19, 16, 23, 54)),
+                            ("'[2010-01-01 14:30-00, 2010-01-01 15:30-00)'::tstzrange", Interval{UTCDateTime}, Interval{Closed, Open}(UTCDateTime(2010, 1, 1, 14, 30), UTCDateTime(2010, 1, 1, 15, 30))),
+                            ("'[2004-10-19 10:23:54-02, 2004-10-19 11:23:54-02)'::tstzrange", Interval{UTCDateTime}, Interval{Closed, Open}(UTCDateTime(2004, 10, 19, 12, 23, 54), UTCDateTime(2004, 10, 19, 13, 23, 54))),
+                            ("'[2004-10-19 10:23:54-02, Infinity)'::tstzrange", Interval{UTCDateTime}, Interval{Closed, Open}(UTCDateTime(2004, 10, 19, 12, 23, 54), UTCDateTime(typemax(DateTime)))),
+                            ("'(-Infinity, Infinity)'::tstzrange", Interval{UTCDateTime}, Interval{Open, Open}(UTCDateTime(typemin(DateTime)), UTCDateTime(typemax(DateTime)))),
                             ("'{{{1,2,3},{4,5,6}}}'::int2[]", AbstractArray{Int16}, reshape(Int16[1 2 3; 4 5 6], 1, 2, 3)),
                             ("DATE '2017-01-31'", InfExtendedTime{Date}, InfExtendedTime{Date}(Date(2017, 1, 31))),
                             ("'infinity'::timestamp", InfExtendedTime{Date}, InfExtendedTime{Date}(∞)),
@@ -1357,6 +1406,10 @@ end
                             ("'-infinity'::timestamptz", InfExtendedTime{ZonedDateTime}, InfExtendedTime{ZonedDateTime}(-∞)),
                             ("'[2004-10-19 10:23:54-02, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{Closed, Open}(ZonedDateTime(2004, 10, 19, 12, 23, 54, tz"UTC"), ∞)),
                             ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{ZonedDateTime}}, Interval{InfExtendedTime{ZonedDateTime}, Open, Open}(-∞, ∞)),
+                            ("'infinity'::timestamptz", InfExtendedTime{UTCDateTime}, InfExtendedTime{UTCDateTime}(∞)),
+                            ("'-infinity'::timestamptz", InfExtendedTime{UTCDateTime}, InfExtendedTime{UTCDateTime}(-∞)),
+                            ("'[2004-10-19 10:23:54-02, infinity)'::tstzrange", Interval{InfExtendedTime{UTCDateTime}}, Interval{Closed, Open}(UTCDateTime(2004, 10, 19, 12, 23, 54), ∞)),
+                            ("'(-infinity, infinity)'::tstzrange", Interval{InfExtendedTime{UTCDateTime}}, Interval{InfExtendedTime{UTCDateTime}, Open, Open}(-∞, ∞)),
                         ]
 
                         for (test_str, typ, data) in test_data
@@ -1379,9 +1432,15 @@ end
                                     any(T -> data isa T, binary_not_implemented_types) ||
                                     any(occursin.(binary_not_implemented_pgtypes, test_str))
                                 )
-                                    @test_broken parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
-                                    @test_broken parsed == data
-                                    @test_broken typeof(parsed) == typeof(data)
+                                    # this allows us to not care whether we error in the func call or in the tests, considering those both successful breaks
+                                    # an error will pass the outer @test_broken and skip the rest
+                                    @test_broken let
+                                        parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
+                                        @test_broken parsed == data
+                                        @test_broken typeof(parsed) == typeof(data)
+                                        # Julia 1.10+ requires @test_broken receive a boolean
+                                        false
+                                    end
                                 else
                                     parsed = func(LibPQ.PQValue{oid}(result, 1, 1))
                                     @test parsed == data
@@ -1471,7 +1530,7 @@ end
                 tests = (
                     ("'[3, 7)'::int4range", Interval{Int32, Closed, Open}(3, 7)),
                     ("'[4, 4]'::int4range", Interval{Int32, Closed, Closed}(4, 4)),
-                    ("'[11.1, 22.2]'::numrange", Interval{Decimal, Closed, Closed}(11.1, 22.2)),
+                    ("'[11.1, 22.2]'::numrange", Interval{Decimal, Closed, Closed}(parse(Decimal, "11.1"), parse(Decimal, "22.2"))), # dec"11.1" requires Decimals 0.5
                     ("'[2010-01-01T14:30:00, 2010-01-01T15:30:00)'::tsrange", Interval{Closed, Open}(DateTime(2010, 1, 1, 14, 30), DateTime(2010, 1, 1, 15, 30))),
                     ("'[2010-01-01T14:30:00+00:00, 2010-01-01T15:30:00+00:00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC"))),
                     ("'[2010-01-01T14:30:00-02:00, 2010-01-01T15:30:00-02:00)'::tstzrange", Interval{Closed, Open}(ZonedDateTime(2010, 1, 1, 14, 30, tz"UTC-2"), ZonedDateTime(2010, 1, 1, 15, 30, tz"UTC-2"))),
@@ -1669,6 +1728,10 @@ end
                 # Ensure that getting an element from the column produces num_allocs allocs.
                 foo(col) = [col[1] for _ in 1:100]
                 count_allocs(foo, col)
+                # Julia 1.11 `Array` wraps the new `Memory` object https://github.com/JuliaLang/julia/blob/v1.11.0/NEWS.md#new-language-features.
+                # Functions like `push!` are faster now, but the extra indirection increased allocations by 1 for
+                # text-formatted numbers which calls `unsafe_wrap`.
+                num_allocs += VERSION >= v"1.11" && !bin_fmt && out_val isa Number
                 max_expected_allocs = num_allocs * 100 + 5
                 @test count_allocs(foo, col) < max_expected_allocs
 
@@ -1896,6 +1959,111 @@ end
             end
 
             close(conn)
+        end
+
+        @testset "DBInterface integration" begin
+            conn = DBInterface.connect(LibPQ.Connection, "dbname=postgres user=$DATABASE_USER")
+            @test conn isa LibPQ.DBConnection
+
+            result = DBInterface.execute(
+                conn,
+                "SELECT typname FROM pg_type WHERE oid = 16";
+            )
+            @test result isa LibPQ.Result
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test isopen(result)
+            @test LibPQ.num_columns(result) == 1
+            @test LibPQ.num_rows(result) == 1
+            @test LibPQ.column_name(result, 1) == "typname"
+            @test LibPQ.column_number(result, "typname") == 1
+            data = columntable(result)
+            @test data[:typname][1] == "bool"
+
+            qstr = "SELECT \$1::double precision as foo, typname FROM pg_type WHERE oid = \$2"
+            stmt = DBInterface.prepare(conn, qstr)
+            result = DBInterface.execute(
+                conn,
+                qstr,
+                (1.0, 16);
+            )
+            @test result isa LibPQ.Result
+            @test status(result) == LibPQ.libpq_c.PGRES_TUPLES_OK
+            @test isopen(result)
+            @test LibPQ.num_columns(result) == 2
+            @test LibPQ.num_rows(result) == 1
+            @test LibPQ.column_name(result, 1) == "foo"
+            @test LibPQ.column_name(result, 2) == "typname"
+
+            DBInterface.close!(conn)
+            @test !isopen(conn.conn)
+
+        end
+
+        if isdefined(DBInterface, :transaction)
+            @testset "DBInterface transactions" begin
+                conn = DBInterface.connect(LibPQ.Connection, "dbname=postgres user=$DATABASE_USER")
+                function scalar(sql)
+                    result = DBInterface.execute(conn, sql)
+                    try
+                        return only(columntable(result).n)
+                    finally
+                        close(result)
+                    end
+                end
+                close(DBInterface.execute(conn, "CREATE TEMPORARY TABLE transaction_rows (n integer)"))
+                prepared_before = scalar("SELECT count(*) AS n FROM pg_prepared_statements")
+
+                @test DBInterface.transaction(conn) do
+                    close(DBInterface.execute(conn, "INSERT INTO transaction_rows VALUES (1)"))
+                    :committed
+                end === :committed
+                @test scalar("SELECT count(*) AS n FROM transaction_rows") == 1
+
+                result = DBInterface.transaction(conn) do
+                    DBInterface.execute(conn, "SELECT n FROM transaction_rows")
+                end
+                @test isopen(result)
+                @test only(columntable(result).n) == 1
+                close(result)
+
+                abort = ErrorException("abort transaction")
+                error = try
+                    DBInterface.transaction(conn) do
+                        close(DBInterface.execute(conn, "INSERT INTO transaction_rows VALUES (2)"))
+                        throw(abort)
+                    end
+                catch err
+                    err
+                end
+                @test error === abort
+                @test scalar("SELECT count(*) AS n FROM transaction_rows") == 1
+
+                @test_throws LibPQ.Errors.UndefinedTable DBInterface.transaction(conn) do
+                    DBInterface.execute(conn, "SELECT * FROM nonexistent_transaction_table")
+                end
+                @test scalar("SELECT count(*) AS n FROM transaction_rows") == 1
+                for _ in 1:20
+                    @test DBInterface.transaction(() -> 42, conn) == 42
+                end
+                @test scalar("SELECT count(*) AS n FROM pg_prepared_statements") == prepared_before
+                DBInterface.close!(conn)
+
+                conn = DBInterface.connect(LibPQ.Connection, "dbname=postgres user=$DATABASE_USER")
+                error = try
+                    DBInterface.transaction(conn) do
+                        DBInterface.close!(conn)
+                        throw(abort)
+                    end
+                catch err
+                    err
+                end
+                @test error isa CompositeException
+                if error isa CompositeException
+                    @test length(error.exceptions) == 2
+                    @test error.exceptions[1].ex === abort
+                    @test error.exceptions[2].ex isa LibPQ.Errors.PostgreSQLException
+                end
+            end
         end
     end
 end

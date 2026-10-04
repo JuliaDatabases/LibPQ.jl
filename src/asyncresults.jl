@@ -201,7 +201,8 @@ All keyword arguments are the same as [`execute`](@ref) and are passed to the cr
 `Result`.
 
 Only one `AsyncResult` can be active on a [`Connection`](@ref) at once.
-If multiple `AsyncResult`s use the same `Connection`, they will execute serially.
+If multiple `AsyncResult`s use the same `Connection`, they will execute serially but
+without any guarantee of order.
 
 `async_execute` does not yet support [`Statement`](@ref)s.
 
@@ -252,7 +253,9 @@ function async_execute(
     pointer_params = parameter_pointers(string_params)
 
     async_result = _async_execute(jl_conn; binary_format=binary_format, kwargs...) do jl_conn
-            _async_submit(jl_conn.conn, query, pointer_params; binary_format=binary_format)
+            GC.@preserve string_params _async_submit(
+                jl_conn.conn, query, pointer_params; binary_format=binary_format
+            )
         end
 
     return async_result
