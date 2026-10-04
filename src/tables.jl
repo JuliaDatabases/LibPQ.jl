@@ -5,6 +5,11 @@ Tables.istable(::Type{<:Result}) = true
 Tables.rowaccess(::Type{<:Result}) = true
 Tables.rows(jl_result::Result) = jl_result
 
+function Tables.rowtable(jl_result::Result)
+    num_columns(jl_result) == 0 && return fill(NamedTuple(), num_rows(jl_result))
+    return Tables.rowtable(Tables.columntable(jl_result))
+end
+
 Base.eltype(jl_result::Result) = Row
 Base.length(jl_result::Result) = num_rows(jl_result)
 
