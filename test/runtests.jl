@@ -1519,6 +1519,14 @@ end
                             ("INTERVAL '6.001 seconds'", Dates.CompoundPeriod(Period[Second(6), Millisecond(1)])),
                             ("INTERVAL '6.0001 seconds'", Dates.CompoundPeriod(Period[Second(6), Microsecond(100)])),
                             ("INTERVAL '6.1001 seconds'", Dates.CompoundPeriod(Period[Second(6), Microsecond(100100)])),
+                            ("INTERVAL '-6.1 seconds'", Dates.CompoundPeriod(Period[Second(-6), Millisecond(-100)])),
+                            ("INTERVAL '-6.01 seconds'", Dates.CompoundPeriod(Period[Second(-6), Millisecond(-10)])),
+                            ("INTERVAL '-6.001 seconds'", Dates.CompoundPeriod(Period[Second(-6), Millisecond(-1)])),
+                            ("INTERVAL '-6.0001 seconds'", Dates.CompoundPeriod(Period[Second(-6), Microsecond(-100)])),
+                            ("INTERVAL '-6.1001 seconds'", Dates.CompoundPeriod(Period[Second(-6), Microsecond(-100100)])),
+                            ("INTERVAL '-0.1 seconds'", Dates.CompoundPeriod(Period[Millisecond(-100)])),
+                            ("INTERVAL '-0.000001 seconds'", Dates.CompoundPeriod(Period[Microsecond(-1)])),
+                            ("INTERVAL '1 day -0.1 seconds'", Dates.CompoundPeriod(Period[Day(1), Millisecond(-100)])),
                             ("INTERVAL '1000 years 7 weeks'", Dates.CompoundPeriod(Period[Year(1000), Day(7 * 7)])),
                             ("INTERVAL '1 day -1 hour'", Dates.CompoundPeriod(Period[Day(1), Hour(-1)])),
                             ("INTERVAL '-1 month 1 day'", Dates.CompoundPeriod(Period[Month(-1), Day(1)])),
@@ -1527,6 +1535,8 @@ end
                             # With precision
                             ("INTERVAL '6.1001 seconds' SECOND(0)", Dates.CompoundPeriod(Period[Second(6)])),
                             ("INTERVAL '6.1001 seconds' SECOND(2)", Dates.CompoundPeriod(Period[Second(6), Millisecond(100)])),
+                            ("INTERVAL '-6.1001 seconds' SECOND(0)", Dates.CompoundPeriod(Period[Second(-6)])),
+                            ("INTERVAL '-6.1001 seconds' SECOND(2)", Dates.CompoundPeriod(Period[Second(-6), Millisecond(-100)])),
                             ("'{{{1,2,3},{4,5,6}}}'::int2[]", Array{Union{Int16, Missing}}(reshape(Int16[1 2 3; 4 5 6], 1, 2, 3))),
                             ("'{}'::int2[]", Union{Missing, Int16}[]),
                             ("'{{{1,2,3},{4,5,6}}}'::int4[]", Array{Union{Int32, Missing}}(reshape(Int32[1 2 3; 4 5 6], 1, 2, 3))),
@@ -1715,6 +1725,21 @@ end
                     ]
                     for input in inputs
                         @test match(regex, input) !== nothing
+                    end
+                end
+
+                @testset "Signed fractional interval periods" begin
+                    tests = (
+                        ("PT-0.1S", Dates.CompoundPeriod(Millisecond(-100))),
+                        ("PT-0.0001S", Dates.CompoundPeriod(Microsecond(-100))),
+                        ("PT-0.000000001S", Dates.CompoundPeriod(Nanosecond(-1))),
+                        ("PT-6.1S", Dates.CompoundPeriod(Second(-6), Millisecond(-100))),
+                        ("P1DT-0.1S", Dates.CompoundPeriod(Day(1), Millisecond(-100))),
+                        ("PT-0.000000000S", Dates.CompoundPeriod()),
+                        ("PT0.000000001S", Dates.CompoundPeriod(Nanosecond(1))),
+                    )
+                    for (input, expected) in tests
+                        @test LibPQ.pqparse(Dates.CompoundPeriod, input) == expected
                     end
                 end
             end
