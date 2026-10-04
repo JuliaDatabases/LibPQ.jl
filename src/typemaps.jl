@@ -185,8 +185,9 @@ If the type is not mapped, return `default` or call `default()` without changing
 As with indexing, type names must be present in [`PQ_SYSTEM_TYPES`](@ref).
 """
 Base.get(tmap::PQTypeMap, typ, default) = get(tmap.type_map, oid(typ), default)
-Base.get(default::Union{Function,Type}, tmap::PQTypeMap, typ) =
-    get(default, tmap.type_map, oid(typ))
+function Base.get(default::Union{Function,Type}, tmap::PQTypeMap, typ)
+    return get(default, tmap.type_map, oid(typ))
+end
 
 """
     Base.setindex!(tmap::PQTypeMap, val::Type, typ)
