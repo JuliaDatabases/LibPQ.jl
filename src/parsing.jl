@@ -232,6 +232,19 @@ function pqparse(::Type{Vector{UInt8}}, bytes::Array{UInt8,1})
     return unescaped_vec
 end
 
+## uuid
+function Base.parse(::Type{UUID}, pqv::PQBinaryValue{PQ_SYSTEM_TYPES[:uuid]})
+    GC.@preserve pqv begin
+        return UUID(pqparse(UInt128, data_pointer(pqv)))
+    end
+end
+
+function pqparse(
+    ::Type{A}, str::AbstractString
+) where {T<:Union{UUID,Missing},A<:AbstractArray{T}}
+    return parse_numeric_array(T, str)::A
+end
+
 ## bool
 # TODO: check whether we ever need this or if PostgreSQL always gives t or f
 _DEFAULT_TYPE_MAP[:bool] = Bool

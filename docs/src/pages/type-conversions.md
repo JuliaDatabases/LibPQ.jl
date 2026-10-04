@@ -109,6 +109,27 @@ To override behaviour for every query everywhere, add mappings to the global con
 [`LibPQ.LIBPQ_TYPE_MAP`](@ref) and [`LibPQ.LIBPQ_CONVERSIONS`](@ref).
 Connection-level overrides will override these global overrides.
 
+### UUID values
+
+UUID columns keep the default `String` conversion. To return Julia UUID values,
+set `type_map=Dict(:uuid => UUID)` on the connection or query. This works with
+both text and binary results.
+
+```jldoctest
+julia> using UUIDs: UUID
+
+julia> result = execute(conn, "SELECT '00112233-4455-6677-8899-aabbccddeeff'::uuid AS id"; binary_format=true, type_map=Dict(:uuid => UUID));
+
+julia> first(columntable(result).id)
+UUID("00112233-4455-6677-8899-aabbccddeeff")
+
+julia> close(result)
+```
+
+For UUID arrays in text results, set
+`type_map=Dict(:_uuid => AbstractArray{Union{UUID,Missing}})` to preserve dimensions,
+index offsets, and NULL elements. Binary UUID arrays are not currently supported.
+
 ### Implementation
 
 #### Flow

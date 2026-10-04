@@ -15,6 +15,7 @@ using DBInterface
 using TimeZones
 using Tables
 using UTCDateTimes
+using UUIDs: UUID
 
 Memento.config!("critical")
 
@@ -1189,6 +1190,66 @@ end
                     end
                 end
 
+                @testset "UUID conversion is opt-in" begin
+                    conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+                    values = (
+                        UUID(UInt128(0)),
+                        UUID(typemax(UInt128)),
+                        UUID("00112233-4455-6677-8899-aabbccddeeff"),
+                        UUID("6dc2b682-a411-a51f-ce9e-af63d1ef7c1a"),
+                    )
+                    query = "SELECT \$1::uuid AS value, NULL::uuid AS absent"
+                    try
+                        for binary_format in (LibPQ.TEXT, LibPQ.BINARY), value in values
+                            result = execute(conn, query, [value]; binary_format=binary_format)
+                            try
+                                row = first(Tables.rows(result))
+                                @test row.value isa String
+                                expected = binary_format ? String(hex2bytes(replace(string(value), "-" => ""))) : string(value)
+                                @test row.value == expected
+                                @test row.absent === missing
+                            finally
+                                close(result)
+                            end
+                            result = execute(conn, query, [value]; binary_format=binary_format, type_map=Dict(:uuid => UUID))
+                            parsed = nothing
+                            try
+                                row = first(Tables.rows(result))
+                                parsed = row.value
+                                @test parsed == value
+                                @test row.absent === missing
+                            finally
+                                close(result)
+                            end
+                            @test parsed == value
+                        end
+                        for (parameter, expected) in (
+                            ("{}", Union{UUID,Missing}[]),
+                            ("{$(values[3]),NULL}", Union{UUID,Missing}[values[3], missing]),
+                            ("{{$(values[3]),NULL},{$(values[1]),$(values[2])}}", Union{UUID,Missing}[values[3] missing; values[1] values[2]]),
+                            ("[0:1]={$(values[3]),NULL}", OffsetArray(Union{UUID,Missing}[values[3], missing], 0:1)),
+                        )
+                            result = execute(conn, "SELECT \$1::uuid[] AS value", [parameter])
+                            try
+                                @test only(Tables.columntable(result).value) == parameter
+                            finally
+                                close(result)
+                            end
+                            result = execute(conn, "SELECT \$1::uuid[] AS value", [parameter]; type_map=Dict(:_uuid => AbstractArray{Union{UUID,Missing}}))
+                            try
+                                parsed = only(Tables.columntable(result).value)
+                                @test isequal(parsed, expected)
+                                @test axes(parsed) == axes(expected)
+                                @test eltype(parsed) == Union{UUID,Missing}
+                            finally
+                                close(result)
+                            end
+                        end
+                    finally
+                        close(conn)
+                    end
+                end
+
                 binary_not_implemented_pgtypes = ["numeric", "numrange"]
                 binary_not_implemented_types = [
                     Decimal,
@@ -1475,6 +1536,18 @@ end
         @testset "Parameters" begin
             conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
 
+            @testset "UUID" begin
+                tests = (
+                    ("'6dc2b682-a411-a51f-ce9e-af63d1ef7c1a'::uuid", UUID("6dc2b682-a411-a51f-ce9e-af63d1ef7c1a")),
+                )
+
+                @testset for (pg_str, obj) in tests
+                    result = execute(conn, "SELECT $pg_str = \$1", [obj])
+                    @test first(first(result))
+                    close(result)
+                end
+            end
+
             @testset "Arrays" begin
                 tests = (
                     ("SELECT 'foo' = ANY(\$1)", [["bar", "foo"]]),
@@ -1487,7 +1560,8 @@ end
                     ("SELECT 'f\\\"oo' = ANY(\$1)", [["b\\\"ar", "f\\\"oo"]]),
                     ("SELECT 'f\"\\oo' = ANY(\$1)", [["b\"\\ar", "f\"\\oo"]]),
                     ("SELECT ARRAY[1, 2] = \$1", [[1, 2]]),
-                    ("SELECT ARRAY[1, 2] = \$1", Any[Any[1, 2]])
+                    ("SELECT ARRAY[1, 2] = \$1", Any[Any[1, 2]]),
+                    ("SELECT '{6dc2b682-a411-a51f-ce9e-af63d1ef7c1a}'::uuid[] = \$1", [[UUID("6dc2b682-a411-a51f-ce9e-af63d1ef7c1a")]]),
                 )
 
                 @testset for (query, arr) in tests

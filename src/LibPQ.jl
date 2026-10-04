@@ -30,6 +30,7 @@ using SQLStrings
 using TimeZones
 using UTCDateTimes
 using DBInterface
+using UUIDs: UUID
 
 const Parameter = Union{String,Missing}
 const LOGGER = getlogger(@__MODULE__)
