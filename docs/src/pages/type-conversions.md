@@ -17,11 +17,9 @@ end
 
 ## From Julia to PostgreSQL
 
-Currently all types are printed to strings and given to LibPQ as such, with no special treatment.
-Expect this to change in a future release.
-For now, you can convert the data to strings yourself before passing to [`execute`](@ref).
-This should only be necessary for data types whose Julia string representation is not valid in
-PostgreSQL, such as arrays.
+Parameters are sent in PostgreSQL text format. Values are converted to their string
+representation, with specialized conversion for arrays and intervals. Vectors become
+PostgreSQL array literals. You can also provide the PostgreSQL text representation yourself.
 
 ```jldoctest
 julia> A = collect(12:15);
@@ -30,6 +28,20 @@ julia> nt = columntable(execute(conn, "SELECT \$1 = ANY(\$2) AS result", Any[13,
 
 julia> nt[:result][1]
 true
+```
+
+For a `bytea` parameter, encode the bytes in PostgreSQL's hexadecimal text format.
+A `Vector{UInt8}` is otherwise converted to an array literal such as `{1,2,3,4}`, whose
+characters PostgreSQL then stores as bytes. The `binary_format` keyword selects the
+result format; parameters still use text format.
+
+```jldoctest
+julia> bytes = UInt8[1, 2, 3, 4];
+
+julia> parameter = string(raw"\x", bytes2hex(bytes));
+
+julia> bytes2hex(columntable(execute(conn, "SELECT \$1::bytea AS data", [parameter]))[:data][1])
+"01020304"
 ```
 
 ## From PostgreSQL to Julia
