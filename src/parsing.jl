@@ -233,9 +233,16 @@ function pqparse(::Type{Vector{UInt8}}, bytes::Array{UInt8,1})
 end
 
 ## uuid
-_DEFAULT_TYPE_MAP[:uuid] = UUID
 function Base.parse(::Type{UUID}, pqv::PQBinaryValue{PQ_SYSTEM_TYPES[:uuid]})
-    return UUID(pqparse(UInt128, data_pointer(pqv)))
+    GC.@preserve pqv begin
+        return UUID(pqparse(UInt128, data_pointer(pqv)))
+    end
+end
+
+function pqparse(
+    ::Type{A}, str::AbstractString
+) where {T<:Union{UUID,Missing},A<:AbstractArray{T}}
+    return parse_numeric_array(T, str)::A
 end
 
 ## bool
@@ -709,7 +716,7 @@ function array_size(str)
     return dims
 end
 
-for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric", "uuid")
+for pq_eltype in ("int2", "int4", "int8", "float4", "float8", "oid", "numeric")
     array_oid = PQ_SYSTEM_TYPES[Symbol("_$pq_eltype")]
     jl_type = _DEFAULT_TYPE_MAP[Symbol(pq_eltype)]
     jl_missingtype = Union{jl_type,Missing}

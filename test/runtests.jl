@@ -1190,6 +1190,66 @@ end
                     end
                 end
 
+                @testset "UUID conversion is opt-in" begin
+                    conn = LibPQ.Connection("dbname=postgres user=$DATABASE_USER"; throw_error=true)
+                    values = (
+                        UUID(UInt128(0)),
+                        UUID(typemax(UInt128)),
+                        UUID("00112233-4455-6677-8899-aabbccddeeff"),
+                        UUID("6dc2b682-a411-a51f-ce9e-af63d1ef7c1a"),
+                    )
+                    query = "SELECT \$1::uuid AS value, NULL::uuid AS absent"
+                    try
+                        for binary_format in (LibPQ.TEXT, LibPQ.BINARY), value in values
+                            result = execute(conn, query, [value]; binary_format=binary_format)
+                            try
+                                row = first(Tables.rows(result))
+                                @test row.value isa String
+                                expected = binary_format ? String(hex2bytes(replace(string(value), "-" => ""))) : string(value)
+                                @test row.value == expected
+                                @test row.absent === missing
+                            finally
+                                close(result)
+                            end
+                            result = execute(conn, query, [value]; binary_format=binary_format, type_map=Dict(:uuid => UUID))
+                            parsed = nothing
+                            try
+                                row = first(Tables.rows(result))
+                                parsed = row.value
+                                @test parsed == value
+                                @test row.absent === missing
+                            finally
+                                close(result)
+                            end
+                            @test parsed == value
+                        end
+                        for (parameter, expected) in (
+                            ("{}", Union{UUID,Missing}[]),
+                            ("{$(values[3]),NULL}", Union{UUID,Missing}[values[3], missing]),
+                            ("{{$(values[3]),NULL},{$(values[1]),$(values[2])}}", Union{UUID,Missing}[values[3] missing; values[1] values[2]]),
+                            ("[0:1]={$(values[3]),NULL}", OffsetArray(Union{UUID,Missing}[values[3], missing], 0:1)),
+                        )
+                            result = execute(conn, "SELECT \$1::uuid[] AS value", [parameter])
+                            try
+                                @test only(Tables.columntable(result).value) == parameter
+                            finally
+                                close(result)
+                            end
+                            result = execute(conn, "SELECT \$1::uuid[] AS value", [parameter]; type_map=Dict(:_uuid => AbstractArray{Union{UUID,Missing}}))
+                            try
+                                parsed = only(Tables.columntable(result).value)
+                                @test isequal(parsed, expected)
+                                @test axes(parsed) == axes(expected)
+                                @test eltype(parsed) == Union{UUID,Missing}
+                            finally
+                                close(result)
+                            end
+                        end
+                    finally
+                        close(conn)
+                    end
+                end
+
                 binary_not_implemented_pgtypes = ["numeric", "numrange"]
                 binary_not_implemented_types = [
                     Decimal,
@@ -1225,7 +1285,6 @@ end
                             ("'hello  '::char(10)", "hello"),
                             ("'hello  '::varchar(10)", "hello  "),
                             ("'3'::\"char\"", LibPQ.PQChar('3')),
-                            ("'6dc2b682-a411-a51f-ce9e-af63d1ef7c1a'::uuid", UUID("6dc2b682-a411-a51f-ce9e-af63d1ef7c1a")),
                             ("'t'::bool", true),
                             ("'T'::bool", true),
                             ("'true'::bool", true),
@@ -1291,7 +1350,6 @@ end
                             ("'{{{NULL,2,3},{4,NULL,6}}}'::float8[]", Array{Union{Float64, Missing}}(reshape(Union{Float64, Missing}[missing 2 3; 4 missing 6], 1, 2, 3))),
                             ("'{{{1,2,3},{4,5,6}}}'::oid[]", Array{Union{LibPQ.Oid, Missing}}(reshape(LibPQ.Oid[1 2 3; 4 5 6], 1, 2, 3))),
                             ("'{{{1,2,3},{4,5,6}}}'::numeric[]", Array{Union{Decimal, Missing}}(reshape(Decimal[1 2 3; 4 5 6], 1, 2, 3))),
-                            ("'{6dc2b682-a411-a51f-ce9e-af63d1ef7c1a}'::uuid[]", Union{UUID, Missing}[UUID("6dc2b682-a411-a51f-ce9e-af63d1ef7c1a")]),
                             ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int2[]", copyto!(OffsetArray{Union{Missing, Int16}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                             ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int4[]", copyto!(OffsetArray{Union{Missing, Int32}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
                             ("'[1:1][-2:-1][3:5]={{{1,2,3},{4,5,6}}}'::int8[]", copyto!(OffsetArray{Union{Missing, Int64}}(undef, 1:1, -2:-1, 3:5), [1 2 3; 4 5 6])),
