@@ -25,7 +25,7 @@ UTCDateTimes = "0f7cfa37-7abf-4834-b969-a8aa512401c2"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
-CEnum = "0.2, 0.3, 0.4, 0.5"
+CEnum = "0.2, 0.3, 0.4, 0.5, 1"
 DBInterface = "2"
 DataFrames = "0.20, 0.21, 0.22, 1"
 Decimals = "0.4.1, 0.5"
