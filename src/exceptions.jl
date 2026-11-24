@@ -93,6 +93,11 @@ function PQResultError(result::Result; verbose=false)
     msg = error_message(result; verbose=false)
     verbose_msg = verbose ? error_message(result; verbose=true) : nothing
     code_str = something(error_field(result, libpq_c.PG_DIAG_SQLSTATE), "UNOWN")
+    # SQLSTATEs outside the PostgreSQL list have no corresponding Class/ErrorCode
+    code_sym = Symbol("E", code_str)
+    if !(isdefined(Errors, code_sym) && getfield(Errors, code_sym) isa ErrorCode)
+        code_str = "UNOWN"
+    end
     class = parse(Class, code_str[1:2])
     code = parse(ErrorCode, code_str)
 

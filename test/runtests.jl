@@ -1256,6 +1256,19 @@ end
             @test occursin("PGresult is not an error result", unknown_error.verbose_msg)
             close(result)
 
+            # SQLSTATEs not in the PostgreSQL list
+            try
+                execute(
+                    conn,
+                    "DO \$\$ BEGIN RAISE EXCEPTION 'custom' USING ERRCODE = '13370'; END \$\$;",
+                )
+                @test false
+            catch err
+                @test err isa LibPQ.Errors.UnknownError
+                @test occursin("custom", err.msg)
+                @test occursin("custom", sprint(showerror, err))
+            end
+
             close(conn)
         end
 
